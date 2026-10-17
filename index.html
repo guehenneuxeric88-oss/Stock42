@@ -1,232 +1,236 @@
 <!doctype html>
 <html lang="fr">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-<meta name="theme-color" content="#111827" />
-<title>Stock 42 — V2</title>
-<link rel="manifest" href="manifest.webmanifest" />
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111827">
+<title>Stock 42 — V3</title>
+<link rel="manifest" href="manifest.webmanifest">
 <style>
 :root{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#111827;background:#f3f4f6}
-*{box-sizing:border-box}body{margin:0;min-height:100vh;background:#f3f4f6}.app{max-width:620px;margin:auto;padding:18px 16px 42px}
-.head{display:flex;align-items:center;gap:12px;margin:4px 0 18px}.logo{width:50px;height:50px;border-radius:14px;background:#111827;color:#fff;display:grid;place-items:center;font-weight:900}
-.title{font-weight:900;font-size:1.35rem}.sub{color:#6b7280;font-size:.92rem}.card{background:white;border-radius:18px;padding:16px;box-shadow:0 3px 18px rgba(0,0,0,.07);margin:12px 0}
-.reader{overflow:hidden;border-radius:14px;min-height:245px;background:#111827}.row{display:flex;gap:10px;flex-wrap:wrap}.btn{border:0;border-radius:12px;padding:13px 15px;font-weight:800;font-size:.96rem;cursor:pointer}
-.btn:disabled{opacity:.5;cursor:not-allowed}.primary{background:#111827;color:#fff;flex:1}.secondary{background:#e5e7eb;color:#111827}.success{background:#dcfce7;color:#166534}.danger{background:#fee2e2;color:#991b1b}
-.status{font-size:.9rem;color:#6b7280;margin-top:10px}.result{display:none}.ok{border-left:6px solid #16a34a}.bad{border-left:6px solid #dc2626}.code{font-size:1.35rem;font-weight:900;letter-spacing:.04em}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.kv{background:#f9fafb;border-radius:12px;padding:10px}.k{font-size:.78rem;color:#6b7280}.v{font-weight:800;margin-top:2px}
-.manual{display:flex;gap:8px}.manual input{min-width:0;flex:1}.field{margin:10px 0}.field label{display:block;font-size:.8rem;font-weight:800;color:#4b5563;margin-bottom:5px}
-input,select{width:100%;padding:12px;border:1px solid #d1d5db;border-radius:12px;font-size:1rem;background:#fff}.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.small{font-size:.82rem;color:#6b7280}.hint{font-size:.88rem;color:#6b7280;line-height:1.45}.badge{display:inline-block;background:#e5e7eb;padding:3px 8px;border-radius:999px;font-size:.78rem;font-weight:800}
-.badge.green{background:#dcfce7;color:#166534}.badge.orange{background:#ffedd5;color:#9a3412}.badge.blue{background:#dbeafe;color:#1d4ed8}
-.list-item{padding:12px 0;border-bottom:1px solid #eee}.list-item:last-child{border-bottom:0}.item-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
-.item-title{font-weight:900}.item-meta{font-size:.82rem;color:#6b7280;margin-top:3px}.empty{padding:10px 0;color:#9ca3af;font-size:.9rem}.section-title{font-weight:900;margin-bottom:10px}
-.notice{background:#eff6ff;border:1px solid #bfdbfe;color:#1e3a8a;border-radius:12px;padding:10px;font-size:.86rem;line-height:1.4}
-.footer{text-align:center;color:#9ca3af;font-size:.78rem;margin-top:24px}.hidden{display:none!important}
-@media(max-width:430px){.two,.grid{grid-template-columns:1fr}}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:#f3f4f6}.app{max-width:680px;margin:auto;padding:18px 16px 44px}
+.head{display:flex;align-items:center;gap:12px;margin:4px 0 18px}.logo{width:52px;height:52px;border-radius:15px;background:#111827;color:#fff;display:grid;place-items:center;font-weight:900}
+.title{font-weight:900;font-size:1.42rem}.sub{color:#6b7280;font-size:.92rem}.card{background:#fff;border-radius:18px;padding:16px;box-shadow:0 3px 18px rgba(0,0,0,.07);margin:12px 0}
+.section-title{font-weight:900;font-size:1.06rem;margin-bottom:10px}.row{display:flex;gap:9px;flex-wrap:wrap}.btn{border:0;border-radius:12px;padding:12px 14px;font-weight:800;font-size:.94rem;cursor:pointer}
+.btn:disabled{opacity:.5;cursor:not-allowed}.primary{background:#111827;color:#fff}.secondary{background:#e5e7eb;color:#111827}.success{background:#dcfce7;color:#166534}.warning{background:#ffedd5;color:#9a3412}.danger{background:#fee2e2;color:#991b1b}
+.field{margin:10px 0}.field label{display:block;font-size:.78rem;font-weight:800;color:#4b5563;margin-bottom:5px}.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}.three{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+input,select,textarea{width:100%;padding:12px;border:1px solid #d1d5db;border-radius:12px;font-size:1rem;background:#fff;color:#111827}textarea{min-height:78px;resize:vertical}
+.small{font-size:.82rem;color:#6b7280}.hint{font-size:.88rem;color:#6b7280;line-height:1.45}.notice{background:#eff6ff;border:1px solid #bfdbfe;color:#1e3a8a;border-radius:12px;padding:10px;font-size:.86rem;line-height:1.4}
+.badge{display:inline-block;background:#e5e7eb;padding:3px 8px;border-radius:999px;font-size:.76rem;font-weight:800}.green{background:#dcfce7;color:#166534}.orange{background:#ffedd5;color:#9a3412}.blue{background:#dbeafe;color:#1d4ed8}.red{background:#fee2e2;color:#991b1b}
+.list-item{padding:12px 0;border-bottom:1px solid #eee}.list-item:last-child{border-bottom:0}.item-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.item-title{font-weight:900}.item-meta{font-size:.82rem;color:#6b7280;margin-top:3px}.empty{padding:10px 0;color:#9ca3af;font-size:.9rem}
+.reader{overflow:hidden;border-radius:14px;min-height:235px;background:#111827}.status{font-size:.88rem;color:#6b7280;margin-top:9px}.result{display:none}.ok{border-left:6px solid #16a34a}.bad{border-left:6px solid #dc2626}.code{font-size:1.35rem;font-weight:900;letter-spacing:.04em}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.kv{background:#f9fafb;border-radius:12px;padding:10px}.k{font-size:.76rem;color:#6b7280}.v{font-weight:800;margin-top:2px}.manual{display:flex;gap:8px}.manual input{min-width:0;flex:1}
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}.tab{padding:10px 8px;border-radius:11px;border:0;background:#e5e7eb;font-weight:800}.tab.active{background:#111827;color:#fff}
+.hidden{display:none!important}.footer{text-align:center;color:#9ca3af;font-size:.78rem;margin-top:24px}
+@media(max-width:500px){.two,.three,.grid{grid-template-columns:1fr}.tabs{grid-template-columns:1fr}}
 </style>
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 </head>
 <body><main class="app">
-<header class="head"><div class="logo">42</div><div><div class="title">Stock 42 — V2</div><div class="sub">QR emplacements • lots • FIFO</div></div></header>
+<header class="head"><div class="logo">42</div><div><div class="title">Stock 42 — V3</div><div class="sub">Commandes • réceptions • lots • emplacements • FIFO</div></div></header>
 
 <section class="card">
-  <div id="reader" class="reader"></div>
-  <div class="row" style="margin-top:12px">
-    <button id="startBtn" class="btn primary">Démarrer le scanner</button>
-    <button id="stopBtn" class="btn secondary" disabled>Arrêter</button>
+  <div class="section-title">1. Charger votre tableau Stock</div>
+  <div class="notice">Le fichier Excel/XLSM est lu directement sur votre téléphone. Son contenu n'est pas publié dans le dépôt GitHub.</div>
+  <div class="field"><input id="stockFile" type="file" accept=".xlsx,.xlsm,.xls"></div>
+  <div class="row"><button id="importStockBtn" class="btn primary">Importer le tableau</button><button id="clearCatalogBtn" class="btn secondary">Effacer l'import local</button></div>
+  <div id="importStatus" class="status"></div>
+  <div class="two" style="margin-top:10px">
+    <div class="kv"><div class="k">Lots connus</div><div id="catalogCount" class="v">0</div></div>
+    <div class="kv"><div class="k">Prochain lot</div><div id="nextLot" class="v">L0001</div></div>
   </div>
-  <div id="status" class="status">Scannez l'étiquette de l'emplacement avant d'affecter un lot.</div>
+</section>
+
+<section class="card">
+  <div class="tabs">
+    <button class="tab active" data-pane="orderPane">Nouvelle commande</button>
+    <button class="tab" data-pane="ordersPane">Commandes en cours</button>
+    <button class="tab" data-pane="receivePane">Réception</button>
+  </div>
+
+  <div id="orderPane">
+    <div class="section-title">2. Nouvelle commande</div>
+    <div class="two">
+      <div class="field"><label>Produit</label><input id="oProduct" placeholder="Ex. Riz basmati"></div>
+      <div class="field"><label>Catégorie</label><input id="oCategory" placeholder="Ex. Céréales / féculents"></div>
+    </div>
+    <div class="three">
+      <div class="field"><label>Quantité commandée</label><input id="oQty" type="number" step="any" min="0"></div>
+      <div class="field"><label>Unité</label><select id="oUnit"><option value="">—</option><option>unité</option><option>boîte</option><option>bocal</option><option>paquet</option><option>kg</option><option>g</option><option>L</option><option>ml</option></select></div>
+      <div class="field"><label>Prix total (€)</label><input id="oPrice" type="number" step="0.01" min="0"></div>
+    </div>
+    <div class="two">
+      <div class="field"><label>Fournisseur</label><input id="oSupplier"></div>
+      <div class="field"><label>Référence / commande</label><input id="oReference"></div>
+    </div>
+    <div class="two">
+      <div class="field"><label>Date commande</label><input id="oDate" type="date"></div>
+      <div class="field"><label>Livraison prévue</label><input id="oExpected" type="date"></div>
+    </div>
+    <div class="field"><label>Notes</label><textarea id="oNotes"></textarea></div>
+    <button id="saveOrderBtn" class="btn primary">Enregistrer la commande</button>
+    <div id="orderStatus" class="status"></div>
+  </div>
+
+  <div id="ordersPane" class="hidden">
+    <div class="section-title">Commandes en cours</div>
+    <div id="ordersList"></div>
+  </div>
+
+  <div id="receivePane" class="hidden">
+    <div class="section-title">3. Réceptionner une commande</div>
+    <div id="receiveEmpty" class="empty">Sélectionnez « Réceptionner » depuis une commande en cours.</div>
+    <div id="receiveForm" class="hidden">
+      <div class="notice">Le numéro de lot est attribué automatiquement à la réception.</div>
+      <div class="two">
+        <div class="field"><label>Commande</label><input id="rOrderId" disabled></div>
+        <div class="field"><label>Nouveau lot</label><input id="rLot" disabled></div>
+      </div>
+      <div class="field"><label>Produit</label><input id="rProduct"></div>
+      <div class="three">
+        <div class="field"><label>Quantité reçue</label><input id="rQty" type="number" step="any" min="0"></div>
+        <div class="field"><label>Unité</label><select id="rUnit"><option value="">—</option><option>unité</option><option>boîte</option><option>bocal</option><option>paquet</option><option>kg</option><option>g</option><option>L</option><option>ml</option></select></div>
+        <div class="field"><label>Date réception</label><input id="rDate" type="date"></div>
+      </div>
+      <div class="two">
+        <div class="field"><label>DDM / DLC</label><input id="rExpiry" placeholder="JJ/MM/AAAA ou MM/AAAA"></div>
+        <div class="field"><label>Type date</label><select id="rDateType"><option>DDM</option><option>DLC</option><option>Sans date</option></select></div>
+      </div>
+      <div class="two">
+        <div class="field"><label>Conditionnement</label><input id="rPack" placeholder="Ex. 6 × 1 kg"></div>
+        <div class="field"><label>Lot fabricant</label><input id="rMakerLot"></div>
+      </div>
+      <div class="field"><label>Notes réception</label><textarea id="rNotes"></textarea></div>
+      <label class="small"><input id="rAssignActive" type="checkbox" style="width:auto;margin-right:6px">Affecter immédiatement à l'emplacement QR actif</label>
+      <div class="row" style="margin-top:12px"><button id="confirmReceiveBtn" class="btn primary">Valider la réception</button><button id="cancelReceiveBtn" class="btn secondary">Annuler</button></div>
+      <div id="receiveStatus" class="status"></div>
+    </div>
+  </div>
+</section>
+
+<section class="card">
+  <div class="section-title">4. Scanner un emplacement</div>
+  <div id="reader" class="reader"></div>
+  <div class="row" style="margin-top:12px"><button id="startBtn" class="btn primary">Démarrer le scanner</button><button id="stopBtn" class="btn secondary" disabled>Arrêter</button></div>
+  <div id="status" class="status">Scannez un QR 42-Rx-Nx-X.</div>
 </section>
 
 <section id="result" class="card result">
-  <div class="small">EMPLACEMENT ACTIF</div>
-  <div id="resultCode" class="code"></div>
-  <div id="resultMsg" class="status"></div>
-  <div id="details" class="grid"></div>
+  <div class="small">EMPLACEMENT ACTIF</div><div id="resultCode" class="code"></div><div id="resultMsg" class="status"></div><div id="details" class="grid"></div>
 </section>
 
 <section class="card">
-  <div class="section-title">Saisie manuelle de l'emplacement</div>
-  <div class="manual"><input id="manualCode" placeholder="Ex. 42-R2-N3-B" autocomplete="off"/><button id="manualBtn" class="btn secondary">Lire</button></div>
-  <div class="hint" style="margin-top:9px">Format officiel : <span class="badge">42-Rx-Nx-X</span>.</div>
+  <div class="section-title">Saisie manuelle emplacement</div>
+  <div class="manual"><input id="manualCode" placeholder="Ex. 42-R2-N3-B"><button id="manualBtn" class="btn secondary">Lire</button></div>
 </section>
 
 <section id="assignCard" class="card hidden">
-  <div class="section-title">Affecter un lot à <span id="activeLocation"></span></div>
-  <div class="notice">Vous pouvez saisir seulement le numéro du lot. S'il existe dans le catalogue Stock 42, les autres champs se rempliront automatiquement. Sinon, vous pouvez compléter les informations manuellement.</div>
-  <div class="field">
-    <label for="lotInput">Numéro de lot</label>
-    <input id="lotInput" placeholder="Ex. L0027 ou simplement 27" inputmode="numeric" autocomplete="off"/>
-    <div id="lotHint" class="small" style="margin-top:5px"></div>
-  </div>
-  <div class="field"><label for="productInput">Produit</label><input id="productInput" placeholder="Nom du produit"/></div>
-  <div class="two">
-    <div class="field"><label for="qtyInput">Quantité</label><input id="qtyInput" type="number" step="any" min="0" placeholder="Ex. 8"/></div>
-    <div class="field"><label for="unitInput">Unité</label><select id="unitInput"><option value="">—</option><option>unité</option><option>boîte</option><option>bocal</option><option>paquet</option><option>kg</option><option>g</option><option>L</option><option>ml</option></select></div>
-  </div>
-  <div class="field"><label for="ddmInput">DDM / DLC</label><input id="ddmInput" placeholder="Ex. 12/2028 ou 15/12/2028"/></div>
-  <div class="row"><button id="saveLotBtn" class="btn primary">Enregistrer l'affectation</button><button id="resetLotBtn" class="btn secondary">Effacer</button></div>
-  <div id="saveStatus" class="status"></div>
+  <div class="section-title">5. Affecter un lot à <span id="activeLocation"></span></div>
+  <div class="manual"><input id="lotInput" placeholder="Ex. 27 ou L0027" inputmode="numeric"><button id="findLotBtn" class="btn secondary">Rappeler</button></div>
+  <div id="lotPreview" style="margin-top:10px"></div>
+  <button id="assignLotBtn" class="btn primary" style="margin-top:10px" disabled>Affecter ce lot</button>
+  <div id="assignStatus" class="status"></div>
 </section>
 
 <section id="locationStockCard" class="card hidden">
-  <div class="section-title">Contenu de <span id="locationTitle"></span></div>
-  <div id="locationStock"></div>
+  <div class="section-title">Contenu de <span id="locationTitle"></span></div><div id="locationStock"></div>
 </section>
 
 <section class="card">
   <div class="section-title">Rappeler un lot</div>
-  <div class="manual"><input id="searchLot" placeholder="Ex. L0027 ou 27" inputmode="numeric" autocomplete="off"/><button id="searchLotBtn" class="btn secondary">Rechercher</button></div>
+  <div class="manual"><input id="searchLot" placeholder="Ex. 27 ou L0027" inputmode="numeric"><button id="searchLotBtn" class="btn secondary">Rechercher</button></div>
   <div id="lotSearchResult" style="margin-top:10px"></div>
 </section>
 
 <section class="card">
-  <div class="row" style="justify-content:space-between;align-items:center">
-    <div><div class="section-title" style="margin:0">Données V2</div><div class="small"><span id="assignmentCount">0</span> affectation(s) locale(s)</div></div>
-    <button id="exportBtn" class="btn secondary" style="padding:9px 11px;font-size:.85rem">Exporter CSV</button>
-  </div>
-  <div class="hint" style="margin-top:10px">Les affectations sont enregistrées sur ce téléphone et restent disponibles hors connexion. La synchronisation automatique avec le tableau Google Sheets sera branchée sur cette même structure.</div>
+  <div class="section-title">Sauvegarde / liaison tableau</div>
+  <div class="row"><button id="exportJsonBtn" class="btn secondary">Sauvegarde JSON</button><button id="exportLotsCsvBtn" class="btn secondary">Lots CSV</button><button id="exportOrdersCsvBtn" class="btn secondary">Commandes CSV</button></div>
+  <div class="hint" style="margin-top:10px">La saisie quotidienne se fait désormais dans Stock 42. L'export permet de conserver une copie exploitable dans Excel. La synchronisation Google Sheets automatique sera activée après une autorisation unique du classeur.</div>
 </section>
 
-<section class="card">
-  <div class="row" style="align-items:center;justify-content:space-between"><div class="section-title" style="margin:0">Derniers scans</div><button id="clearBtn" class="btn secondary" style="padding:8px 10px;font-size:.85rem">Effacer</button></div>
-  <div id="history"><div class="empty">Aucun scan pour le moment.</div></div>
-</section>
-
-<div class="footer">Site 42 • nomenclature 42-Rx-Nx-X • lots L0001…</div>
+<div class="footer">Stock 42 • données alimentaires conservées localement sur votre appareil</div>
 </main>
 <script>
-const VALID=/^42-R([1-3])-N([1-5])-([ABC])$/i;
-const LOT_VALID=/^L\d{4}$/;
-let scanner=null,running=false,activeLocation=null,catalog=[];
+const VALID=/^42-R([1-3])-N([1-5])-([ABC])$/i, LOT=/^L\d{4}$/;
+let scanner=null,running=false,activeLocation=null,receiveOrderId=null;
 const $=id=>document.getElementById(id);
-
-function parseCode(raw){
-  const code=(raw||'').trim().toUpperCase(),m=code.match(VALID);
-  if(!m)return {valid:false,code};
-  const zone={A:'Gauche',B:'Centre',C:'Droite'}[m[3]];
-  return {valid:true,code,rack:m[1],level:m[2],zoneLetter:m[3],zone};
-}
-function normalizeLot(raw){
-  let s=(raw||'').trim().toUpperCase().replace(/\s+/g,'');
-  if(/^\d{1,4}$/.test(s)) s='L'+s.padStart(4,'0');
-  if(/^L\d{1,4}$/.test(s)) s='L'+s.slice(1).padStart(4,'0');
-  return s;
-}
-function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-function assignments(){return JSON.parse(localStorage.getItem('stock42Assignments')||'[]');}
-function saveAssignments(a){localStorage.setItem('stock42Assignments',JSON.stringify(a));updateCount();}
-function updateCount(){$('assignmentCount').textContent=assignments().length;}
-function parseExpiry(s){
-  if(!s)return Number.MAX_SAFE_INTEGER;
-  s=String(s).trim();
-  let m=s.match(/^(\d{2})\/(\d{4})$/); if(m)return new Date(+m[2],+m[1]-1,1).getTime();
-  m=s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/); if(m)return new Date(+m[3],+m[2]-1,+m[1]).getTime();
-  m=s.match(/^(\d{4})-(\d{2})(?:-(\d{2}))?$/); if(m)return new Date(+m[1],+m[2]-1,+(m[3]||1)).getTime();
-  return Number.MAX_SAFE_INTEGER-1;
-}
-function setActiveLocation(code){
-  activeLocation=code;
-  $('activeLocation').textContent=code;
-  $('locationTitle').textContent=code;
-  $('assignCard').classList.remove('hidden');
-  $('locationStockCard').classList.remove('hidden');
-  renderLocationStock();
-}
-function showResult(raw){
-  const p=parseCode(raw),box=$('result');box.style.display='block';box.classList.remove('ok','bad');
-  $('resultCode').textContent=p.code||'Code vide';
-  if(p.valid){
-    box.classList.add('ok');$('resultMsg').textContent='Emplacement reconnu. Vous pouvez maintenant affecter un lot.';
-    $('details').innerHTML='<div class="kv"><div class="k">Site</div><div class="v">42</div></div><div class="kv"><div class="k">Rayonnage</div><div class="v">R'+p.rack+'</div></div><div class="kv"><div class="k">Niveau</div><div class="v">N'+p.level+'</div></div><div class="kv"><div class="k">Sous-zone</div><div class="v">'+p.zoneLetter+' — '+p.zone+'</div></div>';
-    setActiveLocation(p.code);addHistory(p.code);if(navigator.vibrate)navigator.vibrate(70);
-  }else{
-    box.classList.add('bad');$('resultMsg').textContent='Ce QR code ne correspond pas à la nomenclature officielle du site 42.';$('details').innerHTML='';
-  }
-  box.scrollIntoView({behavior:'smooth',block:'center'});
-}
-function addHistory(code){
-  let h=JSON.parse(localStorage.getItem('stock42History')||'[]');h=h.filter(x=>x.code!==code);h.unshift({code,time:new Date().toISOString()});h=h.slice(0,12);
-  localStorage.setItem('stock42History',JSON.stringify(h));renderHistory();
-}
-function renderHistory(){
-  const h=JSON.parse(localStorage.getItem('stock42History')||'[]'),el=$('history');
-  if(!h.length){el.innerHTML='<div class="empty">Aucun scan pour le moment.</div>';return;}
-  el.innerHTML=h.map(x=>'<div class="list-item"><div class="item-top"><div><div class="item-title">'+esc(x.code)+'</div><div class="item-meta">'+new Date(x.time).toLocaleString('fr-FR')+'</div></div><button class="btn secondary" data-code="'+esc(x.code)+'" style="padding:7px 9px;font-size:.82rem">Relire</button></div></div>').join('');
-  el.querySelectorAll('button[data-code]').forEach(b=>b.onclick=()=>showResult(b.dataset.code));
-}
-function findCatalogLot(lot){return catalog.find(x=>normalizeLot(x.lot)===lot)||null;}
-function fillFromCatalog(){
-  const lot=normalizeLot($('lotInput').value);$('lotInput').value=lot;
-  if(!LOT_VALID.test(lot)){$('lotHint').textContent='Format attendu : L0001, L0002…';return;}
-  const c=findCatalogLot(lot);
-  if(c){
-    $('lotHint').innerHTML='<span class="badge green">Lot trouvé dans le catalogue</span>';
-    $('productInput').value=c.produit||c.product||'';
-    $('qtyInput').value=c.quantite??c.quantity??'';
-    $('unitInput').value=c.unite||c.unit||'';
-    $('ddmInput').value=c.ddm||c.dlc||c.expiry||'';
-  }else $('lotHint').innerHTML='<span class="badge orange">Lot non chargé dans le catalogue — saisie manuelle possible</span>';
-}
-function resetLotForm(){
-  ['lotInput','productInput','qtyInput','ddmInput'].forEach(id=>$(id).value='');$('unitInput').value='';$('lotHint').textContent='';$('saveStatus').textContent='';
-}
-function saveLot(){
-  if(!activeLocation){$('saveStatus').textContent='Scannez d’abord un emplacement.';return;}
-  const lot=normalizeLot($('lotInput').value);
-  if(!LOT_VALID.test(lot)){$('saveStatus').textContent='Numéro de lot invalide. Exemple : L0027.';return;}
-  const rec={id:lot+'@'+activeLocation,lot,location:activeLocation,produit:$('productInput').value.trim(),quantite:$('qtyInput').value?Number($('qtyInput').value):null,unite:$('unitInput').value,ddm:$('ddmInput').value.trim(),assignedAt:new Date().toISOString()};
-  let a=assignments(),idx=a.findIndex(x=>x.id===rec.id);
-  if(idx>=0)a[idx]=rec;else a.push(rec);
-  saveAssignments(a);$('saveStatus').innerHTML='<span class="badge green">Enregistré</span> '+esc(lot)+' → '+esc(activeLocation);
-  renderLocationStock();searchLot(lot);if(navigator.vibrate)navigator.vibrate([50,40,50]);
-}
-function renderLocationStock(){
-  if(!activeLocation)return;
-  const el=$('locationStock'),rows=assignments().filter(x=>x.location===activeLocation).sort((a,b)=>parseExpiry(a.ddm)-parseExpiry(b.ddm));
-  if(!rows.length){el.innerHTML='<div class="empty">Aucun lot affecté à cet emplacement.</div>';return;}
-  el.innerHTML=rows.map((x,i)=>'<div class="list-item"><div class="item-top"><div><div class="item-title">'+esc(x.lot)+' '+(i===0&&x.ddm?'<span class="badge blue">FIFO</span>':'')+'</div><div>'+esc(x.produit||'Produit non renseigné')+'</div><div class="item-meta">'+(x.quantite!=null?esc(x.quantite)+' '+esc(x.unite||'')+' • ':'')+(x.ddm?'DDM/DLC '+esc(x.ddm):'Date non renseignée')+'</div></div><button class="btn danger" data-del="'+esc(x.id)+'" style="padding:7px 9px;font-size:.82rem">Retirer</button></div></div>').join('');
-  el.querySelectorAll('button[data-del]').forEach(b=>b.onclick=()=>{if(confirm('Retirer cette affectation ?')){saveAssignments(assignments().filter(x=>x.id!==b.dataset.del));renderLocationStock();}});
-}
-function searchLot(force){
-  const lot=normalizeLot(force||$('searchLot').value);if(!force)$('searchLot').value=lot;
-  const el=$('lotSearchResult');
-  if(!LOT_VALID.test(lot)){el.innerHTML='<div class="empty">Saisissez un lot au format L0001.</div>';return;}
-  const c=findCatalogLot(lot),rows=assignments().filter(x=>x.lot===lot);
-  let html='';
-  if(c) html+='<div class="notice"><b>'+esc(lot)+'</b> • '+esc(c.produit||c.product||'Produit non renseigné')+'</div>';
-  if(!rows.length){html+='<div class="empty">Aucune affectation enregistrée pour '+esc(lot)+'.</div>';el.innerHTML=html;return;}
-  html+=rows.map(x=>'<div class="list-item"><div class="item-title">'+esc(x.location)+'</div><div>'+esc(x.produit||c?.produit||c?.product||'Produit non renseigné')+'</div><div class="item-meta">'+(x.quantite!=null?esc(x.quantite)+' '+esc(x.unite||'')+' • ':'')+(x.ddm?'DDM/DLC '+esc(x.ddm):'Date non renseignée')+'</div></div>').join('');
-  el.innerHTML=html;
-}
-function exportCSV(){
-  const rows=assignments();
-  const data=[['Lot','Produit','Quantité','Unité','DDM/DLC','Emplacement','Date affectation'],...rows.map(x=>[x.lot,x.produit,x.quantite??'',x.unite,x.ddm,x.location,x.assignedAt])];
-  const csv='\uFEFF'+data.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';')).join('\n');
-  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='stock42_affectations.csv';a.click();URL.revokeObjectURL(url);
-}
-async function loadCatalog(){
-  try{const r=await fetch('./lots.json',{cache:'no-store'});if(r.ok){const j=await r.json();catalog=Array.isArray(j)?j:(j.lots||[]);}}
-  catch(e){catalog=[];}
-}
-async function startScanner(){
-  if(running)return;$('status').textContent='Initialisation de la caméra…';
+const LS={catalog:'stock42Catalog',lots:'stock42Lots',orders:'stock42Orders',moves:'stock42Movements',assign:'stock42Assignments',history:'stock42History',imported:'stock42ImportedAt'};
+const get=(k,d=[])=>{try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}};
+const set=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
+const today=()=>new Date().toISOString().slice(0,10);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function normalizeLot(raw){let s=(raw||'').trim().toUpperCase().replace(/\s+/g,'');if(/^\d{1,4}$/.test(s))s='L'+s.padStart(4,'0');if(/^L\d{1,4}$/.test(s))s='L'+s.slice(1).padStart(4,'0');return s}
+function parseCode(raw){const code=(raw||'').trim().toUpperCase(),m=code.match(VALID);if(!m)return{valid:false,code};return{valid:true,code,rack:m[1],level:m[2],zoneLetter:m[3],zone:{A:'Gauche',B:'Centre',C:'Droite'}[m[3]]}}
+function catalog(){return get(LS.catalog,[])} function localLots(){return get(LS.lots,[])} function orders(){return get(LS.orders,[])} function assignments(){return get(LS.assign,[])}
+function allLots(){const map=new Map();[...catalog(),...localLots()].forEach(x=>{const l=normalizeLot(x.lot);if(l&&LOT.test(l))map.set(l,{...x,lot:l})});return [...map.values()].sort((a,b)=>a.lot.localeCompare(b.lot))}
+function nextLot(){let max=0;allLots().forEach(x=>{const n=parseInt(x.lot.slice(1),10);if(n>max)max=n});return 'L'+String(max+1).padStart(4,'0')}
+function nextOrder(){let max=0;orders().forEach(x=>{const m=String(x.id||'').match(/^C(\d+)$/);if(m)max=Math.max(max,+m[1])});return 'C'+String(max+1).padStart(4,'0')}
+function lotById(l){l=normalizeLot(l);return allLots().find(x=>x.lot===l)||null}
+function updateStats(){ $('catalogCount').textContent=allLots().length;$('nextLot').textContent=nextLot();const t=localStorage.getItem(LS.imported);$('importStatus').textContent=t?'Dernier import : '+new Date(t).toLocaleString('fr-FR')+' • '+catalog().length+' lot(s) chargé(s).':'Aucun tableau importé sur cet appareil.';renderOrders() }
+function parseNumber(v){if(typeof v==='number')return v;const s=String(v??'').replace(/\s/g,'').replace(',','.').replace(/[^0-9.-]/g,'');return s?Number(s):null}
+function excelDate(v){if(!v)return'';if(v instanceof Date)return v.toLocaleDateString('fr-FR');return String(v)}
+async function importWorkbook(){
+  const file=$('stockFile').files[0];if(!file){$('importStatus').textContent='Choisissez votre fichier Gestion_stock_alimentaire_autonomie.xlsm.';return}
+  if(typeof XLSX==='undefined'){$('importStatus').textContent='Le module Excel n\'est pas chargé. Vérifiez la connexion Internet et rechargez la page.';return}
   try{
-    scanner=new Html5Qrcode('reader');const cams=await Html5Qrcode.getCameras();if(!cams||!cams.length)throw new Error('Aucune caméra détectée');
-    const back=cams.find(c=>/back|rear|environment|arrière/i.test(c.label))||cams[cams.length-1];
-    await scanner.start(back.id,{fps:10,qrbox:{width:220,height:220},aspectRatio:1.0},txt=>showResult(txt));
-    running=true;$('startBtn').disabled=true;$('stopBtn').disabled=false;$('status').textContent='Scanner actif. Placez un QR code d’emplacement dans le cadre.';
-  }catch(e){$('status').textContent='Impossible de démarrer la caméra. Vérifiez l’autorisation caméra. La saisie manuelle reste disponible.';console.error(e);}
+    const data=await file.arrayBuffer();const wb=XLSX.read(data,{type:'array',cellDates:true,bookVBA:true});
+    const ws=wb.Sheets['Réception & lots'];if(!ws)throw new Error('Onglet « Réception & lots » introuvable');
+    const rows=XLSX.utils.sheet_to_json(ws,{range:3,defval:'',raw:true});
+    const used=rows.filter(r=>normalizeLot(r['N° lot interne']) && (r['Produit']||r['Quantité reçue']||r['Date réception']));
+    const lots=used.map(r=>({lot:normalizeLot(r['N° lot interne']),dateReception:excelDate(r['Date réception']),produit:String(r['Produit']||''),categorie:String(r['Catégorie']||''),quantite:parseNumber(r['Quantité reçue']),unite:String(r['Unité']||''),ddm:excelDate(r['DDM / DLC']),typeDate:String(r['Type date']||''),fournisseur:String(r['Fournisseur']||''),reference:String(r['Référence / commande']||''),zone:String(r['Zone actuelle']||''),emplacement:String(r['Emplacement']||''),statut:String(r['Statut']||''),conditionnement:String(r['Conditionnement']||''),lotFabricant:String(r['Lot fabricant']||''),notes:String(r['Notes']||'')}));
+    set(LS.catalog,lots);localStorage.setItem(LS.imported,new Date().toISOString());
+    let a=assignments();const byId=new Map(a.map(x=>[x.id,x]));lots.filter(x=>VALID.test(x.emplacement||'')).forEach(x=>{byId.set(x.lot+'@'+x.emplacement,{id:x.lot+'@'+x.emplacement,lot:x.lot,location:x.emplacement,assignedAt:new Date().toISOString()})});set(LS.assign,[...byId.values()]);
+    $('importStatus').textContent='Import réussi : '+lots.length+' lot(s) utilisés détectés. Prochain lot : '+nextLot()+'.';updateStats();if(activeLocation)renderLocationStock();
+  }catch(e){console.error(e);$('importStatus').textContent='Import impossible : '+e.message}
 }
-async function stopScanner(){if(scanner&&running){try{await scanner.stop();await scanner.clear();}catch(e){}running=false;$('startBtn').disabled=false;$('stopBtn').disabled=true;$('status').textContent='Scanner arrêté.';}}
+function clearCatalog(){if(!confirm('Effacer uniquement le catalogue importé de ce téléphone ? Les commandes et nouveaux lots saisis dans l’application seront conservés.'))return;localStorage.removeItem(LS.catalog);localStorage.removeItem(LS.imported);updateStats()}
+function saveOrder(){
+  const product=$('oProduct').value.trim(),qty=parseNumber($('oQty').value);if(!product||qty===null){$('orderStatus').textContent='Produit et quantité sont obligatoires.';return}
+  const a=orders();const rec={id:nextOrder(),status:'Commandée',product,category:$('oCategory').value.trim(),qty,unit:$('oUnit').value,price:parseNumber($('oPrice').value),supplier:$('oSupplier').value.trim(),reference:$('oReference').value.trim(),orderDate:$('oDate').value||today(),expected:$('oExpected').value,notes:$('oNotes').value.trim(),createdAt:new Date().toISOString()};
+  a.push(rec);set(LS.orders,a);$('orderStatus').innerHTML='<span class="badge green">Commande '+esc(rec.id)+' enregistrée</span>';['oProduct','oCategory','oQty','oPrice','oSupplier','oReference','oExpected','oNotes'].forEach(id=>$(id).value='');$('oUnit').value='';$('oDate').value=today();renderOrders()
+}
+function renderOrders(){
+  const el=$('ordersList'),pending=orders().filter(x=>x.status==='Commandée');if(!pending.length){el.innerHTML='<div class="empty">Aucune commande en cours.</div>';return}
+  el.innerHTML=pending.map(x=>'<div class="list-item"><div class="item-top"><div><div class="item-title">'+esc(x.id)+' — '+esc(x.product)+'</div><div class="item-meta">'+esc(x.qty)+' '+esc(x.unit)+' • '+esc(x.supplier||'Fournisseur non renseigné')+(x.expected?' • prévue '+esc(x.expected):'')+'</div></div><button class="btn success" data-receive="'+esc(x.id)+'" style="padding:8px 10px">Réceptionner</button></div></div>').join('');
+  el.querySelectorAll('[data-receive]').forEach(b=>b.onclick=()=>openReceive(b.dataset.receive))
+}
+function openReceive(id){
+  const o=orders().find(x=>x.id===id);if(!o)return;receiveOrderId=id;$('receiveEmpty').classList.add('hidden');$('receiveForm').classList.remove('hidden');$('rOrderId').value=id;$('rLot').value=nextLot();$('rProduct').value=o.product;$('rQty').value=o.qty;$('rUnit').value=o.unit;$('rDate').value=today();$('rExpiry').value='';$('rDateType').value='DDM';$('rPack').value='';$('rMakerLot').value='';$('rNotes').value=o.notes||'';$('rAssignActive').checked=!!activeLocation;showPane('receivePane')
+}
+function cancelReceive(){receiveOrderId=null;$('receiveForm').classList.add('hidden');$('receiveEmpty').classList.remove('hidden');$('receiveStatus').textContent=''}
+function confirmReceive(){
+  const o=orders().find(x=>x.id===receiveOrderId);if(!o)return;const qty=parseNumber($('rQty').value);if(!$('rProduct').value.trim()||qty===null){$('receiveStatus').textContent='Produit et quantité reçue sont obligatoires.';return}
+  const lot=nextLot(),rec={lot,dateReception:$('rDate').value||today(),produit:$('rProduct').value.trim(),categorie:o.category||'',quantite:qty,unite:$('rUnit').value,ddm:$('rExpiry').value.trim(),typeDate:$('rDateType').value,fournisseur:o.supplier||'',reference:o.reference||o.id,zone:'',emplacement:'',statut:'En stock',conditionnement:$('rPack').value.trim(),lotFabricant:$('rMakerLot').value.trim(),notes:$('rNotes').value.trim(),sourceOrder:o.id,createdAt:new Date().toISOString()};
+  const lots=localLots();lots.push(rec);set(LS.lots,lots);
+  const os=orders();const ix=os.findIndex(x=>x.id===o.id);os[ix]={...os[ix],status:'Reçue',receivedAt:new Date().toISOString(),lot};set(LS.orders,os);
+  const mv=get(LS.moves,[]);mv.push({date:$('rDate').value||today(),lot,produit:rec.produit,type:'Entrée',quantite:qty,unite:rec.unite,source:'',destination:activeLocation&&$('rAssignActive').checked?activeLocation:'',commentaire:'Réception '+o.id,reference:o.reference||o.id,createdAt:new Date().toISOString()});set(LS.moves,mv);
+  if(activeLocation&&$('rAssignActive').checked)assignLotTo(lot,activeLocation,false);
+  $('receiveStatus').innerHTML='<span class="badge green">'+esc(lot)+' créé</span> Réception enregistrée.';receiveOrderId=null;updateStats();renderOrders();if(activeLocation)renderLocationStock();$('rLot').value=nextLot();
+}
+function showPane(id){document.querySelectorAll('[id$="Pane"]').forEach(x=>x.classList.add('hidden'));$(id).classList.remove('hidden');document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.pane===id))}
+function showResult(raw){const p=parseCode(raw),box=$('result');box.style.display='block';box.classList.remove('ok','bad');$('resultCode').textContent=p.code||'Code vide';if(p.valid){box.classList.add('ok');$('resultMsg').textContent='Emplacement reconnu.';$('details').innerHTML='<div class="kv"><div class="k">Site</div><div class="v">42</div></div><div class="kv"><div class="k">Rayonnage</div><div class="v">R'+p.rack+'</div></div><div class="kv"><div class="k">Niveau</div><div class="v">N'+p.level+'</div></div><div class="kv"><div class="k">Sous-zone</div><div class="v">'+p.zoneLetter+' — '+p.zone+'</div></div>';activeLocation=p.code;$('activeLocation').textContent=p.code;$('locationTitle').textContent=p.code;$('assignCard').classList.remove('hidden');$('locationStockCard').classList.remove('hidden');addHistory(p.code);renderLocationStock();if(navigator.vibrate)navigator.vibrate(70)}else{box.classList.add('bad');$('resultMsg').textContent='Code non reconnu pour le site 42.';$('details').innerHTML=''}box.scrollIntoView({behavior:'smooth',block:'center'})}
+function addHistory(code){let h=get(LS.history,[]);h=h.filter(x=>x.code!==code);h.unshift({code,time:new Date().toISOString()});set(LS.history,h.slice(0,12))}
+function previewLot(raw,target='lotPreview'){const lot=normalizeLot(raw),x=lotById(lot),el=$(target);if(!LOT.test(lot)){el.innerHTML='<div class="empty">Numéro de lot invalide.</div>';if(target==='lotPreview')$('assignLotBtn').disabled=true;return null}if(!x){el.innerHTML='<div class="empty">'+esc(lot)+' n’est pas encore connu.</div>';if(target==='lotPreview')$('assignLotBtn').disabled=true;return null}el.innerHTML='<div class="notice"><b>'+esc(lot)+'</b> — '+esc(x.produit||'Produit non renseigné')+'<br>'+esc(x.quantite??'')+' '+esc(x.unite||'')+(x.ddm?' • DDM/DLC '+esc(x.ddm):'')+'</div>';if(target==='lotPreview'){$('lotInput').value=lot;$('assignLotBtn').disabled=false}return x}
+function assignLotTo(lot,location,notify=true){lot=normalizeLot(lot);if(!lotById(lot)||!VALID.test(location))return;let a=assignments().filter(x=>x.lot!==lot);a.push({id:lot+'@'+location,lot,location,assignedAt:new Date().toISOString()});set(LS.assign,a);const ll=localLots();const i=ll.findIndex(x=>x.lot===lot);if(i>=0){ll[i]={...ll[i],emplacement:location,zone:location.split('-').slice(1,3).join('-')};set(LS.lots,ll)}const mv=get(LS.moves,[]);const prod=lotById(lot);mv.push({date:today(),lot,produit:prod?.produit||'',type:'Transfert',quantite:0,unite:prod?.unite||'',source:'',destination:location,commentaire:'Affectation emplacement',createdAt:new Date().toISOString()});set(LS.moves,mv);if(notify)$('assignStatus').innerHTML='<span class="badge green">'+esc(lot)+' → '+esc(location)+'</span>';renderLocationStock()}
+function renderLocationStock(){if(!activeLocation)return;const rows=assignments().filter(x=>x.location===activeLocation).map(a=>({...a,lotData:lotById(a.lot)}));const el=$('locationStock');if(!rows.length){el.innerHTML='<div class="empty">Aucun lot affecté.</div>';return}rows.sort((a,b)=>String(a.lotData?.ddm||'9999').localeCompare(String(b.lotData?.ddm||'9999')));el.innerHTML=rows.map((x,i)=>'<div class="list-item"><div class="item-title">'+esc(x.lot)+(i===0? ' <span class="badge blue">FIFO</span>':'')+'</div><div>'+esc(x.lotData?.produit||'Produit non renseigné')+'</div><div class="item-meta">'+esc(x.lotData?.quantite??'')+' '+esc(x.lotData?.unite||'')+(x.lotData?.ddm?' • '+esc(x.lotData.ddm):'')+'</div></div>').join('')}
+function searchLot(){const lot=normalizeLot($('searchLot').value);$('searchLot').value=lot;const x=lotById(lot),el=$('lotSearchResult');if(!x){el.innerHTML='<div class="empty">Lot introuvable.</div>';return}const places=assignments().filter(a=>a.lot===lot).map(a=>a.location);el.innerHTML='<div class="notice"><b>'+esc(lot)+'</b> — '+esc(x.produit||'')+'<br>'+esc(x.quantite??'')+' '+esc(x.unite||'')+(x.ddm?' • DDM/DLC '+esc(x.ddm):'')+'<br>Emplacement : <b>'+esc(places.join(', ')||x.emplacement||'non affecté')+'</b></div>'}
+function csvDownload(name,headers,rows){const data=[headers,...rows];const csv='\uFEFF'+data.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';')).join('\n');const blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();URL.revokeObjectURL(url)}
+function exportLots(){csvDownload('stock42_lots.csv',['N° lot interne','Date réception','Produit','Catégorie','Quantité reçue','Unité','DDM / DLC','Type date','Fournisseur','Référence / commande','Emplacement','Statut','Conditionnement','Lot fabricant','Notes'],allLots().map(x=>[x.lot,x.dateReception,x.produit,x.categorie,x.quantite,x.unite,x.ddm,x.typeDate,x.fournisseur,x.reference,assignments().find(a=>a.lot===x.lot)?.location||x.emplacement||'',x.statut,x.conditionnement,x.lotFabricant,x.notes]))}
+function exportOrders(){csvDownload('stock42_commandes.csv',['Commande','Statut','Produit','Catégorie','Quantité','Unité','Prix €','Fournisseur','Référence','Date commande','Livraison prévue','Lot reçu','Notes'],orders().map(x=>[x.id,x.status,x.product,x.category,x.qty,x.unit,x.price,x.supplier,x.reference,x.orderDate,x.expected,x.lot||'',x.notes]))}
+function exportJson(){const data={version:3,exportedAt:new Date().toISOString(),catalog:catalog(),lots:localLots(),orders:orders(),movements:get(LS.moves,[]),assignments:assignments()};const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='stock42_sauvegarde.json';a.click();URL.revokeObjectURL(url)}
+async function startScanner(){if(running)return;$('status').textContent='Initialisation caméra…';try{scanner=new Html5Qrcode('reader');const cams=await Html5Qrcode.getCameras();if(!cams?.length)throw new Error('Aucune caméra');const back=cams.find(c=>/back|rear|environment|arrière/i.test(c.label))||cams[cams.length-1];await scanner.start(back.id,{fps:10,qrbox:{width:220,height:220},aspectRatio:1},txt=>showResult(txt));running=true;$('startBtn').disabled=true;$('stopBtn').disabled=false;$('status').textContent='Scanner actif.'}catch(e){$('status').textContent='Caméra indisponible. Utilisez la saisie manuelle.'}}
+async function stopScanner(){if(scanner&&running){try{await scanner.stop();await scanner.clear()}catch(e){}running=false;$('startBtn').disabled=false;$('stopBtn').disabled=true;$('status').textContent='Scanner arrêté.'}}
 
-$('startBtn').onclick=startScanner;$('stopBtn').onclick=stopScanner;
-$('manualBtn').onclick=()=>showResult($('manualCode').value);$('manualCode').addEventListener('keydown',e=>{if(e.key==='Enter')showResult(e.target.value)});
-$('lotInput').addEventListener('change',fillFromCatalog);$('lotInput').addEventListener('blur',fillFromCatalog);
-$('saveLotBtn').onclick=saveLot;$('resetLotBtn').onclick=resetLotForm;
-$('searchLotBtn').onclick=()=>searchLot();$('searchLot').addEventListener('keydown',e=>{if(e.key==='Enter')searchLot()});
-$('exportBtn').onclick=exportCSV;$('clearBtn').onclick=()=>{localStorage.removeItem('stock42History');renderHistory();};
-renderHistory();updateCount();loadCatalog();
-if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js').catch(()=>{}));}
-</script></body></html>
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>showPane(b.dataset.pane));
+$('oDate').value=today();
+$('importStockBtn').onclick=importWorkbook;$('clearCatalogBtn').onclick=clearCatalog;$('saveOrderBtn').onclick=saveOrder;$('cancelReceiveBtn').onclick=cancelReceive;$('confirmReceiveBtn').onclick=confirmReceive;
+$('startBtn').onclick=startScanner;$('stopBtn').onclick=stopScanner;$('manualBtn').onclick=()=>showResult($('manualCode').value);$('manualCode').addEventListener('keydown',e=>{if(e.key==='Enter')showResult(e.target.value)});
+$('findLotBtn').onclick=()=>previewLot($('lotInput').value);$('lotInput').addEventListener('keydown',e=>{if(e.key==='Enter')previewLot(e.target.value)});
+$('assignLotBtn').onclick=()=>{const lot=normalizeLot($('lotInput').value);if(activeLocation)assignLotTo(lot,activeLocation)};
+$('searchLotBtn').onclick=searchLot;$('searchLot').addEventListener('keydown',e=>{if(e.key==='Enter')searchLot()});
+$('exportLotsCsvBtn').onclick=exportLots;$('exportOrdersCsvBtn').onclick=exportOrders;$('exportJsonBtn').onclick=exportJson;
+updateStats();
+if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js').catch(()=>{}));
+</script>
+</body></html>
