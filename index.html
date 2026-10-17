@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<meta name="theme-color" content="#111827" />
+<title>Stock 42 — Scanner QR</title>
+<link rel="manifest" href="manifest.webmanifest" />
+<style>
+:root{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#111827;background:#f3f4f6}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:#f3f4f6}.app{max-width:560px;margin:auto;padding:18px 16px 40px}.head{display:flex;align-items:center;gap:12px;margin:4px 0 18px}.logo{width:48px;height:48px;border-radius:14px;background:#111827;color:white;display:grid;place-items:center;font-weight:800}.title{font-weight:800;font-size:1.35rem}.sub{color:#6b7280;font-size:.92rem}.card{background:white;border-radius:18px;padding:16px;box-shadow:0 3px 18px rgba(0,0,0,.07);margin:12px 0}.reader{overflow:hidden;border-radius:14px;min-height:250px;background:#111827}.row{display:flex;gap:10px;flex-wrap:wrap}.btn{border:0;border-radius:12px;padding:13px 15px;font-weight:700;font-size:1rem;cursor:pointer}.primary{background:#111827;color:white;flex:1}.secondary{background:#e5e7eb;color:#111827}.danger{background:#fee2e2;color:#991b1b}.status{font-size:.9rem;color:#6b7280;margin-top:10px}.result{display:none}.ok{border-left:6px solid #16a34a}.bad{border-left:6px solid #dc2626}.code{font-size:1.35rem;font-weight:900;letter-spacing:.04em}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.kv{background:#f9fafb;border-radius:12px;padding:10px}.k{font-size:.78rem;color:#6b7280}.v{font-weight:800;margin-top:2px}.manual{display:flex;gap:8px}.manual input{min-width:0;flex:1;padding:13px;border:1px solid #d1d5db;border-radius:12px;font-size:1rem;text-transform:uppercase}.history-item{display:flex;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:1px solid #eee}.history-item:last-child{border-bottom:0}.small{font-size:.82rem;color:#6b7280}.hint{font-size:.88rem;color:#6b7280;line-height:1.45}.badge{display:inline-block;background:#e5e7eb;padding:3px 8px;border-radius:999px;font-size:.78rem;font-weight:700}.footer{text-align:center;color:#9ca3af;font-size:.78rem;margin-top:24px}
+</style>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+</head>
+<body><main class="app">
+<header class="head"><div class="logo">42</div><div><div class="title">Stock 42 — Scanner QR</div><div class="sub">Localisation des rayonnages</div></div></header>
+
+<section class="card">
+  <div id="reader" class="reader"></div>
+  <div class="row" style="margin-top:12px">
+    <button id="startBtn" class="btn primary">Démarrer le scanner</button>
+    <button id="stopBtn" class="btn secondary" disabled>Arrêter</button>
+  </div>
+  <div id="status" class="status">Appuyez sur « Démarrer le scanner » puis autorisez l’accès à la caméra.</div>
+</section>
+
+<section id="result" class="card result">
+  <div class="small">EMPLACEMENT LU</div>
+  <div id="resultCode" class="code"></div>
+  <div id="resultMsg" class="status"></div>
+  <div id="details" class="grid"></div>
+</section>
+
+<section class="card">
+  <div style="font-weight:800;margin-bottom:10px">Saisie manuelle</div>
+  <div class="manual"><input id="manualCode" placeholder="Ex. 42-R2-N3-B" autocomplete="off"/><button id="manualBtn" class="btn secondary">Lire</button></div>
+  <div class="hint" style="margin-top:9px">Format officiel : <span class="badge">42-Rx-Nx-X</span> — R1 à R3, N1 à N5, A/B/C.</div>
+</section>
+
+<section class="card">
+  <div class="row" style="align-items:center;justify-content:space-between"><div style="font-weight:800">Derniers scans</div><button id="clearBtn" class="btn secondary" style="padding:8px 10px;font-size:.85rem">Effacer</button></div>
+  <div id="history"><div class="hint" style="padding-top:8px">Aucun scan pour le moment.</div></div>
+</section>
+<div class="footer">Site 42 • nomenclature officielle 42-Rx-Nx-X</div>
+</main>
+<script>
+const VALID=/^42-R([1-3])-N([1-5])-([ABC])$/i;
+let scanner=null, running=false;
+const $=id=>document.getElementById(id);
+function parseCode(raw){const code=(raw||'').trim().toUpperCase(); const m=code.match(VALID); if(!m)return {valid:false,code}; const zone={A:'Gauche',B:'Centre',C:'Droite'}[m[3]]; return {valid:true,code,rack:m[1],level:m[2],zoneLetter:m[3],zone};}
+function showResult(raw){const p=parseCode(raw); const box=$('result'); box.style.display='block'; box.classList.remove('ok','bad'); $('resultCode').textContent=p.code||'Code vide'; if(p.valid){box.classList.add('ok'); $('resultMsg').textContent='QR code reconnu — emplacement valide du site 42.'; $('details').innerHTML=`<div class="kv"><div class="k">Site</div><div class="v">42</div></div><div class="kv"><div class="k">Rayonnage</div><div class="v">R${p.rack}</div></div><div class="kv"><div class="k">Niveau</div><div class="v">N${p.level}</div></div><div class="kv"><div class="k">Sous-zone</div><div class="v">${p.zoneLetter} — ${p.zone}</div></div>`; addHistory(p.code); if(navigator.vibrate) navigator.vibrate(80);} else {box.classList.add('bad'); $('resultMsg').textContent='Ce QR code ne correspond pas à la nomenclature officielle du site 42.'; $('details').innerHTML='';}
+ box.scrollIntoView({behavior:'smooth',block:'center'});
+}
+function addHistory(code){let h=JSON.parse(localStorage.getItem('stock42History')||'[]'); h=h.filter(x=>x.code!==code); h.unshift({code,time:new Date().toISOString()}); h=h.slice(0,12); localStorage.setItem('stock42History',JSON.stringify(h)); renderHistory();}
+function renderHistory(){const h=JSON.parse(localStorage.getItem('stock42History')||'[]'); const el=$('history'); if(!h.length){el.innerHTML='<div class="hint" style="padding-top:8px">Aucun scan pour le moment.</div>';return;} el.innerHTML=h.map(x=>`<div class="history-item" data-code="${x.code}"><div><b>${x.code}</b><div class="small">${new Date(x.time).toLocaleString('fr-FR')}</div></div><button class="btn secondary" style="padding:7px 9px;font-size:.82rem">Relire</button></div>`).join(''); [...el.querySelectorAll('.history-item')].forEach(row=>row.querySelector('button').onclick=()=>showResult(row.dataset.code));}
+async function startScanner(){ if(running)return; $('status').textContent='Initialisation de la caméra…'; try{scanner=new Html5Qrcode('reader'); const cams=await Html5Qrcode.getCameras(); if(!cams||!cams.length)throw new Error('Aucune caméra détectée'); const back=cams.find(c=>/back|rear|environment|arrière/i.test(c.label))||cams[cams.length-1]; await scanner.start(back.id,{fps:10,qrbox:{width:220,height:220},aspectRatio:1.0},txt=>{showResult(txt);}); running=true; $('startBtn').disabled=true; $('stopBtn').disabled=false; $('status').textContent='Scanner actif. Placez un QR code dans le cadre.';}catch(e){$('status').innerHTML='Impossible de démarrer la caméra. Vérifiez l’autorisation caméra et que l’application est ouverte via une adresse HTTPS. Vous pouvez aussi utiliser la saisie manuelle.'; console.error(e);}}
+async function stopScanner(){if(scanner&&running){try{await scanner.stop();await scanner.clear();}catch(e){} running=false;$('startBtn').disabled=false;$('stopBtn').disabled=true;$('status').textContent='Scanner arrêté.';}}
+$('startBtn').onclick=startScanner; $('stopBtn').onclick=stopScanner; $('manualBtn').onclick=()=>showResult($('manualCode').value); $('manualCode').addEventListener('keydown',e=>{if(e.key==='Enter')showResult(e.target.value)}); $('clearBtn').onclick=()=>{localStorage.removeItem('stock42History');renderHistory();}; renderHistory();
+if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js').catch(()=>{}));}
+</script></body></html>
