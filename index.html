@@ -175,6 +175,7 @@ function catalog(){return get(LS.catalog,[])} function localLots(){return get(LS
 function allLots(){const map=new Map();[...catalog(),...localLots()].forEach(x=>{const l=normalizeLot(x.lot);if(l&&LOT.test(l))map.set(l,{...x,lot:l})});return [...map.values()].sort((a,b)=>a.lot.localeCompare(b.lot))}
 function nextLot(){let max=0;allLots().forEach(x=>{const n=parseInt(x.lot.slice(1),10);if(n>max)max=n});return 'L'+String(max+1).padStart(4,'0')}
 function nextOrder(){let max=0;orders().forEach(x=>{const m=String(x.id||'').match(/^C(\d+)$/);if(m)max=Math.max(max,+m[1])});return 'C'+String(max+1).padStart(4,'0')}
+async function sendToSheet(action,data){const u=localStorage.getItem(LS.syncUrl)||'';const k=localStorage.getItem(LS.syncKey)||'';if(!u||!k)return {ok:false,localOnly:true};try{const r=await fetch(u,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({token:k,action:action,data:data})});return JSON.parse(await r.text())}catch(e){return {ok:false,error:String(e&&e.message?e.message:e)}}}
 function lotById(l){l=normalizeLot(l);return allLots().find(x=>x.lot===l)||null}
 function updateStats(){ $('catalogCount').textContent=allLots().length;$('nextLot').textContent=nextLot();const t=localStorage.getItem(LS.imported);$('importStatus').textContent=t?'Dernier import : '+new Date(t).toLocaleString('fr-FR')+' • '+catalog().length+' lot(s) chargé(s).':'Aucun tableau importé sur cet appareil.';renderOrders() }
 function parseNumber(v){if(typeof v==='number')return v;const s=String(v??'').replace(/\s/g,'').replace(',','.').replace(/[^0-9.-]/g,'');return s?Number(s):null}
@@ -194,10 +195,10 @@ async function importWorkbook(){
   }catch(e){console.error(e);$('importStatus').textContent='Import impossible : '+e.message}
 }
 function clearCatalog(){if(!confirm('Effacer uniquement le catalogue importé de ce téléphone ? Les commandes et nouveaux lots saisis dans l’application seront conservés.'))return;localStorage.removeItem(LS.catalog);localStorage.removeItem(LS.imported);updateStats()}
-function saveOrder(){
+async function saveOrder(){
   const product=$('oProduct').value.trim(),qty=parseNumber($('oQty').value);if(!product||qty===null){$('orderStatus').textContent='Produit et quantité sont obligatoires.';return}
   const a=orders();const rec={id:nextOrder(),status:'Commandée',product,category:$('oCategory').value.trim(),qty,unit:$('oUnit').value,price:parseNumber($('oPrice').value),supplier:$('oSupplier').value.trim(),reference:$('oReference').value.trim(),orderDate:$('oDate').value||today(),expected:$('oExpected').value,notes:$('oNotes').value.trim(),createdAt:new Date().toISOString()};
-  a.push(rec);set(LS.orders,a);$('orderStatus').innerHTML='<span class="badge green">Commande '+esc(rec.id)+' enregistrée</span>';['oProduct','oCategory','oQty','oPrice','oSupplier','oReference','oExpected','oNotes'].forEach(id=>$(id).value='');$('oUnit').value='';$('oDate').value=today();renderOrders()
+  a.push(rec);set(LS.orders,a);const sync=await sendToSheet('order',rec);$('orderStatus').innerHTML='<span class="badge green">Commande '+esc(rec.id)+' enregistrée</span> '+(sync.ok?'• Google Sheets OK':'• enregistrée localement');['oProduct','oCategory','oQty','oPrice','oSupplier','oReference','oExpected','oNotes'].forEach(id=>$(id).value='');$('oUnit').value='';$('oDate').value=today();renderOrders()
 }
 function renderOrders(){
   const el=$('ordersList'),pending=orders().filter(x=>x.status==='Commandée');if(!pending.length){el.innerHTML='<div class="empty">Aucune commande en cours.</div>';return}
