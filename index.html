@@ -31,6 +31,15 @@ input,select,textarea{width:100%;padding:12px;border:1px solid #d1d5db;border-ra
 <header class="head"><div class="logo">42</div><div><div class="title">Stock 42 — V3</div><div class="sub">Commandes • réceptions • lots • emplacements • FIFO</div></div></header>
 
 <section class="card">
+  <div class="section-title">Connexion Google Sheets</div>
+  <div class="notice">Configuration locale de la synchronisation.</div>
+  <div class="field"><label>URL Apps Script</label><input id="syncUrl" type="url"></div>
+  <div class="field"><label>Clé API</label><input id="syncKey" type="password"></div>
+  <button id="saveSync" class="btn primary">Enregistrer la connexion</button>
+  <div id="syncMsg" class="status"></div>
+</section>
+
+<section class="card">
   <div class="section-title">1. Charger votre tableau Stock</div>
   <div class="notice">Le fichier Excel/XLSM est lu directement sur votre téléphone. Son contenu n'est pas publié dans le dépôt GitHub.</div>
   <div class="field"><input id="stockFile" type="file" accept=".xlsx,.xlsm,.xls"></div>
@@ -155,7 +164,7 @@ input,select,textarea{width:100%;padding:12px;border:1px solid #d1d5db;border-ra
 const VALID=/^42-R([1-3])-N([1-5])-([ABC])$/i, LOT=/^L\d{4}$/;
 let scanner=null,running=false,activeLocation=null,receiveOrderId=null;
 const $=id=>document.getElementById(id);
-const LS={catalog:'stock42Catalog',lots:'stock42Lots',orders:'stock42Orders',moves:'stock42Movements',assign:'stock42Assignments',history:'stock42History',imported:'stock42ImportedAt'};
+const LS={catalog:'stock42Catalog',lots:'stock42Lots',orders:'stock42Orders',moves:'stock42Movements',assign:'stock42Assignments',history:'stock42History',imported:'stock42ImportedAt',syncUrl:'stock42SyncUrl',syncKey:'stock42SyncKey'};
 const get=(k,d=[])=>{try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}};
 const set=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
 const today=()=>new Date().toISOString().slice(0,10);
@@ -230,6 +239,9 @@ $('findLotBtn').onclick=()=>previewLot($('lotInput').value);$('lotInput').addEve
 $('assignLotBtn').onclick=()=>{const lot=normalizeLot($('lotInput').value);if(activeLocation)assignLotTo(lot,activeLocation)};
 $('searchLotBtn').onclick=searchLot;$('searchLot').addEventListener('keydown',e=>{if(e.key==='Enter')searchLot()});
 $('exportLotsCsvBtn').onclick=exportLots;$('exportOrdersCsvBtn').onclick=exportOrders;$('exportJsonBtn').onclick=exportJson;
+$('syncUrl').value=localStorage.getItem(LS.syncUrl)||'';
+$('syncKey').value=localStorage.getItem(LS.syncKey)||'';
+$('saveSync').onclick=()=>{localStorage.setItem(LS.syncUrl,$('syncUrl').value.trim());localStorage.setItem(LS.syncKey,$('syncKey').value.trim());$('syncMsg').textContent='Connexion enregistrée sur cet appareil.'};
 updateStats();
 if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js').catch(()=>{}));
 </script>
