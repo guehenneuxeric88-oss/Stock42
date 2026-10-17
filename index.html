@@ -4,16 +4,31 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
 <meta name="theme-color" content="#111827" />
-<title>Stock 42 — Scanner QR</title>
+<title>Stock 42 — V2</title>
 <link rel="manifest" href="manifest.webmanifest" />
 <style>
 :root{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#111827;background:#f3f4f6}
-*{box-sizing:border-box}body{margin:0;min-height:100vh;background:#f3f4f6}.app{max-width:560px;margin:auto;padding:18px 16px 40px}.head{display:flex;align-items:center;gap:12px;margin:4px 0 18px}.logo{width:48px;height:48px;border-radius:14px;background:#111827;color:white;display:grid;place-items:center;font-weight:800}.title{font-weight:800;font-size:1.35rem}.sub{color:#6b7280;font-size:.92rem}.card{background:white;border-radius:18px;padding:16px;box-shadow:0 3px 18px rgba(0,0,0,.07);margin:12px 0}.reader{overflow:hidden;border-radius:14px;min-height:250px;background:#111827}.row{display:flex;gap:10px;flex-wrap:wrap}.btn{border:0;border-radius:12px;padding:13px 15px;font-weight:700;font-size:1rem;cursor:pointer}.primary{background:#111827;color:white;flex:1}.secondary{background:#e5e7eb;color:#111827}.danger{background:#fee2e2;color:#991b1b}.status{font-size:.9rem;color:#6b7280;margin-top:10px}.result{display:none}.ok{border-left:6px solid #16a34a}.bad{border-left:6px solid #dc2626}.code{font-size:1.35rem;font-weight:900;letter-spacing:.04em}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.kv{background:#f9fafb;border-radius:12px;padding:10px}.k{font-size:.78rem;color:#6b7280}.v{font-weight:800;margin-top:2px}.manual{display:flex;gap:8px}.manual input{min-width:0;flex:1;padding:13px;border:1px solid #d1d5db;border-radius:12px;font-size:1rem;text-transform:uppercase}.history-item{display:flex;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:1px solid #eee}.history-item:last-child{border-bottom:0}.small{font-size:.82rem;color:#6b7280}.hint{font-size:.88rem;color:#6b7280;line-height:1.45}.badge{display:inline-block;background:#e5e7eb;padding:3px 8px;border-radius:999px;font-size:.78rem;font-weight:700}.footer{text-align:center;color:#9ca3af;font-size:.78rem;margin-top:24px}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:#f3f4f6}.app{max-width:620px;margin:auto;padding:18px 16px 42px}
+.head{display:flex;align-items:center;gap:12px;margin:4px 0 18px}.logo{width:50px;height:50px;border-radius:14px;background:#111827;color:#fff;display:grid;place-items:center;font-weight:900}
+.title{font-weight:900;font-size:1.35rem}.sub{color:#6b7280;font-size:.92rem}.card{background:white;border-radius:18px;padding:16px;box-shadow:0 3px 18px rgba(0,0,0,.07);margin:12px 0}
+.reader{overflow:hidden;border-radius:14px;min-height:245px;background:#111827}.row{display:flex;gap:10px;flex-wrap:wrap}.btn{border:0;border-radius:12px;padding:13px 15px;font-weight:800;font-size:.96rem;cursor:pointer}
+.btn:disabled{opacity:.5;cursor:not-allowed}.primary{background:#111827;color:#fff;flex:1}.secondary{background:#e5e7eb;color:#111827}.success{background:#dcfce7;color:#166534}.danger{background:#fee2e2;color:#991b1b}
+.status{font-size:.9rem;color:#6b7280;margin-top:10px}.result{display:none}.ok{border-left:6px solid #16a34a}.bad{border-left:6px solid #dc2626}.code{font-size:1.35rem;font-weight:900;letter-spacing:.04em}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.kv{background:#f9fafb;border-radius:12px;padding:10px}.k{font-size:.78rem;color:#6b7280}.v{font-weight:800;margin-top:2px}
+.manual{display:flex;gap:8px}.manual input{min-width:0;flex:1}.field{margin:10px 0}.field label{display:block;font-size:.8rem;font-weight:800;color:#4b5563;margin-bottom:5px}
+input,select{width:100%;padding:12px;border:1px solid #d1d5db;border-radius:12px;font-size:1rem;background:#fff}.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.small{font-size:.82rem;color:#6b7280}.hint{font-size:.88rem;color:#6b7280;line-height:1.45}.badge{display:inline-block;background:#e5e7eb;padding:3px 8px;border-radius:999px;font-size:.78rem;font-weight:800}
+.badge.green{background:#dcfce7;color:#166534}.badge.orange{background:#ffedd5;color:#9a3412}.badge.blue{background:#dbeafe;color:#1d4ed8}
+.list-item{padding:12px 0;border-bottom:1px solid #eee}.list-item:last-child{border-bottom:0}.item-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.item-title{font-weight:900}.item-meta{font-size:.82rem;color:#6b7280;margin-top:3px}.empty{padding:10px 0;color:#9ca3af;font-size:.9rem}.section-title{font-weight:900;margin-bottom:10px}
+.notice{background:#eff6ff;border:1px solid #bfdbfe;color:#1e3a8a;border-radius:12px;padding:10px;font-size:.86rem;line-height:1.4}
+.footer{text-align:center;color:#9ca3af;font-size:.78rem;margin-top:24px}.hidden{display:none!important}
+@media(max-width:430px){.two,.grid{grid-template-columns:1fr}}
 </style>
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 </head>
 <body><main class="app">
-<header class="head"><div class="logo">42</div><div><div class="title">Stock 42 — Scanner QR</div><div class="sub">Localisation des rayonnages</div></div></header>
+<header class="head"><div class="logo">42</div><div><div class="title">Stock 42 — V2</div><div class="sub">QR emplacements • lots • FIFO</div></div></header>
 
 <section class="card">
   <div id="reader" class="reader"></div>
@@ -21,40 +36,197 @@
     <button id="startBtn" class="btn primary">Démarrer le scanner</button>
     <button id="stopBtn" class="btn secondary" disabled>Arrêter</button>
   </div>
-  <div id="status" class="status">Appuyez sur « Démarrer le scanner » puis autorisez l’accès à la caméra.</div>
+  <div id="status" class="status">Scannez l'étiquette de l'emplacement avant d'affecter un lot.</div>
 </section>
 
 <section id="result" class="card result">
-  <div class="small">EMPLACEMENT LU</div>
+  <div class="small">EMPLACEMENT ACTIF</div>
   <div id="resultCode" class="code"></div>
   <div id="resultMsg" class="status"></div>
   <div id="details" class="grid"></div>
 </section>
 
 <section class="card">
-  <div style="font-weight:800;margin-bottom:10px">Saisie manuelle</div>
+  <div class="section-title">Saisie manuelle de l'emplacement</div>
   <div class="manual"><input id="manualCode" placeholder="Ex. 42-R2-N3-B" autocomplete="off"/><button id="manualBtn" class="btn secondary">Lire</button></div>
-  <div class="hint" style="margin-top:9px">Format officiel : <span class="badge">42-Rx-Nx-X</span> — R1 à R3, N1 à N5, A/B/C.</div>
+  <div class="hint" style="margin-top:9px">Format officiel : <span class="badge">42-Rx-Nx-X</span>.</div>
+</section>
+
+<section id="assignCard" class="card hidden">
+  <div class="section-title">Affecter un lot à <span id="activeLocation"></span></div>
+  <div class="notice">Vous pouvez saisir seulement le numéro du lot. S'il existe dans le catalogue Stock 42, les autres champs se rempliront automatiquement. Sinon, vous pouvez compléter les informations manuellement.</div>
+  <div class="field">
+    <label for="lotInput">Numéro de lot</label>
+    <input id="lotInput" placeholder="Ex. L0027 ou simplement 27" inputmode="numeric" autocomplete="off"/>
+    <div id="lotHint" class="small" style="margin-top:5px"></div>
+  </div>
+  <div class="field"><label for="productInput">Produit</label><input id="productInput" placeholder="Nom du produit"/></div>
+  <div class="two">
+    <div class="field"><label for="qtyInput">Quantité</label><input id="qtyInput" type="number" step="any" min="0" placeholder="Ex. 8"/></div>
+    <div class="field"><label for="unitInput">Unité</label><select id="unitInput"><option value="">—</option><option>unité</option><option>boîte</option><option>bocal</option><option>paquet</option><option>kg</option><option>g</option><option>L</option><option>ml</option></select></div>
+  </div>
+  <div class="field"><label for="ddmInput">DDM / DLC</label><input id="ddmInput" placeholder="Ex. 12/2028 ou 15/12/2028"/></div>
+  <div class="row"><button id="saveLotBtn" class="btn primary">Enregistrer l'affectation</button><button id="resetLotBtn" class="btn secondary">Effacer</button></div>
+  <div id="saveStatus" class="status"></div>
+</section>
+
+<section id="locationStockCard" class="card hidden">
+  <div class="section-title">Contenu de <span id="locationTitle"></span></div>
+  <div id="locationStock"></div>
 </section>
 
 <section class="card">
-  <div class="row" style="align-items:center;justify-content:space-between"><div style="font-weight:800">Derniers scans</div><button id="clearBtn" class="btn secondary" style="padding:8px 10px;font-size:.85rem">Effacer</button></div>
-  <div id="history"><div class="hint" style="padding-top:8px">Aucun scan pour le moment.</div></div>
+  <div class="section-title">Rappeler un lot</div>
+  <div class="manual"><input id="searchLot" placeholder="Ex. L0027 ou 27" inputmode="numeric" autocomplete="off"/><button id="searchLotBtn" class="btn secondary">Rechercher</button></div>
+  <div id="lotSearchResult" style="margin-top:10px"></div>
 </section>
-<div class="footer">Site 42 • nomenclature officielle 42-Rx-Nx-X</div>
+
+<section class="card">
+  <div class="row" style="justify-content:space-between;align-items:center">
+    <div><div class="section-title" style="margin:0">Données V2</div><div class="small"><span id="assignmentCount">0</span> affectation(s) locale(s)</div></div>
+    <button id="exportBtn" class="btn secondary" style="padding:9px 11px;font-size:.85rem">Exporter CSV</button>
+  </div>
+  <div class="hint" style="margin-top:10px">Les affectations sont enregistrées sur ce téléphone et restent disponibles hors connexion. La synchronisation automatique avec le tableau Google Sheets sera branchée sur cette même structure.</div>
+</section>
+
+<section class="card">
+  <div class="row" style="align-items:center;justify-content:space-between"><div class="section-title" style="margin:0">Derniers scans</div><button id="clearBtn" class="btn secondary" style="padding:8px 10px;font-size:.85rem">Effacer</button></div>
+  <div id="history"><div class="empty">Aucun scan pour le moment.</div></div>
+</section>
+
+<div class="footer">Site 42 • nomenclature 42-Rx-Nx-X • lots L0001…</div>
 </main>
 <script>
 const VALID=/^42-R([1-3])-N([1-5])-([ABC])$/i;
-let scanner=null, running=false;
+const LOT_VALID=/^L\d{4}$/;
+let scanner=null,running=false,activeLocation=null,catalog=[];
 const $=id=>document.getElementById(id);
-function parseCode(raw){const code=(raw||'').trim().toUpperCase(); const m=code.match(VALID); if(!m)return {valid:false,code}; const zone={A:'Gauche',B:'Centre',C:'Droite'}[m[3]]; return {valid:true,code,rack:m[1],level:m[2],zoneLetter:m[3],zone};}
-function showResult(raw){const p=parseCode(raw); const box=$('result'); box.style.display='block'; box.classList.remove('ok','bad'); $('resultCode').textContent=p.code||'Code vide'; if(p.valid){box.classList.add('ok'); $('resultMsg').textContent='QR code reconnu — emplacement valide du site 42.'; $('details').innerHTML=`<div class="kv"><div class="k">Site</div><div class="v">42</div></div><div class="kv"><div class="k">Rayonnage</div><div class="v">R${p.rack}</div></div><div class="kv"><div class="k">Niveau</div><div class="v">N${p.level}</div></div><div class="kv"><div class="k">Sous-zone</div><div class="v">${p.zoneLetter} — ${p.zone}</div></div>`; addHistory(p.code); if(navigator.vibrate) navigator.vibrate(80);} else {box.classList.add('bad'); $('resultMsg').textContent='Ce QR code ne correspond pas à la nomenclature officielle du site 42.'; $('details').innerHTML='';}
- box.scrollIntoView({behavior:'smooth',block:'center'});
+
+function parseCode(raw){
+  const code=(raw||'').trim().toUpperCase(),m=code.match(VALID);
+  if(!m)return {valid:false,code};
+  const zone={A:'Gauche',B:'Centre',C:'Droite'}[m[3]];
+  return {valid:true,code,rack:m[1],level:m[2],zoneLetter:m[3],zone};
 }
-function addHistory(code){let h=JSON.parse(localStorage.getItem('stock42History')||'[]'); h=h.filter(x=>x.code!==code); h.unshift({code,time:new Date().toISOString()}); h=h.slice(0,12); localStorage.setItem('stock42History',JSON.stringify(h)); renderHistory();}
-function renderHistory(){const h=JSON.parse(localStorage.getItem('stock42History')||'[]'); const el=$('history'); if(!h.length){el.innerHTML='<div class="hint" style="padding-top:8px">Aucun scan pour le moment.</div>';return;} el.innerHTML=h.map(x=>`<div class="history-item" data-code="${x.code}"><div><b>${x.code}</b><div class="small">${new Date(x.time).toLocaleString('fr-FR')}</div></div><button class="btn secondary" style="padding:7px 9px;font-size:.82rem">Relire</button></div>`).join(''); [...el.querySelectorAll('.history-item')].forEach(row=>row.querySelector('button').onclick=()=>showResult(row.dataset.code));}
-async function startScanner(){ if(running)return; $('status').textContent='Initialisation de la caméra…'; try{scanner=new Html5Qrcode('reader'); const cams=await Html5Qrcode.getCameras(); if(!cams||!cams.length)throw new Error('Aucune caméra détectée'); const back=cams.find(c=>/back|rear|environment|arrière/i.test(c.label))||cams[cams.length-1]; await scanner.start(back.id,{fps:10,qrbox:{width:220,height:220},aspectRatio:1.0},txt=>{showResult(txt);}); running=true; $('startBtn').disabled=true; $('stopBtn').disabled=false; $('status').textContent='Scanner actif. Placez un QR code dans le cadre.';}catch(e){$('status').innerHTML='Impossible de démarrer la caméra. Vérifiez l’autorisation caméra et que l’application est ouverte via une adresse HTTPS. Vous pouvez aussi utiliser la saisie manuelle.'; console.error(e);}}
-async function stopScanner(){if(scanner&&running){try{await scanner.stop();await scanner.clear();}catch(e){} running=false;$('startBtn').disabled=false;$('stopBtn').disabled=true;$('status').textContent='Scanner arrêté.';}}
-$('startBtn').onclick=startScanner; $('stopBtn').onclick=stopScanner; $('manualBtn').onclick=()=>showResult($('manualCode').value); $('manualCode').addEventListener('keydown',e=>{if(e.key==='Enter')showResult(e.target.value)}); $('clearBtn').onclick=()=>{localStorage.removeItem('stock42History');renderHistory();}; renderHistory();
+function normalizeLot(raw){
+  let s=(raw||'').trim().toUpperCase().replace(/\s+/g,'');
+  if(/^\d{1,4}$/.test(s)) s='L'+s.padStart(4,'0');
+  if(/^L\d{1,4}$/.test(s)) s='L'+s.slice(1).padStart(4,'0');
+  return s;
+}
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function assignments(){return JSON.parse(localStorage.getItem('stock42Assignments')||'[]');}
+function saveAssignments(a){localStorage.setItem('stock42Assignments',JSON.stringify(a));updateCount();}
+function updateCount(){$('assignmentCount').textContent=assignments().length;}
+function parseExpiry(s){
+  if(!s)return Number.MAX_SAFE_INTEGER;
+  s=String(s).trim();
+  let m=s.match(/^(\d{2})\/(\d{4})$/); if(m)return new Date(+m[2],+m[1]-1,1).getTime();
+  m=s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/); if(m)return new Date(+m[3],+m[2]-1,+m[1]).getTime();
+  m=s.match(/^(\d{4})-(\d{2})(?:-(\d{2}))?$/); if(m)return new Date(+m[1],+m[2]-1,+(m[3]||1)).getTime();
+  return Number.MAX_SAFE_INTEGER-1;
+}
+function setActiveLocation(code){
+  activeLocation=code;
+  $('activeLocation').textContent=code;
+  $('locationTitle').textContent=code;
+  $('assignCard').classList.remove('hidden');
+  $('locationStockCard').classList.remove('hidden');
+  renderLocationStock();
+}
+function showResult(raw){
+  const p=parseCode(raw),box=$('result');box.style.display='block';box.classList.remove('ok','bad');
+  $('resultCode').textContent=p.code||'Code vide';
+  if(p.valid){
+    box.classList.add('ok');$('resultMsg').textContent='Emplacement reconnu. Vous pouvez maintenant affecter un lot.';
+    $('details').innerHTML='<div class="kv"><div class="k">Site</div><div class="v">42</div></div><div class="kv"><div class="k">Rayonnage</div><div class="v">R'+p.rack+'</div></div><div class="kv"><div class="k">Niveau</div><div class="v">N'+p.level+'</div></div><div class="kv"><div class="k">Sous-zone</div><div class="v">'+p.zoneLetter+' — '+p.zone+'</div></div>';
+    setActiveLocation(p.code);addHistory(p.code);if(navigator.vibrate)navigator.vibrate(70);
+  }else{
+    box.classList.add('bad');$('resultMsg').textContent='Ce QR code ne correspond pas à la nomenclature officielle du site 42.';$('details').innerHTML='';
+  }
+  box.scrollIntoView({behavior:'smooth',block:'center'});
+}
+function addHistory(code){
+  let h=JSON.parse(localStorage.getItem('stock42History')||'[]');h=h.filter(x=>x.code!==code);h.unshift({code,time:new Date().toISOString()});h=h.slice(0,12);
+  localStorage.setItem('stock42History',JSON.stringify(h));renderHistory();
+}
+function renderHistory(){
+  const h=JSON.parse(localStorage.getItem('stock42History')||'[]'),el=$('history');
+  if(!h.length){el.innerHTML='<div class="empty">Aucun scan pour le moment.</div>';return;}
+  el.innerHTML=h.map(x=>'<div class="list-item"><div class="item-top"><div><div class="item-title">'+esc(x.code)+'</div><div class="item-meta">'+new Date(x.time).toLocaleString('fr-FR')+'</div></div><button class="btn secondary" data-code="'+esc(x.code)+'" style="padding:7px 9px;font-size:.82rem">Relire</button></div></div>').join('');
+  el.querySelectorAll('button[data-code]').forEach(b=>b.onclick=()=>showResult(b.dataset.code));
+}
+function findCatalogLot(lot){return catalog.find(x=>normalizeLot(x.lot)===lot)||null;}
+function fillFromCatalog(){
+  const lot=normalizeLot($('lotInput').value);$('lotInput').value=lot;
+  if(!LOT_VALID.test(lot)){$('lotHint').textContent='Format attendu : L0001, L0002…';return;}
+  const c=findCatalogLot(lot);
+  if(c){
+    $('lotHint').innerHTML='<span class="badge green">Lot trouvé dans le catalogue</span>';
+    $('productInput').value=c.produit||c.product||'';
+    $('qtyInput').value=c.quantite??c.quantity??'';
+    $('unitInput').value=c.unite||c.unit||'';
+    $('ddmInput').value=c.ddm||c.dlc||c.expiry||'';
+  }else $('lotHint').innerHTML='<span class="badge orange">Lot non chargé dans le catalogue — saisie manuelle possible</span>';
+}
+function resetLotForm(){
+  ['lotInput','productInput','qtyInput','ddmInput'].forEach(id=>$(id).value='');$('unitInput').value='';$('lotHint').textContent='';$('saveStatus').textContent='';
+}
+function saveLot(){
+  if(!activeLocation){$('saveStatus').textContent='Scannez d’abord un emplacement.';return;}
+  const lot=normalizeLot($('lotInput').value);
+  if(!LOT_VALID.test(lot)){$('saveStatus').textContent='Numéro de lot invalide. Exemple : L0027.';return;}
+  const rec={id:lot+'@'+activeLocation,lot,location:activeLocation,produit:$('productInput').value.trim(),quantite:$('qtyInput').value?Number($('qtyInput').value):null,unite:$('unitInput').value,ddm:$('ddmInput').value.trim(),assignedAt:new Date().toISOString()};
+  let a=assignments(),idx=a.findIndex(x=>x.id===rec.id);
+  if(idx>=0)a[idx]=rec;else a.push(rec);
+  saveAssignments(a);$('saveStatus').innerHTML='<span class="badge green">Enregistré</span> '+esc(lot)+' → '+esc(activeLocation);
+  renderLocationStock();searchLot(lot);if(navigator.vibrate)navigator.vibrate([50,40,50]);
+}
+function renderLocationStock(){
+  if(!activeLocation)return;
+  const el=$('locationStock'),rows=assignments().filter(x=>x.location===activeLocation).sort((a,b)=>parseExpiry(a.ddm)-parseExpiry(b.ddm));
+  if(!rows.length){el.innerHTML='<div class="empty">Aucun lot affecté à cet emplacement.</div>';return;}
+  el.innerHTML=rows.map((x,i)=>'<div class="list-item"><div class="item-top"><div><div class="item-title">'+esc(x.lot)+' '+(i===0&&x.ddm?'<span class="badge blue">FIFO</span>':'')+'</div><div>'+esc(x.produit||'Produit non renseigné')+'</div><div class="item-meta">'+(x.quantite!=null?esc(x.quantite)+' '+esc(x.unite||'')+' • ':'')+(x.ddm?'DDM/DLC '+esc(x.ddm):'Date non renseignée')+'</div></div><button class="btn danger" data-del="'+esc(x.id)+'" style="padding:7px 9px;font-size:.82rem">Retirer</button></div></div>').join('');
+  el.querySelectorAll('button[data-del]').forEach(b=>b.onclick=()=>{if(confirm('Retirer cette affectation ?')){saveAssignments(assignments().filter(x=>x.id!==b.dataset.del));renderLocationStock();}});
+}
+function searchLot(force){
+  const lot=normalizeLot(force||$('searchLot').value);if(!force)$('searchLot').value=lot;
+  const el=$('lotSearchResult');
+  if(!LOT_VALID.test(lot)){el.innerHTML='<div class="empty">Saisissez un lot au format L0001.</div>';return;}
+  const c=findCatalogLot(lot),rows=assignments().filter(x=>x.lot===lot);
+  let html='';
+  if(c) html+='<div class="notice"><b>'+esc(lot)+'</b> • '+esc(c.produit||c.product||'Produit non renseigné')+'</div>';
+  if(!rows.length){html+='<div class="empty">Aucune affectation enregistrée pour '+esc(lot)+'.</div>';el.innerHTML=html;return;}
+  html+=rows.map(x=>'<div class="list-item"><div class="item-title">'+esc(x.location)+'</div><div>'+esc(x.produit||c?.produit||c?.product||'Produit non renseigné')+'</div><div class="item-meta">'+(x.quantite!=null?esc(x.quantite)+' '+esc(x.unite||'')+' • ':'')+(x.ddm?'DDM/DLC '+esc(x.ddm):'Date non renseignée')+'</div></div>').join('');
+  el.innerHTML=html;
+}
+function exportCSV(){
+  const rows=assignments();
+  const data=[['Lot','Produit','Quantité','Unité','DDM/DLC','Emplacement','Date affectation'],...rows.map(x=>[x.lot,x.produit,x.quantite??'',x.unite,x.ddm,x.location,x.assignedAt])];
+  const csv='\uFEFF'+data.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';')).join('\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='stock42_affectations.csv';a.click();URL.revokeObjectURL(url);
+}
+async function loadCatalog(){
+  try{const r=await fetch('./lots.json',{cache:'no-store'});if(r.ok){const j=await r.json();catalog=Array.isArray(j)?j:(j.lots||[]);}}
+  catch(e){catalog=[];}
+}
+async function startScanner(){
+  if(running)return;$('status').textContent='Initialisation de la caméra…';
+  try{
+    scanner=new Html5Qrcode('reader');const cams=await Html5Qrcode.getCameras();if(!cams||!cams.length)throw new Error('Aucune caméra détectée');
+    const back=cams.find(c=>/back|rear|environment|arrière/i.test(c.label))||cams[cams.length-1];
+    await scanner.start(back.id,{fps:10,qrbox:{width:220,height:220},aspectRatio:1.0},txt=>showResult(txt));
+    running=true;$('startBtn').disabled=true;$('stopBtn').disabled=false;$('status').textContent='Scanner actif. Placez un QR code d’emplacement dans le cadre.';
+  }catch(e){$('status').textContent='Impossible de démarrer la caméra. Vérifiez l’autorisation caméra. La saisie manuelle reste disponible.';console.error(e);}
+}
+async function stopScanner(){if(scanner&&running){try{await scanner.stop();await scanner.clear();}catch(e){}running=false;$('startBtn').disabled=false;$('stopBtn').disabled=true;$('status').textContent='Scanner arrêté.';}}
+
+$('startBtn').onclick=startScanner;$('stopBtn').onclick=stopScanner;
+$('manualBtn').onclick=()=>showResult($('manualCode').value);$('manualCode').addEventListener('keydown',e=>{if(e.key==='Enter')showResult(e.target.value)});
+$('lotInput').addEventListener('change',fillFromCatalog);$('lotInput').addEventListener('blur',fillFromCatalog);
+$('saveLotBtn').onclick=saveLot;$('resetLotBtn').onclick=resetLotForm;
+$('searchLotBtn').onclick=()=>searchLot();$('searchLot').addEventListener('keydown',e=>{if(e.key==='Enter')searchLot()});
+$('exportBtn').onclick=exportCSV;$('clearBtn').onclick=()=>{localStorage.removeItem('stock42History');renderHistory();};
+renderHistory();updateCount();loadCatalog();
 if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js').catch(()=>{}));}
 </script></body></html>
