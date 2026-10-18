@@ -161,6 +161,21 @@ input,select,textarea{width:100%;padding:12px;border:1px solid #d1d5db;border-ra
 </section>
 
 <section class="card">
+  <div class="section-title">Inventaire rapide</div>
+  <div class="hint">Choisissez un emplacement, vérifiez les lots présents puis validez le contrôle.</div>
+  <div class="manual" style="margin-top:10px">
+    <select id="inventoryLocationSelect"><option value="">— Choisir un emplacement —</option></select>
+    <button id="inventoryLoadBtn" class="btn secondary">Charger</button>
+  </div>
+  <div class="row" style="margin-top:10px">
+    <button id="inventoryUseActiveBtn" class="btn secondary">Utiliser l'emplacement actif</button>
+  </div>
+  <div id="inventoryList" style="margin-top:10px"></div>
+  <button id="inventoryConfirmBtn" class="btn primary" style="margin-top:12px;display:none">Enregistrer l'inventaire</button>
+  <div id="inventoryStatus" class="status"></div>
+</section>
+
+<section class="card">
   <div class="section-title">Déplacement simplifié</div>
   <div class="hint">Choisissez un lot déjà rangé, puis son nouvel emplacement.</div>
   <div style="margin-top:10px">
@@ -255,7 +270,7 @@ async function syncLotsFromSheet(){
 }
 async function sendToSheet(action,data){const u=localStorage.getItem(LS.syncUrl)||'';const k=localStorage.getItem(LS.syncKey)||'';if(!u||!k)return {ok:false,localOnly:true};try{const r=await fetch(u,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({token:k,action:action,data:data})});return JSON.parse(await r.text())}catch(e){return {ok:false,error:String(e&&e.message?e.message:e)}}}
 function lotById(l){l=normalizeLot(l);return allLots().find(x=>x.lot===l)||null}
-function updateStats(){ $('catalogCount').textContent=allLots().length;$('nextLot').textContent=nextLot();const t=localStorage.getItem(LS.imported);$('importStatus').textContent=t?'Dernier import : '+new Date(t).toLocaleString('fr-FR')+' • '+catalog().length+' lot(s) chargé(s).':'Aucun tableau importé sur cet appareil.';renderOrders();populateCategorySearch();populateMoveControls();populateFifoProducts();populateLocationView();updateExpiryStats() }
+function updateStats(){ $('catalogCount').textContent=allLots().length;$('nextLot').textContent=nextLot();const t=localStorage.getItem(LS.imported);$('importStatus').textContent=t?'Dernier import : '+new Date(t).toLocaleString('fr-FR')+' • '+catalog().length+' lot(s) chargé(s).':'Aucun tableau importé sur cet appareil.';renderOrders();populateCategorySearch();populateInventoryLocations();populateMoveControls();populateFifoProducts();populateLocationView();updateExpiryStats() }
 function parseNumber(v){if(typeof v==='number')return v;const s=String(v??'').replace(/\s/g,'').replace(',','.').replace(/[^0-9.-]/g,'');return s?Number(s):null}
 function excelDate(v){if(!v)return'';if(v instanceof Date)return v.toLocaleDateString('fr-FR');return String(v)}
 async function importWorkbook(){
@@ -356,6 +371,74 @@ function searchCategory(){
     const loc=places.join(', ')||x.emplacement||'non affecté';
     return '<div class="list-item"><div class="item-title">'+esc(x.produit||'Produit')+' <span class="badge blue">'+esc(x.lot)+'</span></div><div class="item-meta">'+esc(x.quantite??'')+' '+esc(x.unite||'')+(x.ddm?' • DDM/DLC '+esc(x.ddm):'')+'</div><div style="margin-top:6px">Emplacement : <b>'+esc(loc)+'</b></div></div>';
   }).join('');
+}
+function populateInventoryLocations(){
+  const sel=$('inventoryLocationSelect');if(!sel)return;
+  const current=sel.value;
+  sel.innerHTML='<option value="">— Choisir un emplacement —</option>'+allOfficialLocations().map(loc=>'<option value="'+loc+'">'+loc+'</option>').join('');
+  if(allOfficialLocations().includes(current))sel.value=current;
+}
+function inventoryRowsForLocation(loc){
+  return assignments().filter(a=>a.location===loc).map(a=>({a,lotData:lotById(a.lot)})).sort((x,y)=>String(x.lotData?.produit||'').localeCompare(String(y.lotData?.produit||''),'fr'));
+}
+function loadInventoryLocation(){
+  const loc=$('inventoryLocationSelect').value,el=$('inventoryList'),btn=$('inventoryConfirmBtn');
+  $('inventoryStatus').textContent='';
+  if(!loc){el.innerHTML='<div class="empty">Choisissez un emplacement.</div>';btn.style.display='none';return}
+  const rows=inventoryRowsForLocation(loc);
+  if(!rows.length){
+    el.innerHTML='<div class="notice"><b>'+esc(loc)+'</b><br>Emplacement actuellement enregistré comme vide.</div>';
+    btn.style.display='inline-block';
+    return;
+  }
+  el.innerHTML='<div class="notice"><b>'+esc(loc)+'</b> • '+rows.length+' lot(s) attendu(s)</div>'+
+    rows.map(x=>'<label class="list-item" style="display:block;cursor:pointer"><div class="item-title"><input class="inventoryCheck" type="checkbox" data-lot="'+esc(x.a.lot)+'" checked style="width:auto;margin-right:8px"> '+esc(x.lotData?.produit||'Produit')+' <span class="badge blue">'+esc(x.a.lot)+'</span></div><div class="item-meta">'+esc(x.lotData?.quantite??'')+' '+esc(x.lotData?.unite||'')+(x.lotData?.ddm?' • '+esc(x.lotData?.typeDate||'DDM')+' '+esc(x.lotData.ddm):'')+'</div></label>').join('');
+  btn.style.display='inline-block';
+}
+function useActiveInventoryLocation(){
+  const el=$('inventoryStatus');
+  if(!activeLocation){el.innerHTML='<div class="empty">Aucun emplacement actif. Scannez d’abord un QR ou choisissez un emplacement.</div>';return}
+  $('inventoryLocationSelect').value=activeLocation;
+  loadInventoryLocation();
+}
+async function confirmQuickInventory(){
+  const loc=$('inventoryLocationSelect').value,el=$('inventoryStatus'),btn=$('inventoryConfirmBtn');
+  if(!loc){el.innerHTML='<div class="empty">Choisissez un emplacement.</div>';return}
+  const rows=inventoryRowsForLocation(loc);
+  const states=[...document.querySelectorAll('.inventoryCheck')].map(c=>({lot:c.dataset.lot,present:c.checked}));
+  btn.disabled=true;btn.textContent='✓ Enregistrement…';
+  let ok=0,fail=0,missing=0;
+  if(!rows.length){
+    const r=await sendToSheet('movement',{date:today(),lot:'',produit:'',type:'Contrôle inventaire',quantite:0,unite:'',source:loc,destination:loc,commentaire:'Inventaire rapide : emplacement vide confirmé',reference:''});
+    r.ok?ok++:fail++;
+  }else{
+    for(const row of rows){
+      const state=states.find(s=>s.lot===row.a.lot);
+      const present=state?state.present:true;
+      if(!present)missing++;
+      const r=await sendToSheet('movement',{
+        date:today(),
+        lot:row.a.lot,
+        produit:row.lotData?.produit||'',
+        type:'Contrôle inventaire',
+        quantite:0,
+        unite:row.lotData?.unite||'',
+        source:loc,
+        destination:loc,
+        commentaire:present?'Inventaire rapide : conforme':'Inventaire rapide : lot non retrouvé - à vérifier',
+        reference:''
+      });
+      r.ok?ok++:fail++;
+    }
+  }
+  if(fail===0){
+    el.innerHTML=missing
+      ? '<div class="notice" style="border-color:#fde68a;background:#fffbeb;color:#92400e"><b>⚠ Inventaire enregistré</b><br>'+missing+' lot(s) signalé(s) comme non retrouvé(s). Aucun stock n’a été supprimé automatiquement.</div>'
+      : '<div class="notice" style="border-color:#86efac;background:#ecfdf5;color:#166534"><b>✓ Inventaire conforme</b><br>'+esc(loc)+' contrôlé et synchronisé avec Google Sheets.</div>';
+  }else{
+    el.innerHTML='<div class="notice" style="border-color:#fde68a;background:#fffbeb;color:#92400e"><b>⚠ Synchronisation partielle</b><br>'+ok+' contrôle(s) enregistrés, '+fail+' non confirmé(s).</div>';
+  }
+  btn.disabled=false;btn.textContent='Enregistrer l\'inventaire';
 }
 function currentLocationForLot(lot){
   const a=assignments().filter(x=>x.lot===lot);
@@ -515,7 +598,7 @@ $('importStockBtn').onclick=importWorkbook;$('clearCatalogBtn').onclick=clearCat
 $('startBtn').onclick=startScanner;$('stopBtn').onclick=stopScanner;$('manualBtn').onclick=()=>showResult($('manualCode').value);$('manualCode').addEventListener('keydown',e=>{if(e.key==='Enter')showResult(e.target.value)});
 $('findLotBtn').onclick=()=>previewLot($('lotInput').value);$('lotInput').addEventListener('keydown',e=>{if(e.key==='Enter')previewLot(e.target.value)});
 $('assignLotBtn').onclick=()=>{const lot=normalizeLot($('lotInput').value);if(activeLocation)assignLotTo(lot,activeLocation)};
-$('searchLotBtn').onclick=searchLot;$('searchLot').addEventListener('keydown',e=>{if(e.key==='Enter')searchLot()});$('categorySearchBtn').onclick=searchCategory;$('categorySearch').addEventListener('change',searchCategory);$('moveLotBtn').onclick=moveSelectedLot;$('moveLotSelect').addEventListener('change',showMoveCurrentLocation);$('fifoSearchBtn').onclick=showFifoView;$('fifoProductSelect').addEventListener('change',showFifoView);$('locationViewBtn').onclick=showLocationView;$('locationViewSelect').addEventListener('change',showLocationView);$('showExpiryBtn').onclick=showExpiryAlerts;
+$('searchLotBtn').onclick=searchLot;$('searchLot').addEventListener('keydown',e=>{if(e.key==='Enter')searchLot()});$('categorySearchBtn').onclick=searchCategory;$('categorySearch').addEventListener('change',searchCategory);$('inventoryLoadBtn').onclick=loadInventoryLocation;$('inventoryLocationSelect').addEventListener('change',loadInventoryLocation);$('inventoryUseActiveBtn').onclick=useActiveInventoryLocation;$('inventoryConfirmBtn').onclick=confirmQuickInventory;$('moveLotBtn').onclick=moveSelectedLot;$('moveLotSelect').addEventListener('change',showMoveCurrentLocation);$('fifoSearchBtn').onclick=showFifoView;$('fifoProductSelect').addEventListener('change',showFifoView);$('locationViewBtn').onclick=showLocationView;$('locationViewSelect').addEventListener('change',showLocationView);$('showExpiryBtn').onclick=showExpiryAlerts;
 $('exportLotsCsvBtn').onclick=exportLots;$('exportOrdersCsvBtn').onclick=exportOrders;$('exportJsonBtn').onclick=exportJson;
 $('syncUrl').value=localStorage.getItem(LS.syncUrl)||'';
 $('syncKey').value=localStorage.getItem(LS.syncKey)||'';
@@ -538,7 +621,7 @@ updateStats();
 if(localStorage.getItem(LS.syncUrl))syncLotsFromSheet();
 if('serviceWorker' in navigator)window.addEventListener('load',async()=>{
   try{
-    const reg=await navigator.serviceWorker.register('./service-worker.js?v=13',{updateViaCache:'none'});
+    const reg=await navigator.serviceWorker.register('./service-worker.js?v=14',{updateViaCache:'none'});
     reg.update().catch(()=>{});
     navigator.serviceWorker.addEventListener('controllerchange',()=>{
       if(!sessionStorage.getItem('stock42SwReload')){
