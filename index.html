@@ -147,8 +147,9 @@ input,select,textarea{width:100%;padding:12px;border:1px solid #d1d5db;border-ra
 </section>
 
 <section class="card">
-  <div class="section-title">Rappeler un lot</div>
-  <div class="manual"><input id="searchLot" placeholder="Ex. 27 ou L0027" inputmode="numeric"><button id="searchLotBtn" class="btn secondary">Rechercher</button></div>
+  <div class="section-title">Rechercher un produit ou un lot</div>
+  <div class="manual"><input id="searchLot" placeholder="Ex. sel, café, huile, 27 ou L0027"><button id="searchLotBtn" class="btn secondary">Rechercher</button></div>
+  <div class="hint" style="margin-top:8px">Tapez un nom de produit ou un numéro de lot.</div>
   <div id="lotSearchResult" style="margin-top:10px"></div>
 </section>
 
@@ -265,7 +266,27 @@ if(btn){
   setTimeout(()=>{btn.disabled=false;btn.textContent=btn.dataset.oldText||'Affecter ce lot'},1800);
 }}
 function renderLocationStock(){if(!activeLocation)return;const rows=assignments().filter(x=>x.location===activeLocation).map(a=>({...a,lotData:lotById(a.lot)}));const el=$('locationStock');if(!rows.length){el.innerHTML='<div class="empty">Aucun lot affecté.</div>';return}rows.sort((a,b)=>String(a.lotData?.ddm||'9999').localeCompare(String(b.lotData?.ddm||'9999')));el.innerHTML=rows.map((x,i)=>'<div class="list-item"><div class="item-title">'+esc(x.lot)+(i===0? ' <span class="badge blue">FIFO</span>':'')+'</div><div>'+esc(x.lotData?.produit||'Produit non renseigné')+'</div><div class="item-meta">'+esc(x.lotData?.quantite??'')+' '+esc(x.lotData?.unite||'')+(x.lotData?.ddm?' • '+esc(x.lotData.ddm):'')+'</div></div>').join('')}
-function searchLot(){const lot=normalizeLot($('searchLot').value);$('searchLot').value=lot;const x=lotById(lot),el=$('lotSearchResult');if(!x){el.innerHTML='<div class="empty">Lot introuvable.</div>';return}const places=assignments().filter(a=>a.lot===lot).map(a=>a.location);el.innerHTML='<div class="notice"><b>'+esc(lot)+'</b> — '+esc(x.produit||'')+'<br>'+esc(x.quantite??'')+' '+esc(x.unite||'')+(x.ddm?' • DDM/DLC '+esc(x.ddm):'')+'<br>Emplacement : <b>'+esc(places.join(', ')||x.emplacement||'non affecté')+'</b></div>'}
+function searchLot(){
+  const raw=$('searchLot').value.trim(),el=$('lotSearchResult');
+  if(!raw){el.innerHTML='<div class="empty">Saisissez un produit ou un numéro de lot.</div>';return}
+  const looksLikeLot=/^(L?\d{1,4})$/i.test(raw.replace(/\s+/g,''));
+  if(looksLikeLot){
+    const lot=normalizeLot(raw);$('searchLot').value=lot;const x=lotById(lot);
+    if(!x){el.innerHTML='<div class="empty">Lot introuvable.</div>';return}
+    const places=assignments().filter(a=>a.lot===lot).map(a=>a.location);
+    el.innerHTML='<div class="notice"><b>'+esc(lot)+'</b> — '+esc(x.produit||'')+'<br>'+esc(x.quantite??'')+' '+esc(x.unite||'')+(x.ddm?' • DDM/DLC '+esc(x.ddm):'')+'<br>Emplacement : <b>'+esc(places.join(', ')||x.emplacement||'non affecté')+'</b></div>';
+    return;
+  }
+  const q=raw.toLocaleLowerCase('fr-FR');
+  const results=allLots().filter(x=>String(x.produit||'').toLocaleLowerCase('fr-FR').includes(q));
+  if(!results.length){el.innerHTML='<div class="empty">Aucun produit trouvé pour « '+esc(raw)+' ».</div>';return}
+  results.sort((a,b)=>String(a.produit||'').localeCompare(String(b.produit||''),'fr')||String(a.ddm||'9999').localeCompare(String(b.ddm||'9999')));
+  el.innerHTML=results.map(x=>{
+    const places=assignments().filter(a=>a.lot===x.lot).map(a=>a.location);
+    const loc=places.join(', ')||x.emplacement||'non affecté';
+    return '<div class="list-item"><div class="item-title">'+esc(x.produit||'Produit')+' <span class="badge blue">'+esc(x.lot)+'</span></div><div class="item-meta">'+esc(x.quantite??'')+' '+esc(x.unite||'')+(x.ddm?' • DDM/DLC '+esc(x.ddm):'')+'</div><div style="margin-top:6px">Emplacement : <b>'+esc(loc)+'</b></div></div>';
+  }).join('');
+}
 function csvDownload(name,headers,rows){const data=[headers,...rows];const csv='\uFEFF'+data.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';')).join('\n');const blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();URL.revokeObjectURL(url)}
 function exportLots(){csvDownload('stock42_lots.csv',['N° lot interne','Date réception','Produit','Catégorie','Quantité reçue','Unité','DDM / DLC','Type date','Fournisseur','Référence / commande','Emplacement','Statut','Conditionnement','Lot fabricant','Notes'],allLots().map(x=>[x.lot,x.dateReception,x.produit,x.categorie,x.quantite,x.unite,x.ddm,x.typeDate,x.fournisseur,x.reference,assignments().find(a=>a.lot===x.lot)?.location||x.emplacement||'',x.statut,x.conditionnement,x.lotFabricant,x.notes]))}
 function exportOrders(){csvDownload('stock42_commandes.csv',['Commande','Statut','Produit','Catégorie','Quantité','Unité','Prix €','Fournisseur','Référence','Date commande','Livraison prévue','Lot reçu','Notes'],orders().map(x=>[x.id,x.status,x.product,x.category,x.qty,x.unit,x.price,x.supplier,x.reference,x.orderDate,x.expected,x.lot||'',x.notes]))}
