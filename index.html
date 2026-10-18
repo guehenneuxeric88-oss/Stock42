@@ -161,6 +161,13 @@ input,select,textarea{width:100%;padding:12px;border:1px solid #d1d5db;border-ra
 </section>
 
 <section class="card">
+  <div class="section-title">Vue par emplacement</div>
+  <div class="manual"><select id="locationViewSelect"><option value="">— Choisir un emplacement —</option></select><button id="locationViewBtn" class="btn secondary">Afficher</button></div>
+  <div class="hint" style="margin-top:8px">Affiche tout le contenu d'un emplacement du site 42.</div>
+  <div id="locationViewResult" style="margin-top:10px"></div>
+</section>
+
+<section class="card">
   <div class="section-title">Alertes DDM / DLC</div>
   <div class="two">
     <div class="kv"><div class="k">Dépassées</div><div id="expiryExpiredCount" class="v">0</div></div>
@@ -227,7 +234,7 @@ async function syncLotsFromSheet(){
 }
 async function sendToSheet(action,data){const u=localStorage.getItem(LS.syncUrl)||'';const k=localStorage.getItem(LS.syncKey)||'';if(!u||!k)return {ok:false,localOnly:true};try{const r=await fetch(u,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({token:k,action:action,data:data})});return JSON.parse(await r.text())}catch(e){return {ok:false,error:String(e&&e.message?e.message:e)}}}
 function lotById(l){l=normalizeLot(l);return allLots().find(x=>x.lot===l)||null}
-function updateStats(){ $('catalogCount').textContent=allLots().length;$('nextLot').textContent=nextLot();const t=localStorage.getItem(LS.imported);$('importStatus').textContent=t?'Dernier import : '+new Date(t).toLocaleString('fr-FR')+' • '+catalog().length+' lot(s) chargé(s).':'Aucun tableau importé sur cet appareil.';renderOrders();populateCategorySearch();updateExpiryStats() }
+function updateStats(){ $('catalogCount').textContent=allLots().length;$('nextLot').textContent=nextLot();const t=localStorage.getItem(LS.imported);$('importStatus').textContent=t?'Dernier import : '+new Date(t).toLocaleString('fr-FR')+' • '+catalog().length+' lot(s) chargé(s).':'Aucun tableau importé sur cet appareil.';renderOrders();populateCategorySearch();populateLocationView();updateExpiryStats() }
 function parseNumber(v){if(typeof v==='number')return v;const s=String(v??'').replace(/\s/g,'').replace(',','.').replace(/[^0-9.-]/g,'');return s?Number(s):null}
 function excelDate(v){if(!v)return'';if(v instanceof Date)return v.toLocaleDateString('fr-FR');return String(v)}
 async function importWorkbook(){
@@ -329,6 +336,29 @@ function searchCategory(){
     return '<div class="list-item"><div class="item-title">'+esc(x.produit||'Produit')+' <span class="badge blue">'+esc(x.lot)+'</span></div><div class="item-meta">'+esc(x.quantite??'')+' '+esc(x.unite||'')+(x.ddm?' • DDM/DLC '+esc(x.ddm):'')+'</div><div style="margin-top:6px">Emplacement : <b>'+esc(loc)+'</b></div></div>';
   }).join('');
 }
+function allOfficialLocations(){
+  const out=[];
+  for(let r=1;r<=3;r++)for(let n=1;n<=5;n++)for(const z of ['A','B','C'])out.push('42-R'+r+'-N'+n+'-'+z);
+  return out;
+}
+function populateLocationView(){
+  const sel=$('locationViewSelect');if(!sel)return;
+  const current=sel.value;
+  sel.innerHTML='<option value="">— Choisir un emplacement —</option>'+allOfficialLocations().map(loc=>'<option value="'+loc+'">'+loc+'</option>').join('');
+  if(allOfficialLocations().includes(current))sel.value=current;
+}
+function showLocationView(){
+  const loc=$('locationViewSelect').value,el=$('locationViewResult');
+  if(!loc){el.innerHTML='<div class="empty">Choisissez un emplacement.</div>';return}
+  const rows=assignments().filter(a=>a.location===loc).map(a=>({a,lotData:lotById(a.lot)}));
+  if(!rows.length){
+    el.innerHTML='<div class="notice"><b>'+esc(loc)+'</b><br>Emplacement vide.</div>';
+    return;
+  }
+  rows.sort((a,b)=>String(a.lotData?.ddm||'9999').localeCompare(String(b.lotData?.ddm||'9999')));
+  el.innerHTML='<div class="notice"><b>'+esc(loc)+'</b> • '+rows.length+' lot(s)</div>'+
+    rows.map((x,i)=>'<div class="list-item"><div class="item-title">'+esc(x.a.lot)+(i===0?' <span class="badge blue">FIFO</span>':'')+' — '+esc(x.lotData?.produit||'Produit non renseigné')+'</div><div class="item-meta">'+esc(x.lotData?.quantite??'')+' '+esc(x.lotData?.unite||'')+(x.lotData?.ddm?' • '+esc(x.lotData?.typeDate||'DDM')+' '+esc(x.lotData.ddm):'')+'</div></div>').join('');
+}
 function parseFrenchDate(v){
   const s=String(v||'').trim();
   if(!s)return null;
@@ -389,7 +419,7 @@ $('importStockBtn').onclick=importWorkbook;$('clearCatalogBtn').onclick=clearCat
 $('startBtn').onclick=startScanner;$('stopBtn').onclick=stopScanner;$('manualBtn').onclick=()=>showResult($('manualCode').value);$('manualCode').addEventListener('keydown',e=>{if(e.key==='Enter')showResult(e.target.value)});
 $('findLotBtn').onclick=()=>previewLot($('lotInput').value);$('lotInput').addEventListener('keydown',e=>{if(e.key==='Enter')previewLot(e.target.value)});
 $('assignLotBtn').onclick=()=>{const lot=normalizeLot($('lotInput').value);if(activeLocation)assignLotTo(lot,activeLocation)};
-$('searchLotBtn').onclick=searchLot;$('searchLot').addEventListener('keydown',e=>{if(e.key==='Enter')searchLot()});$('categorySearchBtn').onclick=searchCategory;$('categorySearch').addEventListener('change',searchCategory);$('showExpiryBtn').onclick=showExpiryAlerts;
+$('searchLotBtn').onclick=searchLot;$('searchLot').addEventListener('keydown',e=>{if(e.key==='Enter')searchLot()});$('categorySearchBtn').onclick=searchCategory;$('categorySearch').addEventListener('change',searchCategory);$('locationViewBtn').onclick=showLocationView;$('locationViewSelect').addEventListener('change',showLocationView);$('showExpiryBtn').onclick=showExpiryAlerts;
 $('exportLotsCsvBtn').onclick=exportLots;$('exportOrdersCsvBtn').onclick=exportOrders;$('exportJsonBtn').onclick=exportJson;
 $('syncUrl').value=localStorage.getItem(LS.syncUrl)||'';
 $('syncKey').value=localStorage.getItem(LS.syncKey)||'';
@@ -412,7 +442,7 @@ updateStats();
 if(localStorage.getItem(LS.syncUrl))syncLotsFromSheet();
 if('serviceWorker' in navigator)window.addEventListener('load',async()=>{
   try{
-    const reg=await navigator.serviceWorker.register('./service-worker.js?v=9',{updateViaCache:'none'});
+    const reg=await navigator.serviceWorker.register('./service-worker.js?v=10',{updateViaCache:'none'});
     reg.update().catch(()=>{});
     navigator.serviceWorker.addEventListener('controllerchange',()=>{
       if(!sessionStorage.getItem('stock42SwReload')){
