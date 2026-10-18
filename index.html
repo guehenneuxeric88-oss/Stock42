@@ -21,7 +21,7 @@ input,select,textarea{width:100%;padding:12px;border:1px solid #d1d5db;border-ra
 .reader{overflow:hidden;border-radius:14px;min-height:235px;background:#111827}.status{font-size:.88rem;color:#6b7280;margin-top:9px}.result{display:none}.ok{border-left:6px solid #16a34a}.bad{border-left:6px solid #dc2626}.code{font-size:1.35rem;font-weight:900;letter-spacing:.04em}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.kv{background:#f9fafb;border-radius:12px;padding:10px}.k{font-size:.76rem;color:#6b7280}.v{font-weight:800;margin-top:2px}.manual{display:flex;gap:8px}.manual input{min-width:0;flex:1}
 .tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}.tab{padding:10px 8px;border-radius:11px;border:0;background:#e5e7eb;font-weight:800}.tab.active{background:#111827;color:#fff}
-.hidden{display:none!important}.footer{text-align:center;color:#9ca3af;font-size:.78rem;margin-top:24px}
+.hidden{display:none!important}body.guest-mode .admin-only{display:none!important}body.guest-mode #guestModeBtn{background:#111827;color:#fff}.guest-banner{display:none;margin-bottom:12px;padding:10px 12px;border-radius:12px;background:#ecfdf5;color:#166534;font-weight:800;font-size:.88rem}body.guest-mode .guest-banner{display:block}.footer{text-align:center;color:#9ca3af;font-size:.78rem;margin-top:24px}
 @media(max-width:500px){.two,.three,.grid{grid-template-columns:1fr}.tabs{grid-template-columns:1fr}#mobileDashboard .grid{grid-template-columns:1fr 1fr}#mobileDashboard .two{grid-template-columns:1fr 1fr}#mobileDashboard .kv{padding:9px}#mobileDashboard .v{font-size:1.08rem}}
 </style>
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
@@ -29,6 +29,7 @@ input,select,textarea{width:100%;padding:12px;border:1px solid #d1d5db;border-ra
 </head>
 <body><main class="app">
 <header class="head"><div class="logo">42</div><div><div class="title">Stock 42 — V3</div><div class="sub">Commandes • réceptions • lots • emplacements • FIFO</div></div></header>
+<div class="guest-banner">Mode famille / invité — consultation uniquement</div>
 
 <section class="card" id="mobileDashboard">
   <div class="section-title">Tableau de bord</div>
@@ -45,9 +46,13 @@ input,select,textarea{width:100%;padding:12px;border:1px solid #d1d5db;border-ra
     <div class="kv"><div class="k">Prochain lot</div><div id="dashNextLot" class="v">L0001</div></div>
   </div>
   <div id="dashSummary" class="status" style="margin-top:10px"></div>
+  <div class="row" style="margin-top:12px">
+    <button id="guestModeBtn" class="btn secondary">Mode famille / invité</button>
+  </div>
+  <div id="guestModeStatus" class="status"></div>
 </section>
 
-<section class="card">
+<section class="card admin-only">
   <div class="section-title">Connexion Google Sheets</div>
   <div class="notice">Configuration locale de la synchronisation.</div>
   <div class="field"><label>URL Apps Script</label><input id="syncUrl" type="url"></div>
@@ -56,7 +61,7 @@ input,select,textarea{width:100%;padding:12px;border:1px solid #d1d5db;border-ra
   <div id="syncMsg" class="status"></div>
 </section>
 
-<section class="card">
+<section class="card admin-only">
   <div class="section-title">1. Charger votre tableau Stock</div>
   <div class="notice">Le fichier Excel/XLSM est lu directement sur votre téléphone. Son contenu n'est pas publié dans le dépôt GitHub.</div>
   <div class="field"><input id="stockFile" type="file" accept=".xlsx,.xlsm,.xls"></div>
@@ -68,7 +73,7 @@ input,select,textarea{width:100%;padding:12px;border:1px solid #d1d5db;border-ra
   </div>
 </section>
 
-<section class="card">
+<section class="card admin-only">
   <div class="tabs">
     <button class="tab active" data-pane="orderPane">Nouvelle commande</button>
     <button class="tab" data-pane="ordersPane">Commandes en cours</button>
@@ -135,7 +140,7 @@ input,select,textarea{width:100%;padding:12px;border:1px solid #d1d5db;border-ra
   </div>
 </section>
 
-<section class="card">
+<section class="card admin-only">
   <div class="section-title">4. Scanner un emplacement</div>
   <div id="reader" class="reader"></div>
   <div class="row" style="margin-top:12px"><button id="startBtn" class="btn primary">Démarrer le scanner</button><button id="stopBtn" class="btn secondary" disabled>Arrêter</button></div>
@@ -146,12 +151,12 @@ input,select,textarea{width:100%;padding:12px;border:1px solid #d1d5db;border-ra
   <div class="small">EMPLACEMENT ACTIF</div><div id="resultCode" class="code"></div><div id="resultMsg" class="status"></div><div id="details" class="grid"></div>
 </section>
 
-<section class="card">
+<section class="card admin-only">
   <div class="section-title">Saisie manuelle emplacement</div>
   <div class="manual"><input id="manualCode" placeholder="Ex. 42-R2-N3-B"><button id="manualBtn" class="btn secondary">Lire</button></div>
 </section>
 
-<section id="assignCard" class="card hidden">
+<section id="assignCard" class="card hidden admin-only">
   <div class="section-title">5. Affecter un lot à <span id="activeLocation"></span></div>
   <div class="manual"><input id="lotInput" placeholder="Ex. 27 ou L0027" inputmode="numeric"><button id="findLotBtn" class="btn secondary">Rappeler</button></div>
   <div id="lotPreview" style="margin-top:10px"></div>
@@ -159,7 +164,7 @@ input,select,textarea{width:100%;padding:12px;border:1px solid #d1d5db;border-ra
   <div id="assignStatus" class="status"></div>
 </section>
 
-<section id="locationStockCard" class="card hidden">
+<section id="locationStockCard" class="card hidden admin-only">
   <div class="section-title">Contenu de <span id="locationTitle"></span></div><div id="locationStock"></div>
 </section>
 
@@ -177,7 +182,7 @@ input,select,textarea{width:100%;padding:12px;border:1px solid #d1d5db;border-ra
   <div id="categorySearchResult" style="margin-top:10px"></div>
 </section>
 
-<section class="card">
+<section class="card admin-only">
   <div class="section-title">Inventaire rapide</div>
   <div class="hint">Choisissez un emplacement, vérifiez les lots présents puis validez le contrôle.</div>
   <div class="manual" style="margin-top:10px">
@@ -192,7 +197,7 @@ input,select,textarea{width:100%;padding:12px;border:1px solid #d1d5db;border-ra
   <div id="inventoryStatus" class="status"></div>
 </section>
 
-<section class="card">
+<section class="card admin-only">
   <div class="section-title">Déplacement simplifié</div>
   <div class="hint">Choisissez un lot déjà rangé, puis son nouvel emplacement.</div>
   <div style="margin-top:10px">
@@ -236,7 +241,7 @@ input,select,textarea{width:100%;padding:12px;border:1px solid #d1d5db;border-ra
   <div id="expiryResult" style="margin-top:10px"></div>
 </section>
 
-<section class="card">
+<section class="card admin-only">
   <div class="section-title">Sauvegarde / liaison tableau</div>
   <div class="row"><button id="exportJsonBtn" class="btn secondary">Sauvegarde JSON</button><button id="exportLotsCsvBtn" class="btn secondary">Lots CSV</button><button id="exportOrdersCsvBtn" class="btn secondary">Commandes CSV</button></div>
   <div class="hint" style="margin-top:10px">La saisie quotidienne se fait désormais dans Stock 42. L'export permet de conserver une copie exploitable dans Excel. La synchronisation Google Sheets automatique sera activée après une autorisation unique du classeur.</div>
@@ -248,7 +253,7 @@ input,select,textarea{width:100%;padding:12px;border:1px solid #d1d5db;border-ra
 const VALID=/^42-R([1-3])-N([1-5])-([ABC])$/i, LOT=/^L\d{4}$/;
 let scanner=null,running=false,activeLocation=null,receiveOrderId=null;
 const $=id=>document.getElementById(id);
-const LS={catalog:'stock42Catalog',lots:'stock42Lots',orders:'stock42Orders',moves:'stock42Movements',assign:'stock42Assignments',history:'stock42History',imported:'stock42ImportedAt',syncUrl:'stock42SyncUrl',syncKey:'stock42SyncKey'};
+const LS={catalog:'stock42Catalog',lots:'stock42Lots',orders:'stock42Orders',moves:'stock42Movements',assign:'stock42Assignments',history:'stock42History',imported:'stock42ImportedAt',syncUrl:'stock42SyncUrl',syncKey:'stock42SyncKey',guestMode:'stock42GuestMode'};
 const get=(k,d=[])=>{try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}};
 const set=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
 const today=()=>new Date().toISOString().slice(0,10);
@@ -287,6 +292,22 @@ async function syncLotsFromSheet(){
 }
 async function sendToSheet(action,data){const u=localStorage.getItem(LS.syncUrl)||'';const k=localStorage.getItem(LS.syncKey)||'';if(!u||!k)return {ok:false,localOnly:true};try{const r=await fetch(u,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({token:k,action:action,data:data})});return JSON.parse(await r.text())}catch(e){return {ok:false,error:String(e&&e.message?e.message:e)}}}
 function lotById(l){l=normalizeLot(l);return allLots().find(x=>x.lot===l)||null}
+function guestModeEnabled(){return localStorage.getItem(LS.guestMode)==='1'}
+function applyGuestMode(){
+  const on=guestModeEnabled();
+  document.body.classList.toggle('guest-mode',on);
+  const btn=$('guestModeBtn'),status=$('guestModeStatus');
+  if(btn)btn.textContent=on?'Quitter le mode invité':'Mode famille / invité';
+  if(status)status.innerHTML=on
+    ? '<b>Consultation uniquement.</b> Recherche, FIFO, emplacements et alertes restent disponibles.'
+    : 'Mode normal : toutes les fonctions de gestion sont disponibles.';
+  if(on&&running)stopScanner();
+}
+function toggleGuestMode(){
+  localStorage.setItem(LS.guestMode,guestModeEnabled()?'0':'1');
+  applyGuestMode();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
 function updateMobileDashboard(){
   const lots=allLots();
   const ranged=lots.filter(x=>VALID.test(String(x.emplacement||''))||VALID.test(currentLocationForLot(x.lot))).length;
@@ -685,7 +706,7 @@ $('importStockBtn').onclick=importWorkbook;$('clearCatalogBtn').onclick=clearCat
 $('startBtn').onclick=startScanner;$('stopBtn').onclick=stopScanner;$('manualBtn').onclick=()=>showResult($('manualCode').value);$('manualCode').addEventListener('keydown',e=>{if(e.key==='Enter')showResult(e.target.value)});
 $('findLotBtn').onclick=()=>previewLot($('lotInput').value);$('lotInput').addEventListener('keydown',e=>{if(e.key==='Enter')previewLot(e.target.value)});
 $('assignLotBtn').onclick=()=>{const lot=normalizeLot($('lotInput').value);if(activeLocation)assignLotTo(lot,activeLocation)};
-$('searchLotBtn').onclick=searchLot;$('searchLot').addEventListener('keydown',e=>{if(e.key==='Enter')searchLot()});$('categorySearchBtn').onclick=searchCategory;$('categorySearch').addEventListener('change',searchCategory);$('inventoryLoadBtn').onclick=loadInventoryLocation;$('inventoryLocationSelect').addEventListener('change',loadInventoryLocation);$('inventoryUseActiveBtn').onclick=useActiveInventoryLocation;$('inventoryConfirmBtn').onclick=confirmQuickInventory;$('moveLotBtn').onclick=moveSelectedLot;$('moveLotSelect').addEventListener('change',showMoveCurrentLocation);$('fifoSearchBtn').onclick=showFifoView;$('fifoProductSelect').addEventListener('change',showFifoView);$('locationViewBtn').onclick=showLocationView;$('locationViewSelect').addEventListener('change',showLocationView);$('showExpiryBtn').onclick=showExpiryAlerts;
+$('searchLotBtn').onclick=searchLot;$('searchLot').addEventListener('keydown',e=>{if(e.key==='Enter')searchLot()});$('categorySearchBtn').onclick=searchCategory;$('categorySearch').addEventListener('change',searchCategory);$('inventoryLoadBtn').onclick=loadInventoryLocation;$('inventoryLocationSelect').addEventListener('change',loadInventoryLocation);$('inventoryUseActiveBtn').onclick=useActiveInventoryLocation;$('inventoryConfirmBtn').onclick=confirmQuickInventory;$('moveLotBtn').onclick=moveSelectedLot;$('moveLotSelect').addEventListener('change',showMoveCurrentLocation);$('fifoSearchBtn').onclick=showFifoView;$('fifoProductSelect').addEventListener('change',showFifoView);$('locationViewBtn').onclick=showLocationView;$('locationViewSelect').addEventListener('change',showLocationView);$('showExpiryBtn').onclick=showExpiryAlerts;$('guestModeBtn').onclick=toggleGuestMode;
 $('exportLotsCsvBtn').onclick=exportLots;$('exportOrdersCsvBtn').onclick=exportOrders;$('exportJsonBtn').onclick=exportJson;
 $('syncUrl').value=localStorage.getItem(LS.syncUrl)||'';
 $('syncKey').value=localStorage.getItem(LS.syncKey)||'';
@@ -704,11 +725,12 @@ function cleanupTestDataOnce(){
   localStorage.setItem(key,new Date().toISOString());
 }
 cleanupTestDataOnce();
+applyGuestMode();
 updateStats();
 if(localStorage.getItem(LS.syncUrl))syncLotsFromSheet();
 if('serviceWorker' in navigator)window.addEventListener('load',async()=>{
   try{
-    const reg=await navigator.serviceWorker.register('./service-worker.js?v=16',{updateViaCache:'none'});
+    const reg=await navigator.serviceWorker.register('./service-worker.js?v=17',{updateViaCache:'none'});
     reg.update().catch(()=>{});
     navigator.serviceWorker.addEventListener('controllerchange',()=>{
       if(!sessionStorage.getItem('stock42SwReload')){
