@@ -22,13 +22,30 @@ input,select,textarea{width:100%;padding:12px;border:1px solid #d1d5db;border-ra
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.kv{background:#f9fafb;border-radius:12px;padding:10px}.k{font-size:.76rem;color:#6b7280}.v{font-weight:800;margin-top:2px}.manual{display:flex;gap:8px}.manual input{min-width:0;flex:1}
 .tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}.tab{padding:10px 8px;border-radius:11px;border:0;background:#e5e7eb;font-weight:800}.tab.active{background:#111827;color:#fff}
 .hidden{display:none!important}.footer{text-align:center;color:#9ca3af;font-size:.78rem;margin-top:24px}
-@media(max-width:500px){.two,.three,.grid{grid-template-columns:1fr}.tabs{grid-template-columns:1fr}}
+@media(max-width:500px){.two,.three,.grid{grid-template-columns:1fr}.tabs{grid-template-columns:1fr}#mobileDashboard .grid{grid-template-columns:1fr 1fr}#mobileDashboard .two{grid-template-columns:1fr 1fr}#mobileDashboard .kv{padding:9px}#mobileDashboard .v{font-size:1.08rem}}
 </style>
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 </head>
 <body><main class="app">
 <header class="head"><div class="logo">42</div><div><div class="title">Stock 42 — V3</div><div class="sub">Commandes • réceptions • lots • emplacements • FIFO</div></div></header>
+
+<section class="card" id="mobileDashboard">
+  <div class="section-title">Tableau de bord</div>
+  <div class="grid">
+    <div class="kv"><div class="k">Lots connus</div><div id="dashLots" class="v">0</div></div>
+    <div class="kv"><div class="k">Lots rangés</div><div id="dashRanged" class="v">0</div></div>
+    <div class="kv"><div class="k">À ranger / TEMP</div><div id="dashTemp" class="v">0</div></div>
+    <div class="kv"><div class="k">Emplacements occupés</div><div id="dashLocations" class="v">0 / 45</div></div>
+    <div class="kv"><div class="k">DDM/DLC ≤ 3 mois</div><div id="dashSoon" class="v">0</div></div>
+    <div class="kv"><div class="k">Dates dépassées</div><div id="dashExpired" class="v">0</div></div>
+  </div>
+  <div class="two" style="margin-top:10px">
+    <div class="kv"><div class="k">Commandes en cours</div><div id="dashOrders" class="v">0</div></div>
+    <div class="kv"><div class="k">Prochain lot</div><div id="dashNextLot" class="v">L0001</div></div>
+  </div>
+  <div id="dashSummary" class="status" style="margin-top:10px"></div>
+</section>
 
 <section class="card">
   <div class="section-title">Connexion Google Sheets</div>
@@ -270,7 +287,40 @@ async function syncLotsFromSheet(){
 }
 async function sendToSheet(action,data){const u=localStorage.getItem(LS.syncUrl)||'';const k=localStorage.getItem(LS.syncKey)||'';if(!u||!k)return {ok:false,localOnly:true};try{const r=await fetch(u,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({token:k,action:action,data:data})});return JSON.parse(await r.text())}catch(e){return {ok:false,error:String(e&&e.message?e.message:e)}}}
 function lotById(l){l=normalizeLot(l);return allLots().find(x=>x.lot===l)||null}
-function updateStats(){ $('catalogCount').textContent=allLots().length;$('nextLot').textContent=nextLot();const t=localStorage.getItem(LS.imported);$('importStatus').textContent=t?'Dernier import : '+new Date(t).toLocaleString('fr-FR')+' • '+catalog().length+' lot(s) chargé(s).':'Aucun tableau importé sur cet appareil.';renderOrders();populateCategorySearch();populateInventoryLocations();populateMoveControls();populateFifoProducts();populateLocationView();updateExpiryStats() }
+function updateMobileDashboard(){
+  const lots=allLots();
+  const ranged=lots.filter(x=>VALID.test(String(x.emplacement||''))||VALID.test(currentLocationForLot(x.lot))).length;
+  const temp=lots.length-ranged;
+  const occupied=new Set(lots.map(x=>{
+    const loc=currentLocationForLot(x.lot)||String(x.emplacement||'');
+    return VALID.test(loc)?loc:'';
+  }).filter(Boolean)).size;
+  let soon=0,expired=0;
+  lots.forEach(x=>{
+    const st=expiryState(x);
+    if(st.bucket==='expired')expired++;
+    else if(st.bucket==='3m')soon++;
+  });
+  const openOrders=orders().filter(o=>String(o.status||'').toLocaleLowerCase('fr-FR')!=='reçue'&&String(o.status||'').toLocaleLowerCase('fr-FR')!=='recue').length;
+  if($('dashLots'))$('dashLots').textContent=lots.length;
+  if($('dashRanged'))$('dashRanged').textContent=ranged;
+  if($('dashTemp'))$('dashTemp').textContent=temp;
+  if($('dashLocations'))$('dashLocations').textContent=occupied+' / 45';
+  if($('dashSoon'))$('dashSoon').textContent=soon;
+  if($('dashExpired'))$('dashExpired').textContent=expired;
+  if($('dashOrders'))$('dashOrders').textContent=openOrders;
+  if($('dashNextLot'))$('dashNextLot').textContent=nextLot();
+  if($('dashSummary')){
+    const alerts=[];
+    if(temp)alerts.push(temp+' lot(s) à ranger');
+    if(expired)alerts.push(expired+' date(s) dépassée(s)');
+    if(soon)alerts.push(soon+' échéance(s) sous 3 mois');
+    $('dashSummary').innerHTML=alerts.length
+      ? '<b>À surveiller :</b> '+esc(alerts.join(' • '))
+      : '<b>✓ Aucun point urgent détecté.</b>';
+  }
+}
+function updateStats(){ $('catalogCount').textContent=allLots().length;$('nextLot').textContent=nextLot();const t=localStorage.getItem(LS.imported);$('importStatus').textContent=t?'Dernier import : '+new Date(t).toLocaleString('fr-FR')+' • '+catalog().length+' lot(s) chargé(s).':'Aucun tableau importé sur cet appareil.';renderOrders();populateCategorySearch();populateInventoryLocations();populateMoveControls();populateFifoProducts();populateLocationView();updateExpiryStats();updateMobileDashboard() }
 function parseNumber(v){if(typeof v==='number')return v;const s=String(v??'').replace(/\s/g,'').replace(',','.').replace(/[^0-9.-]/g,'');return s?Number(s):null}
 function excelDate(v){if(!v)return'';if(v instanceof Date)return v.toLocaleDateString('fr-FR');return String(v)}
 async function importWorkbook(){
@@ -658,7 +708,7 @@ updateStats();
 if(localStorage.getItem(LS.syncUrl))syncLotsFromSheet();
 if('serviceWorker' in navigator)window.addEventListener('load',async()=>{
   try{
-    const reg=await navigator.serviceWorker.register('./service-worker.js?v=14',{updateViaCache:'none'});
+    const reg=await navigator.serviceWorker.register('./service-worker.js?v=16',{updateViaCache:'none'});
     reg.update().catch(()=>{});
     navigator.serviceWorker.addEventListener('controllerchange',()=>{
       if(!sessionStorage.getItem('stock42SwReload')){
