@@ -161,6 +161,22 @@ input,select,textarea{width:100%;padding:12px;border:1px solid #d1d5db;border-ra
 </section>
 
 <section class="card">
+  <div class="section-title">Alertes DDM / DLC</div>
+  <div class="two">
+    <div class="kv"><div class="k">Dépassées</div><div id="expiryExpiredCount" class="v">0</div></div>
+    <div class="kv"><div class="k">≤ 3 mois</div><div id="expiry3mCount" class="v">0</div></div>
+  </div>
+  <div class="two" style="margin-top:10px">
+    <div class="kv"><div class="k">≤ 6 mois</div><div id="expiry6mCount" class="v">0</div></div>
+    <div class="kv"><div class="k">Sans date</div><div id="expiryMissingCount" class="v">0</div></div>
+  </div>
+  <div class="row" style="margin-top:12px">
+    <button id="showExpiryBtn" class="btn secondary">Voir les alertes</button>
+  </div>
+  <div id="expiryResult" style="margin-top:10px"></div>
+</section>
+
+<section class="card">
   <div class="section-title">Sauvegarde / liaison tableau</div>
   <div class="row"><button id="exportJsonBtn" class="btn secondary">Sauvegarde JSON</button><button id="exportLotsCsvBtn" class="btn secondary">Lots CSV</button><button id="exportOrdersCsvBtn" class="btn secondary">Commandes CSV</button></div>
   <div class="hint" style="margin-top:10px">La saisie quotidienne se fait désormais dans Stock 42. L'export permet de conserver une copie exploitable dans Excel. La synchronisation Google Sheets automatique sera activée après une autorisation unique du classeur.</div>
@@ -211,7 +227,7 @@ async function syncLotsFromSheet(){
 }
 async function sendToSheet(action,data){const u=localStorage.getItem(LS.syncUrl)||'';const k=localStorage.getItem(LS.syncKey)||'';if(!u||!k)return {ok:false,localOnly:true};try{const r=await fetch(u,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({token:k,action:action,data:data})});return JSON.parse(await r.text())}catch(e){return {ok:false,error:String(e&&e.message?e.message:e)}}}
 function lotById(l){l=normalizeLot(l);return allLots().find(x=>x.lot===l)||null}
-function updateStats(){ $('catalogCount').textContent=allLots().length;$('nextLot').textContent=nextLot();const t=localStorage.getItem(LS.imported);$('importStatus').textContent=t?'Dernier import : '+new Date(t).toLocaleString('fr-FR')+' • '+catalog().length+' lot(s) chargé(s).':'Aucun tableau importé sur cet appareil.';renderOrders();populateCategorySearch() }
+function updateStats(){ $('catalogCount').textContent=allLots().length;$('nextLot').textContent=nextLot();const t=localStorage.getItem(LS.imported);$('importStatus').textContent=t?'Dernier import : '+new Date(t).toLocaleString('fr-FR')+' • '+catalog().length+' lot(s) chargé(s).':'Aucun tableau importé sur cet appareil.';renderOrders();populateCategorySearch();updateExpiryStats() }
 function parseNumber(v){if(typeof v==='number')return v;const s=String(v??'').replace(/\s/g,'').replace(',','.').replace(/[^0-9.-]/g,'');return s?Number(s):null}
 function excelDate(v){if(!v)return'';if(v instanceof Date)return v.toLocaleDateString('fr-FR');return String(v)}
 async function importWorkbook(){
@@ -313,6 +329,53 @@ function searchCategory(){
     return '<div class="list-item"><div class="item-title">'+esc(x.produit||'Produit')+' <span class="badge blue">'+esc(x.lot)+'</span></div><div class="item-meta">'+esc(x.quantite??'')+' '+esc(x.unite||'')+(x.ddm?' • DDM/DLC '+esc(x.ddm):'')+'</div><div style="margin-top:6px">Emplacement : <b>'+esc(loc)+'</b></div></div>';
   }).join('');
 }
+function parseFrenchDate(v){
+  const s=String(v||'').trim();
+  if(!s)return null;
+  let m=s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if(m)return new Date(Number(m[3]),Number(m[2])-1,Number(m[1]));
+  m=s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(m)return new Date(Number(m[1]),Number(m[2])-1,Number(m[3]));
+  return null;
+}
+function expiryState(x){
+  const d=parseFrenchDate(x.ddm);
+  if(!d)return {bucket:'missing',days:null};
+  const now=new Date();now.setHours(0,0,0,0);d.setHours(0,0,0,0);
+  const days=Math.ceil((d-now)/86400000);
+  if(days<0)return {bucket:'expired',days};
+  if(days<=90)return {bucket:'3m',days};
+  if(days<=180)return {bucket:'6m',days};
+  return {bucket:'ok',days};
+}
+function expiryLabel(st){
+  if(st.bucket==='expired')return 'DÉPASSÉE';
+  if(st.bucket==='3m')return '≤ 3 mois';
+  if(st.bucket==='6m')return '≤ 6 mois';
+  if(st.bucket==='missing')return 'Date absente';
+  return 'OK';
+}
+function updateExpiryStats(){
+  const counts={expired:0,'3m':0,'6m':0,missing:0};
+  allLots().forEach(x=>{const s=expiryState(x);if(counts[s.bucket]!=null)counts[s.bucket]++});
+  if($('expiryExpiredCount'))$('expiryExpiredCount').textContent=counts.expired;
+  if($('expiry3mCount'))$('expiry3mCount').textContent=counts['3m'];
+  if($('expiry6mCount'))$('expiry6mCount').textContent=counts['6m'];
+  if($('expiryMissingCount'))$('expiryMissingCount').textContent=counts.missing;
+}
+function showExpiryAlerts(){
+  const el=$('expiryResult');
+  const rows=allLots().map(x=>({x,st:expiryState(x)})).filter(r=>r.st.bucket!=='ok');
+  const order={expired:0,'3m':1,'6m':2,missing:3};
+  rows.sort((a,b)=>order[a.st.bucket]-order[b.st.bucket]||String(a.x.ddm||'9999').localeCompare(String(b.x.ddm||'9999')));
+  if(!rows.length){el.innerHTML='<div class="notice"><b>✓ Aucune alerte DDM/DLC.</b></div>';return}
+  el.innerHTML=rows.map(({x,st})=>{
+    const places=assignments().filter(a=>a.lot===x.lot).map(a=>a.location);
+    const loc=places.join(', ')||x.emplacement||'non affecté';
+    const cls=st.bucket==='expired'?'bad':(st.bucket==='3m'?'notice':'list-item');
+    return '<div class="'+cls+'" style="margin-bottom:8px"><div class="item-title">'+esc(x.produit||'Produit')+' <span class="badge blue">'+esc(x.lot)+'</span></div><div class="item-meta">'+esc(x.quantite??'')+' '+esc(x.unite||'')+' • '+esc(x.typeDate||'DDM')+' '+esc(x.ddm||'non renseignée')+' • <b>'+esc(expiryLabel(st))+'</b></div><div style="margin-top:6px">Emplacement : <b>'+esc(loc)+'</b></div></div>';
+  }).join('');
+}
 function csvDownload(name,headers,rows){const data=[headers,...rows];const csv='\uFEFF'+data.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';')).join('\n');const blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();URL.revokeObjectURL(url)}
 function exportLots(){csvDownload('stock42_lots.csv',['N° lot interne','Date réception','Produit','Catégorie','Quantité reçue','Unité','DDM / DLC','Type date','Fournisseur','Référence / commande','Emplacement','Statut','Conditionnement','Lot fabricant','Notes'],allLots().map(x=>[x.lot,x.dateReception,x.produit,x.categorie,x.quantite,x.unite,x.ddm,x.typeDate,x.fournisseur,x.reference,assignments().find(a=>a.lot===x.lot)?.location||x.emplacement||'',x.statut,x.conditionnement,x.lotFabricant,x.notes]))}
 function exportOrders(){csvDownload('stock42_commandes.csv',['Commande','Statut','Produit','Catégorie','Quantité','Unité','Prix €','Fournisseur','Référence','Date commande','Livraison prévue','Lot reçu','Notes'],orders().map(x=>[x.id,x.status,x.product,x.category,x.qty,x.unit,x.price,x.supplier,x.reference,x.orderDate,x.expected,x.lot||'',x.notes]))}
@@ -326,7 +389,7 @@ $('importStockBtn').onclick=importWorkbook;$('clearCatalogBtn').onclick=clearCat
 $('startBtn').onclick=startScanner;$('stopBtn').onclick=stopScanner;$('manualBtn').onclick=()=>showResult($('manualCode').value);$('manualCode').addEventListener('keydown',e=>{if(e.key==='Enter')showResult(e.target.value)});
 $('findLotBtn').onclick=()=>previewLot($('lotInput').value);$('lotInput').addEventListener('keydown',e=>{if(e.key==='Enter')previewLot(e.target.value)});
 $('assignLotBtn').onclick=()=>{const lot=normalizeLot($('lotInput').value);if(activeLocation)assignLotTo(lot,activeLocation)};
-$('searchLotBtn').onclick=searchLot;$('searchLot').addEventListener('keydown',e=>{if(e.key==='Enter')searchLot()});$('categorySearchBtn').onclick=searchCategory;$('categorySearch').addEventListener('change',searchCategory);
+$('searchLotBtn').onclick=searchLot;$('searchLot').addEventListener('keydown',e=>{if(e.key==='Enter')searchLot()});$('categorySearchBtn').onclick=searchCategory;$('categorySearch').addEventListener('change',searchCategory);$('showExpiryBtn').onclick=showExpiryAlerts;
 $('exportLotsCsvBtn').onclick=exportLots;$('exportOrdersCsvBtn').onclick=exportOrders;$('exportJsonBtn').onclick=exportJson;
 $('syncUrl').value=localStorage.getItem(LS.syncUrl)||'';
 $('syncKey').value=localStorage.getItem(LS.syncKey)||'';
