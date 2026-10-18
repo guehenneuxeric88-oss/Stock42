@@ -35,7 +35,7 @@ input,select,textarea{width:100%;padding:12px;border:1px solid #d1d5db;border-ra
   <div class="notice">Configuration locale de la synchronisation.</div>
   <div class="field"><label>URL Apps Script</label><input id="syncUrl" type="url"></div>
   <div class="field"><label>Clé API</label><input id="syncKey" type="password"></div>
-  <button id="saveSync" class="btn primary">Enregistrer la connexion</button>
+  <div class="row"><button id="saveSync" class="btn primary">Enregistrer la connexion</button><button id="syncLotsBtn" class="btn secondary">Synchroniser les lots</button></div>
   <div id="syncMsg" class="status"></div>
 </section>
 
@@ -175,6 +175,32 @@ function catalog(){return get(LS.catalog,[])} function localLots(){return get(LS
 function allLots(){const map=new Map();[...catalog(),...localLots()].forEach(x=>{const l=normalizeLot(x.lot);if(l&&LOT.test(l))map.set(l,{...x,lot:l})});return [...map.values()].sort((a,b)=>a.lot.localeCompare(b.lot))}
 function nextLot(){let max=0;allLots().forEach(x=>{const n=parseInt(x.lot.slice(1),10);if(n>max)max=n});return 'L'+String(max+1).padStart(4,'0')}
 function nextOrder(){let max=0;orders().forEach(x=>{const m=String(x.id||'').match(/^C(\d+)$/);if(m)max=Math.max(max,+m[1])});return 'C'+String(max+1).padStart(4,'0')}
+async function syncLotsFromSheet(){
+  const u=localStorage.getItem(LS.syncUrl)||'';
+  if(!u){$('syncMsg').textContent='Renseignez d’abord l’URL Apps Script.';return false}
+  $('syncMsg').textContent='Synchronisation des lots…';
+  try{
+    const sep=u.includes('?')?'&':'?';
+    const r=await fetch(u+sep+'action=lots&t='+Date.now(),{cache:'no-store'});
+    const data=await r.json();
+    if(!data.ok||!Array.isArray(data.lots))throw new Error(data.error||'Réponse invalide');
+    set(LS.catalog,data.lots);
+    localStorage.setItem(LS.imported,new Date().toISOString());
+    const byId=new Map(assignments().map(x=>[x.id,x]));
+    data.lots.filter(x=>VALID.test(x.emplacement||'')).forEach(x=>{
+      const id=x.lot+'@'+x.emplacement;
+      byId.set(id,{id,lot:x.lot,location:x.emplacement,assignedAt:new Date().toISOString()});
+    });
+    set(LS.assign,[...byId.values()]);
+    updateStats();
+    if(activeLocation)renderLocationStock();
+    $('syncMsg').textContent='Google Sheets synchronisé : '+data.lots.length+' lot(s). Prochain lot : '+(data.nextLot||nextLot())+'.';
+    return true;
+  }catch(e){
+    $('syncMsg').textContent='Synchronisation impossible : '+String(e&&e.message?e.message:e);
+    return false;
+  }
+}
 async function sendToSheet(action,data){const u=localStorage.getItem(LS.syncUrl)||'';const k=localStorage.getItem(LS.syncKey)||'';if(!u||!k)return {ok:false,localOnly:true};try{const r=await fetch(u,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({token:k,action:action,data:data})});return JSON.parse(await r.text())}catch(e){return {ok:false,error:String(e&&e.message?e.message:e)}}}
 function lotById(l){l=normalizeLot(l);return allLots().find(x=>x.lot===l)||null}
 function updateStats(){ $('catalogCount').textContent=allLots().length;$('nextLot').textContent=nextLot();const t=localStorage.getItem(LS.imported);$('importStatus').textContent=t?'Dernier import : '+new Date(t).toLocaleString('fr-FR')+' • '+catalog().length+' lot(s) chargé(s).':'Aucun tableau importé sur cet appareil.';renderOrders() }
@@ -244,7 +270,7 @@ $('searchLotBtn').onclick=searchLot;$('searchLot').addEventListener('keydown',e=
 $('exportLotsCsvBtn').onclick=exportLots;$('exportOrdersCsvBtn').onclick=exportOrders;$('exportJsonBtn').onclick=exportJson;
 $('syncUrl').value=localStorage.getItem(LS.syncUrl)||'';
 $('syncKey').value=localStorage.getItem(LS.syncKey)||'';
-$('saveSync').onclick=()=>{localStorage.setItem(LS.syncUrl,$('syncUrl').value.trim());localStorage.setItem(LS.syncKey,$('syncKey').value.trim());$('syncMsg').textContent='Connexion enregistrée sur cet appareil.'};
+$('saveSync').onclick=async()=>{localStorage.setItem(LS.syncUrl,$('syncUrl').value.trim());localStorage.setItem(LS.syncKey,$('syncKey').value.trim());$('syncMsg').textContent='Connexion enregistrée sur cet appareil.';await syncLotsFromSheet()};$('syncLotsBtn').onclick=syncLotsFromSheet;
 function cleanupTestDataOnce(){
   const key='stock42Cleanup20261018';
   if(localStorage.getItem(key))return;
@@ -260,6 +286,7 @@ function cleanupTestDataOnce(){
 }
 cleanupTestDataOnce();
 updateStats();
+if(localStorage.getItem(LS.syncUrl))syncLotsFromSheet();
 if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js').catch(()=>{}));
 </script>
 </body></html>
