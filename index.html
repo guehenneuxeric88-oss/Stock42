@@ -161,6 +161,13 @@ input,select,textarea{width:100%;padding:12px;border:1px solid #d1d5db;border-ra
 </section>
 
 <section class="card">
+  <div class="section-title">Vue FIFO</div>
+  <div class="manual"><input id="fifoSearch" placeholder="Ex. jus, huile, purée"><button id="fifoSearchBtn" class="btn secondary">Afficher</button></div>
+  <div class="hint" style="margin-top:8px">Affiche les lots d'un même produit dans l'ordre où ils doivent être consommés.</div>
+  <div id="fifoResult" style="margin-top:10px"></div>
+</section>
+
+<section class="card">
   <div class="section-title">Vue par emplacement</div>
   <div class="manual"><select id="locationViewSelect"><option value="">— Choisir un emplacement —</option></select><button id="locationViewBtn" class="btn secondary">Afficher</button></div>
   <div class="hint" style="margin-top:8px">Affiche tout le contenu d'un emplacement du site 42.</div>
@@ -336,6 +343,26 @@ function searchCategory(){
     return '<div class="list-item"><div class="item-title">'+esc(x.produit||'Produit')+' <span class="badge blue">'+esc(x.lot)+'</span></div><div class="item-meta">'+esc(x.quantite??'')+' '+esc(x.unite||'')+(x.ddm?' • DDM/DLC '+esc(x.ddm):'')+'</div><div style="margin-top:6px">Emplacement : <b>'+esc(loc)+'</b></div></div>';
   }).join('');
 }
+function showFifoView(){
+  const raw=$('fifoSearch').value.trim(),el=$('fifoResult');
+  if(!raw){el.innerHTML='<div class="empty">Saisissez un nom de produit.</div>';return}
+  const q=raw.toLocaleLowerCase('fr-FR');
+  const results=allLots().filter(x=>String(x.produit||'').toLocaleLowerCase('fr-FR').includes(q));
+  if(!results.length){el.innerHTML='<div class="empty">Aucun produit trouvé pour « '+esc(raw)+' ».</div>';return}
+  results.sort((a,b)=>{
+    const da=parseFrenchDate(a.ddm),db=parseFrenchDate(b.ddm);
+    if(da&&db)return da-db;
+    if(da&&!db)return -1;
+    if(!da&&db)return 1;
+    return String(a.lot||'').localeCompare(String(b.lot||''));
+  });
+  el.innerHTML='<div class="notice"><b>'+results.length+' lot(s) trouvé(s)</b> — à consommer dans cet ordre.</div>'+
+    results.map((x,i)=>{
+      const places=assignments().filter(a=>a.lot===x.lot).map(a=>a.location);
+      const loc=places.join(', ')||x.emplacement||'non affecté';
+      return '<div class="list-item"><div class="item-title">'+(i===0?'<span class="badge blue">À CONSOMMER EN PREMIER</span> ':'')+esc(x.produit||'Produit')+' <span class="badge blue">'+esc(x.lot)+'</span></div><div class="item-meta">'+esc(x.quantite??'')+' '+esc(x.unite||'')+(x.ddm?' • '+esc(x.typeDate||'DDM')+' '+esc(x.ddm):' • date absente')+'</div><div style="margin-top:6px">Emplacement : <b>'+esc(loc)+'</b></div></div>';
+    }).join('');
+}
 function allOfficialLocations(){
   const out=[];
   for(let r=1;r<=3;r++)for(let n=1;n<=5;n++)for(const z of ['A','B','C'])out.push('42-R'+r+'-N'+n+'-'+z);
@@ -419,7 +446,7 @@ $('importStockBtn').onclick=importWorkbook;$('clearCatalogBtn').onclick=clearCat
 $('startBtn').onclick=startScanner;$('stopBtn').onclick=stopScanner;$('manualBtn').onclick=()=>showResult($('manualCode').value);$('manualCode').addEventListener('keydown',e=>{if(e.key==='Enter')showResult(e.target.value)});
 $('findLotBtn').onclick=()=>previewLot($('lotInput').value);$('lotInput').addEventListener('keydown',e=>{if(e.key==='Enter')previewLot(e.target.value)});
 $('assignLotBtn').onclick=()=>{const lot=normalizeLot($('lotInput').value);if(activeLocation)assignLotTo(lot,activeLocation)};
-$('searchLotBtn').onclick=searchLot;$('searchLot').addEventListener('keydown',e=>{if(e.key==='Enter')searchLot()});$('categorySearchBtn').onclick=searchCategory;$('categorySearch').addEventListener('change',searchCategory);$('locationViewBtn').onclick=showLocationView;$('locationViewSelect').addEventListener('change',showLocationView);$('showExpiryBtn').onclick=showExpiryAlerts;
+$('searchLotBtn').onclick=searchLot;$('searchLot').addEventListener('keydown',e=>{if(e.key==='Enter')searchLot()});$('categorySearchBtn').onclick=searchCategory;$('categorySearch').addEventListener('change',searchCategory);$('fifoSearchBtn').onclick=showFifoView;$('fifoSearch').addEventListener('keydown',e=>{if(e.key==='Enter')showFifoView()});$('locationViewBtn').onclick=showLocationView;$('locationViewSelect').addEventListener('change',showLocationView);$('showExpiryBtn').onclick=showExpiryAlerts;
 $('exportLotsCsvBtn').onclick=exportLots;$('exportOrdersCsvBtn').onclick=exportOrders;$('exportJsonBtn').onclick=exportJson;
 $('syncUrl').value=localStorage.getItem(LS.syncUrl)||'';
 $('syncKey').value=localStorage.getItem(LS.syncKey)||'';
@@ -442,7 +469,7 @@ updateStats();
 if(localStorage.getItem(LS.syncUrl))syncLotsFromSheet();
 if('serviceWorker' in navigator)window.addEventListener('load',async()=>{
   try{
-    const reg=await navigator.serviceWorker.register('./service-worker.js?v=10',{updateViaCache:'none'});
+    const reg=await navigator.serviceWorker.register('./service-worker.js?v=11',{updateViaCache:'none'});
     reg.update().catch(()=>{});
     navigator.serviceWorker.addEventListener('controllerchange',()=>{
       if(!sessionStorage.getItem('stock42SwReload')){
