@@ -245,6 +245,20 @@ $('exportLotsCsvBtn').onclick=exportLots;$('exportOrdersCsvBtn').onclick=exportO
 $('syncUrl').value=localStorage.getItem(LS.syncUrl)||'';
 $('syncKey').value=localStorage.getItem(LS.syncKey)||'';
 $('saveSync').onclick=()=>{localStorage.setItem(LS.syncUrl,$('syncUrl').value.trim());localStorage.setItem(LS.syncKey,$('syncKey').value.trim());$('syncMsg').textContent='Connexion enregistrée sur cet appareil.'};
+function cleanupTestDataOnce(){
+  const key='stock42Cleanup20261018';
+  if(localStorage.getItem(key))return;
+  const testOrders=new Set(['C0001','C0002','C0003']);
+  const testLots=new Set(['L0057','L0058']);
+  set(LS.orders,orders().filter(x=>!testOrders.has(String(x.id||''))));
+  set(LS.lots,localLots().filter(x=>!testLots.has(normalizeLot(x.lot))));
+  set(LS.moves,get(LS.moves,[]).filter(x=>!testLots.has(normalizeLot(x.lot))&&!testOrders.has(String(x.reference||''))&&!testOrders.has(String(x.sourceOrder||''))));
+  set(LS.assign,assignments().filter(x=>!testLots.has(normalizeLot(x.lot))));
+  const h=get(LS.history,[]);
+  if(Array.isArray(h))set(LS.history,h.filter(x=>!testLots.has(normalizeLot(x.lot))&&!testOrders.has(String(x.orderId||''))&&!testOrders.has(String(x.reference||''))));
+  localStorage.setItem(key,new Date().toISOString());
+}
+cleanupTestDataOnce();
 updateStats();
 if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js').catch(()=>{}));
 </script>
