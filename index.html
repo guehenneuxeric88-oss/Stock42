@@ -162,8 +162,8 @@ input,select,textarea{width:100%;padding:12px;border:1px solid #d1d5db;border-ra
 
 <section class="card">
   <div class="section-title">Vue FIFO</div>
-  <div class="manual"><input id="fifoSearch" placeholder="Ex. jus, huile, purée"><button id="fifoSearchBtn" class="btn secondary">Afficher</button></div>
-  <div class="hint" style="margin-top:8px">Affiche les lots d'un même produit dans l'ordre où ils doivent être consommés.</div>
+  <div class="manual"><select id="fifoProductSelect"><option value="">— Choisir un produit —</option></select><button id="fifoSearchBtn" class="btn secondary">Afficher</button></div>
+  <div class="hint" style="margin-top:8px">Choisissez un produit pour afficher ses lots dans l'ordre où ils doivent être consommés.</div>
   <div id="fifoResult" style="margin-top:10px"></div>
 </section>
 
@@ -241,7 +241,7 @@ async function syncLotsFromSheet(){
 }
 async function sendToSheet(action,data){const u=localStorage.getItem(LS.syncUrl)||'';const k=localStorage.getItem(LS.syncKey)||'';if(!u||!k)return {ok:false,localOnly:true};try{const r=await fetch(u,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({token:k,action:action,data:data})});return JSON.parse(await r.text())}catch(e){return {ok:false,error:String(e&&e.message?e.message:e)}}}
 function lotById(l){l=normalizeLot(l);return allLots().find(x=>x.lot===l)||null}
-function updateStats(){ $('catalogCount').textContent=allLots().length;$('nextLot').textContent=nextLot();const t=localStorage.getItem(LS.imported);$('importStatus').textContent=t?'Dernier import : '+new Date(t).toLocaleString('fr-FR')+' • '+catalog().length+' lot(s) chargé(s).':'Aucun tableau importé sur cet appareil.';renderOrders();populateCategorySearch();populateLocationView();updateExpiryStats() }
+function updateStats(){ $('catalogCount').textContent=allLots().length;$('nextLot').textContent=nextLot();const t=localStorage.getItem(LS.imported);$('importStatus').textContent=t?'Dernier import : '+new Date(t).toLocaleString('fr-FR')+' • '+catalog().length+' lot(s) chargé(s).':'Aucun tableau importé sur cet appareil.';renderOrders();populateCategorySearch();populateFifoProducts();populateLocationView();updateExpiryStats() }
 function parseNumber(v){if(typeof v==='number')return v;const s=String(v??'').replace(/\s/g,'').replace(',','.').replace(/[^0-9.-]/g,'');return s?Number(s):null}
 function excelDate(v){if(!v)return'';if(v instanceof Date)return v.toLocaleDateString('fr-FR');return String(v)}
 async function importWorkbook(){
@@ -343,11 +343,17 @@ function searchCategory(){
     return '<div class="list-item"><div class="item-title">'+esc(x.produit||'Produit')+' <span class="badge blue">'+esc(x.lot)+'</span></div><div class="item-meta">'+esc(x.quantite??'')+' '+esc(x.unite||'')+(x.ddm?' • DDM/DLC '+esc(x.ddm):'')+'</div><div style="margin-top:6px">Emplacement : <b>'+esc(loc)+'</b></div></div>';
   }).join('');
 }
+function populateFifoProducts(){
+  const sel=$('fifoProductSelect');if(!sel)return;
+  const current=sel.value;
+  const products=[...new Set(allLots().map(x=>String(x.produit||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'fr'));
+  sel.innerHTML='<option value="">— Choisir un produit —</option>'+products.map(p=>'<option value="'+esc(p)+'">'+esc(p)+'</option>').join('');
+  if(products.includes(current))sel.value=current;
+}
 function showFifoView(){
-  const raw=$('fifoSearch').value.trim(),el=$('fifoResult');
-  if(!raw){el.innerHTML='<div class="empty">Saisissez un nom de produit.</div>';return}
-  const q=raw.toLocaleLowerCase('fr-FR');
-  const results=allLots().filter(x=>String(x.produit||'').toLocaleLowerCase('fr-FR').includes(q));
+  const raw=$('fifoProductSelect').value,el=$('fifoResult');
+  if(!raw){el.innerHTML='<div class="empty">Choisissez un produit.</div>';return}
+  const results=allLots().filter(x=>String(x.produit||'')===raw);
   if(!results.length){el.innerHTML='<div class="empty">Aucun produit trouvé pour « '+esc(raw)+' ».</div>';return}
   results.sort((a,b)=>{
     const da=parseFrenchDate(a.ddm),db=parseFrenchDate(b.ddm);
@@ -446,7 +452,7 @@ $('importStockBtn').onclick=importWorkbook;$('clearCatalogBtn').onclick=clearCat
 $('startBtn').onclick=startScanner;$('stopBtn').onclick=stopScanner;$('manualBtn').onclick=()=>showResult($('manualCode').value);$('manualCode').addEventListener('keydown',e=>{if(e.key==='Enter')showResult(e.target.value)});
 $('findLotBtn').onclick=()=>previewLot($('lotInput').value);$('lotInput').addEventListener('keydown',e=>{if(e.key==='Enter')previewLot(e.target.value)});
 $('assignLotBtn').onclick=()=>{const lot=normalizeLot($('lotInput').value);if(activeLocation)assignLotTo(lot,activeLocation)};
-$('searchLotBtn').onclick=searchLot;$('searchLot').addEventListener('keydown',e=>{if(e.key==='Enter')searchLot()});$('categorySearchBtn').onclick=searchCategory;$('categorySearch').addEventListener('change',searchCategory);$('fifoSearchBtn').onclick=showFifoView;$('fifoSearch').addEventListener('keydown',e=>{if(e.key==='Enter')showFifoView()});$('locationViewBtn').onclick=showLocationView;$('locationViewSelect').addEventListener('change',showLocationView);$('showExpiryBtn').onclick=showExpiryAlerts;
+$('searchLotBtn').onclick=searchLot;$('searchLot').addEventListener('keydown',e=>{if(e.key==='Enter')searchLot()});$('categorySearchBtn').onclick=searchCategory;$('categorySearch').addEventListener('change',searchCategory);$('fifoSearchBtn').onclick=showFifoView;$('fifoProductSelect').addEventListener('change',showFifoView);$('locationViewBtn').onclick=showLocationView;$('locationViewSelect').addEventListener('change',showLocationView);$('showExpiryBtn').onclick=showExpiryAlerts;
 $('exportLotsCsvBtn').onclick=exportLots;$('exportOrdersCsvBtn').onclick=exportOrders;$('exportJsonBtn').onclick=exportJson;
 $('syncUrl').value=localStorage.getItem(LS.syncUrl)||'';
 $('syncKey').value=localStorage.getItem(LS.syncKey)||'';
@@ -469,7 +475,7 @@ updateStats();
 if(localStorage.getItem(LS.syncUrl))syncLotsFromSheet();
 if('serviceWorker' in navigator)window.addEventListener('load',async()=>{
   try{
-    const reg=await navigator.serviceWorker.register('./service-worker.js?v=11',{updateViaCache:'none'});
+    const reg=await navigator.serviceWorker.register('./service-worker.js?v=12',{updateViaCache:'none'});
     reg.update().catch(()=>{});
     navigator.serviceWorker.addEventListener('controllerchange',()=>{
       if(!sessionStorage.getItem('stock42SwReload')){
