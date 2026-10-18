@@ -242,9 +242,19 @@ input,select,textarea{width:100%;padding:12px;border:1px solid #d1d5db;border-ra
 </section>
 
 <section class="card admin-only">
-  <div class="section-title">Sauvegarde / liaison tableau</div>
-  <div class="row"><button id="exportJsonBtn" class="btn secondary">Sauvegarde JSON</button><button id="exportLotsCsvBtn" class="btn secondary">Lots CSV</button><button id="exportOrdersCsvBtn" class="btn secondary">Commandes CSV</button></div>
-  <div class="hint" style="margin-top:10px">La saisie quotidienne se fait désormais dans Stock 42. L'export permet de conserver une copie exploitable dans Excel. La synchronisation Google Sheets automatique sera activée après une autorisation unique du classeur.</div>
+  <div class="section-title">Sauvegarde automatique</div>
+  <div class="notice">Stock 42 conserve automatiquement jusqu'à 5 points de restauration sur cet appareil après chaque modification.</div>
+  <div class="two" style="margin-top:10px">
+    <div class="kv"><div class="k">Dernière sauvegarde</div><div id="autoBackupLast" class="v">—</div></div>
+    <div class="kv"><div class="k">Points disponibles</div><div id="autoBackupCount" class="v">0</div></div>
+  </div>
+  <div class="row" style="margin-top:12px">
+    <button id="backupNowBtn" class="btn primary">Sauvegarder maintenant</button>
+    <button id="restoreBackupBtn" class="btn secondary">Restaurer la dernière</button>
+  </div>
+  <div id="autoBackupStatus" class="status"></div>
+  <div class="hint" style="margin-top:10px">La clé API n'est jamais copiée dans les sauvegardes automatiques. Les lots et mouvements restent en plus synchronisés dans Google Sheets.</div>
+  <div class="row" style="margin-top:12px"><button id="exportJsonBtn" class="btn secondary">Sauvegarde JSON</button><button id="exportLotsCsvBtn" class="btn secondary">Lots CSV</button><button id="exportOrdersCsvBtn" class="btn secondary">Commandes CSV</button></div>
 </section>
 
 <div class="footer">Stock 42 • données alimentaires conservées localement sur votre appareil</div>
@@ -253,9 +263,10 @@ input,select,textarea{width:100%;padding:12px;border:1px solid #d1d5db;border-ra
 const VALID=/^42-R([1-3])-N([1-5])-([ABC])$/i, LOT=/^L\d{4}$/;
 let scanner=null,running=false,activeLocation=null,receiveOrderId=null;
 const $=id=>document.getElementById(id);
-const LS={catalog:'stock42Catalog',lots:'stock42Lots',orders:'stock42Orders',moves:'stock42Movements',assign:'stock42Assignments',history:'stock42History',imported:'stock42ImportedAt',syncUrl:'stock42SyncUrl',syncKey:'stock42SyncKey',guestMode:'stock42GuestMode'};
+const LS={catalog:'stock42Catalog',lots:'stock42Lots',orders:'stock42Orders',moves:'stock42Movements',assign:'stock42Assignments',history:'stock42History',imported:'stock42ImportedAt',syncUrl:'stock42SyncUrl',syncKey:'stock42SyncKey',guestMode:'stock42GuestMode',autoBackups:'stock42AutoBackups'};
 const get=(k,d=[])=>{try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}};
-const set=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
+let autoBackupTimer=null,restoringBackup=false;
+const set=(k,v)=>{localStorage.setItem(k,JSON.stringify(v));if(k!==LS.autoBackups&&!restoringBackup)scheduleAutoBackup()};
 const today=()=>new Date().toISOString().slice(0,10);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function normalizeLot(raw){let s=(raw||'').trim().toUpperCase().replace(/\s+/g,'');if(/^\d{1,4}$/.test(s))s='L'+s.padStart(4,'0');if(/^L\d{1,4}$/.test(s))s='L'+s.slice(1).padStart(4,'0');return s}
@@ -696,6 +707,68 @@ function showExpiryAlerts(){
 function csvDownload(name,headers,rows){const data=[headers,...rows];const csv='\uFEFF'+data.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';')).join('\n');const blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();URL.revokeObjectURL(url)}
 function exportLots(){csvDownload('stock42_lots.csv',['N° lot interne','Date réception','Produit','Catégorie','Quantité reçue','Unité','DDM / DLC','Type date','Fournisseur','Référence / commande','Emplacement','Statut','Conditionnement','Lot fabricant','Notes'],allLots().map(x=>[x.lot,x.dateReception,x.produit,x.categorie,x.quantite,x.unite,x.ddm,x.typeDate,x.fournisseur,x.reference,assignments().find(a=>a.lot===x.lot)?.location||x.emplacement||'',x.statut,x.conditionnement,x.lotFabricant,x.notes]))}
 function exportOrders(){csvDownload('stock42_commandes.csv',['Commande','Statut','Produit','Catégorie','Quantité','Unité','Prix €','Fournisseur','Référence','Date commande','Livraison prévue','Lot reçu','Notes'],orders().map(x=>[x.id,x.status,x.product,x.category,x.qty,x.unit,x.price,x.supplier,x.reference,x.orderDate,x.expected,x.lot||'',x.notes]))}
+function backupPayload(){
+  return {
+    version:1,
+    createdAt:new Date().toISOString(),
+    catalog:catalog(),
+    lots:localLots(),
+    orders:orders(),
+    movements:get(LS.moves,[]),
+    assignments:assignments(),
+    history:get(LS.history,[]),
+    importedAt:localStorage.getItem(LS.imported)||'',
+    syncUrl:localStorage.getItem(LS.syncUrl)||'',
+    guestMode:localStorage.getItem(LS.guestMode)||'0'
+  };
+}
+function readAutoBackups(){
+  try{
+    const x=JSON.parse(localStorage.getItem(LS.autoBackups)||'[]');
+    return Array.isArray(x)?x:[];
+  }catch(e){return []}
+}
+function updateAutoBackupStatus(){
+  const list=readAutoBackups(),last=list[0];
+  if($('autoBackupCount'))$('autoBackupCount').textContent=list.length;
+  if($('autoBackupLast'))$('autoBackupLast').textContent=last?new Date(last.createdAt).toLocaleString('fr-FR'):'—';
+}
+function createAutomaticBackup(reason='Automatique'){
+  if(restoringBackup)return;
+  const payload=backupPayload();
+  const list=readAutoBackups();
+  const sig=JSON.stringify({...payload,createdAt:''});
+  const previous=list[0]?JSON.stringify({...list[0],createdAt:''}):'';
+  if(sig===previous){updateAutoBackupStatus();return}
+  list.unshift(payload);
+  localStorage.setItem(LS.autoBackups,JSON.stringify(list.slice(0,5)));
+  updateAutoBackupStatus();
+  if($('autoBackupStatus'))$('autoBackupStatus').textContent=reason+' : sauvegarde enregistrée.';
+}
+function scheduleAutoBackup(){
+  clearTimeout(autoBackupTimer);
+  autoBackupTimer=setTimeout(()=>createAutomaticBackup('Automatique'),700);
+}
+function restoreLatestBackup(){
+  const list=readAutoBackups(),b=list[0],el=$('autoBackupStatus');
+  if(!b){el.textContent='Aucune sauvegarde automatique disponible.';return}
+  restoringBackup=true;
+  try{
+    set(LS.catalog,b.catalog||[]);
+    set(LS.lots,b.lots||[]);
+    set(LS.orders,b.orders||[]);
+    set(LS.moves,b.movements||[]);
+    set(LS.assign,b.assignments||[]);
+    set(LS.history,b.history||[]);
+    if(b.importedAt)localStorage.setItem(LS.imported,b.importedAt);else localStorage.removeItem(LS.imported);
+    if(b.syncUrl)localStorage.setItem(LS.syncUrl,b.syncUrl);
+    localStorage.setItem(LS.guestMode,b.guestMode||'0');
+  }finally{restoringBackup=false}
+  if($('syncUrl'))$('syncUrl').value=localStorage.getItem(LS.syncUrl)||'';
+  applyGuestMode();
+  updateStats();
+  el.innerHTML='<b>✓ Dernière sauvegarde restaurée.</b> La clé API actuelle a été conservée.';
+}
 function exportJson(){const data={version:3,exportedAt:new Date().toISOString(),catalog:catalog(),lots:localLots(),orders:orders(),movements:get(LS.moves,[]),assignments:assignments()};const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='stock42_sauvegarde.json';a.click();URL.revokeObjectURL(url)}
 async function startScanner(){if(running)return;$('status').textContent='Initialisation caméra…';try{scanner=new Html5Qrcode('reader');const cams=await Html5Qrcode.getCameras();if(!cams?.length)throw new Error('Aucune caméra');const back=cams.find(c=>/back|rear|environment|arrière/i.test(c.label))||cams[cams.length-1];await scanner.start(back.id,{fps:10,qrbox:{width:220,height:220},aspectRatio:1},txt=>showResult(txt));running=true;$('startBtn').disabled=true;$('stopBtn').disabled=false;$('status').textContent='Scanner actif.'}catch(e){$('status').textContent='Caméra indisponible. Utilisez la saisie manuelle.'}}
 async function stopScanner(){if(scanner&&running){try{await scanner.stop();await scanner.clear()}catch(e){}running=false;$('startBtn').disabled=false;$('stopBtn').disabled=true;$('status').textContent='Scanner arrêté.'}}
@@ -707,10 +780,10 @@ $('startBtn').onclick=startScanner;$('stopBtn').onclick=stopScanner;$('manualBtn
 $('findLotBtn').onclick=()=>previewLot($('lotInput').value);$('lotInput').addEventListener('keydown',e=>{if(e.key==='Enter')previewLot(e.target.value)});
 $('assignLotBtn').onclick=()=>{const lot=normalizeLot($('lotInput').value);if(activeLocation)assignLotTo(lot,activeLocation)};
 $('searchLotBtn').onclick=searchLot;$('searchLot').addEventListener('keydown',e=>{if(e.key==='Enter')searchLot()});$('categorySearchBtn').onclick=searchCategory;$('categorySearch').addEventListener('change',searchCategory);$('inventoryLoadBtn').onclick=loadInventoryLocation;$('inventoryLocationSelect').addEventListener('change',loadInventoryLocation);$('inventoryUseActiveBtn').onclick=useActiveInventoryLocation;$('inventoryConfirmBtn').onclick=confirmQuickInventory;$('moveLotBtn').onclick=moveSelectedLot;$('moveLotSelect').addEventListener('change',showMoveCurrentLocation);$('fifoSearchBtn').onclick=showFifoView;$('fifoProductSelect').addEventListener('change',showFifoView);$('locationViewBtn').onclick=showLocationView;$('locationViewSelect').addEventListener('change',showLocationView);$('showExpiryBtn').onclick=showExpiryAlerts;$('guestModeBtn').onclick=toggleGuestMode;
-$('exportLotsCsvBtn').onclick=exportLots;$('exportOrdersCsvBtn').onclick=exportOrders;$('exportJsonBtn').onclick=exportJson;
+$('backupNowBtn').onclick=()=>createAutomaticBackup('Manuelle');$('restoreBackupBtn').onclick=restoreLatestBackup;$('exportLotsCsvBtn').onclick=exportLots;$('exportOrdersCsvBtn').onclick=exportOrders;$('exportJsonBtn').onclick=exportJson;
 $('syncUrl').value=localStorage.getItem(LS.syncUrl)||'';
 $('syncKey').value=localStorage.getItem(LS.syncKey)||'';
-$('saveSync').onclick=async()=>{localStorage.setItem(LS.syncUrl,$('syncUrl').value.trim());localStorage.setItem(LS.syncKey,$('syncKey').value.trim());$('syncMsg').textContent='Connexion enregistrée sur cet appareil.';await syncLotsFromSheet()};$('syncLotsBtn').onclick=syncLotsFromSheet;
+$('saveSync').onclick=async()=>{localStorage.setItem(LS.syncUrl,$('syncUrl').value.trim());localStorage.setItem(LS.syncKey,$('syncKey').value.trim());$('syncMsg').textContent='Connexion enregistrée sur cet appareil.';createAutomaticBackup('Configuration');await syncLotsFromSheet()};$('syncLotsBtn').onclick=syncLotsFromSheet;
 function cleanupTestDataOnce(){
   const key='stock42Cleanup20261018';
   if(localStorage.getItem(key))return;
@@ -727,10 +800,12 @@ function cleanupTestDataOnce(){
 cleanupTestDataOnce();
 applyGuestMode();
 updateStats();
+updateAutoBackupStatus();
+if(!readAutoBackups().length)createAutomaticBackup('Initiale');
 if(localStorage.getItem(LS.syncUrl))syncLotsFromSheet();
 if('serviceWorker' in navigator)window.addEventListener('load',async()=>{
   try{
-    const reg=await navigator.serviceWorker.register('./service-worker.js?v=17',{updateViaCache:'none'});
+    const reg=await navigator.serviceWorker.register('./service-worker.js?v=18',{updateViaCache:'none'});
     reg.update().catch(()=>{});
     navigator.serviceWorker.addEventListener('controllerchange',()=>{
       if(!sessionStorage.getItem('stock42SwReload')){
