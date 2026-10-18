@@ -410,6 +410,17 @@ function cleanupTestDataOnce(){
 cleanupTestDataOnce();
 updateStats();
 if(localStorage.getItem(LS.syncUrl))syncLotsFromSheet();
-if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js').catch(()=>{}));
+if('serviceWorker' in navigator)window.addEventListener('load',async()=>{
+  try{
+    const reg=await navigator.serviceWorker.register('./service-worker.js?v=9',{updateViaCache:'none'});
+    reg.update().catch(()=>{});
+    navigator.serviceWorker.addEventListener('controllerchange',()=>{
+      if(!sessionStorage.getItem('stock42SwReload')){
+        sessionStorage.setItem('stock42SwReload','1');
+        location.reload();
+      }
+    });
+  }catch(e){}
+});
 </script>
 </body></html>
