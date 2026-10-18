@@ -161,6 +161,20 @@ input,select,textarea{width:100%;padding:12px;border:1px solid #d1d5db;border-ra
 </section>
 
 <section class="card">
+  <div class="section-title">Déplacement simplifié</div>
+  <div class="hint">Choisissez un lot déjà rangé, puis son nouvel emplacement.</div>
+  <div style="margin-top:10px">
+    <select id="moveLotSelect"><option value="">— Choisir un lot —</option></select>
+  </div>
+  <div id="moveCurrentLocation" class="status" style="margin-top:8px"></div>
+  <div style="margin-top:10px">
+    <select id="moveDestinationSelect"><option value="">— Nouvel emplacement —</option></select>
+  </div>
+  <button id="moveLotBtn" class="btn primary" style="margin-top:12px">Déplacer ce lot</button>
+  <div id="moveStatus" class="status"></div>
+</section>
+
+<section class="card">
   <div class="section-title">Vue FIFO</div>
   <div class="manual"><select id="fifoProductSelect"><option value="">— Choisir un produit —</option></select><button id="fifoSearchBtn" class="btn secondary">Afficher</button></div>
   <div class="hint" style="margin-top:8px">Choisissez un produit pour afficher ses lots dans l'ordre où ils doivent être consommés.</div>
@@ -241,7 +255,7 @@ async function syncLotsFromSheet(){
 }
 async function sendToSheet(action,data){const u=localStorage.getItem(LS.syncUrl)||'';const k=localStorage.getItem(LS.syncKey)||'';if(!u||!k)return {ok:false,localOnly:true};try{const r=await fetch(u,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({token:k,action:action,data:data})});return JSON.parse(await r.text())}catch(e){return {ok:false,error:String(e&&e.message?e.message:e)}}}
 function lotById(l){l=normalizeLot(l);return allLots().find(x=>x.lot===l)||null}
-function updateStats(){ $('catalogCount').textContent=allLots().length;$('nextLot').textContent=nextLot();const t=localStorage.getItem(LS.imported);$('importStatus').textContent=t?'Dernier import : '+new Date(t).toLocaleString('fr-FR')+' • '+catalog().length+' lot(s) chargé(s).':'Aucun tableau importé sur cet appareil.';renderOrders();populateCategorySearch();populateFifoProducts();populateLocationView();updateExpiryStats() }
+function updateStats(){ $('catalogCount').textContent=allLots().length;$('nextLot').textContent=nextLot();const t=localStorage.getItem(LS.imported);$('importStatus').textContent=t?'Dernier import : '+new Date(t).toLocaleString('fr-FR')+' • '+catalog().length+' lot(s) chargé(s).':'Aucun tableau importé sur cet appareil.';renderOrders();populateCategorySearch();populateMoveControls();populateFifoProducts();populateLocationView();updateExpiryStats() }
 function parseNumber(v){if(typeof v==='number')return v;const s=String(v??'').replace(/\s/g,'').replace(',','.').replace(/[^0-9.-]/g,'');return s?Number(s):null}
 function excelDate(v){if(!v)return'';if(v instanceof Date)return v.toLocaleDateString('fr-FR');return String(v)}
 async function importWorkbook(){
@@ -288,7 +302,7 @@ function showPane(id){document.querySelectorAll('[id$="Pane"]').forEach(x=>x.cla
 function showResult(raw){const p=parseCode(raw),box=$('result');box.style.display='block';box.classList.remove('ok','bad');$('resultCode').textContent=p.code||'Code vide';if(p.valid){box.classList.add('ok');$('resultMsg').textContent='Emplacement reconnu.';$('details').innerHTML='<div class="kv"><div class="k">Site</div><div class="v">42</div></div><div class="kv"><div class="k">Rayonnage</div><div class="v">R'+p.rack+'</div></div><div class="kv"><div class="k">Niveau</div><div class="v">N'+p.level+'</div></div><div class="kv"><div class="k">Sous-zone</div><div class="v">'+p.zoneLetter+' — '+p.zone+'</div></div>';activeLocation=p.code;$('activeLocation').textContent=p.code;$('locationTitle').textContent=p.code;$('assignCard').classList.remove('hidden');$('locationStockCard').classList.remove('hidden');addHistory(p.code);renderLocationStock();if(navigator.vibrate)navigator.vibrate(70)}else{box.classList.add('bad');$('resultMsg').textContent='Code non reconnu pour le site 42.';$('details').innerHTML=''}box.scrollIntoView({behavior:'smooth',block:'center'})}
 function addHistory(code){let h=get(LS.history,[]);h=h.filter(x=>x.code!==code);h.unshift({code,time:new Date().toISOString()});set(LS.history,h.slice(0,12))}
 function previewLot(raw,target='lotPreview'){const lot=normalizeLot(raw),x=lotById(lot),el=$(target);if(!LOT.test(lot)){el.innerHTML='<div class="empty">Numéro de lot invalide.</div>';if(target==='lotPreview')$('assignLotBtn').disabled=true;return null}if(!x){el.innerHTML='<div class="empty">'+esc(lot)+' n’est pas encore connu.</div>';if(target==='lotPreview')$('assignLotBtn').disabled=true;return null}el.innerHTML='<div class="notice"><b>'+esc(lot)+'</b> — '+esc(x.produit||'Produit non renseigné')+'<br>'+esc(x.quantite??'')+' '+esc(x.unite||'')+(x.ddm?' • DDM/DLC '+esc(x.ddm):'')+'</div>';if(target==='lotPreview'){$('lotInput').value=lot;$('assignLotBtn').disabled=false}return x}
-async function assignLotTo(lot,location,notify=true){lot=normalizeLot(lot);if(!lotById(lot)||!VALID.test(location))return;let a=assignments().filter(x=>x.lot!==lot);a.push({id:lot+'@'+location,lot,location,assignedAt:new Date().toISOString()});set(LS.assign,a);const ll=localLots();const i=ll.findIndex(x=>x.lot===lot);if(i>=0){ll[i]={...ll[i],emplacement:location,zone:location.split('-').slice(1,3).join('-')};set(LS.lots,ll)}const mv=get(LS.moves,[]);const prod=lotById(lot);mv.push({date:today(),lot,produit:prod?.produit||'',type:'Transfert',quantite:0,unite:prod?.unite||'',source:'',destination:location,commentaire:'Affectation emplacement',createdAt:new Date().toISOString()});set(LS.moves,mv);
+async function assignLotTo(lot,location,notify=true){lot=normalizeLot(lot);if(!lotById(lot)||!VALID.test(location))return;const oldLocation=currentLocationForLot(lot);let a=assignments().filter(x=>x.lot!==lot);a.push({id:lot+'@'+location,lot,location,assignedAt:new Date().toISOString()});set(LS.assign,a);const ll=localLots();const i=ll.findIndex(x=>x.lot===lot);if(i>=0){ll[i]={...ll[i],emplacement:location,zone:location.split('-').slice(1,3).join('-')};set(LS.lots,ll)}const mv=get(LS.moves,[]);const prod=lotById(lot);mv.push({date:today(),lot,produit:prod?.produit||'',type:'Transfert',quantite:0,unite:prod?.unite||'',source:oldLocation,destination:location,commentaire:oldLocation?'Déplacement emplacement':'Affectation emplacement',createdAt:new Date().toISOString()});set(LS.moves,mv);
 const btn=$('assignLotBtn');
 if(btn){btn.disabled=true;btn.dataset.oldText=btn.textContent;btn.textContent='✓ Affectation en cours…'}
 const sync=await sendToSheet('assign',{lot,location});
@@ -342,6 +356,55 @@ function searchCategory(){
     const loc=places.join(', ')||x.emplacement||'non affecté';
     return '<div class="list-item"><div class="item-title">'+esc(x.produit||'Produit')+' <span class="badge blue">'+esc(x.lot)+'</span></div><div class="item-meta">'+esc(x.quantite??'')+' '+esc(x.unite||'')+(x.ddm?' • DDM/DLC '+esc(x.ddm):'')+'</div><div style="margin-top:6px">Emplacement : <b>'+esc(loc)+'</b></div></div>';
   }).join('');
+}
+function currentLocationForLot(lot){
+  const a=assignments().filter(x=>x.lot===lot);
+  return a.length?a[a.length-1].location:'';
+}
+function populateMoveControls(){
+  const lotSel=$('moveLotSelect'),destSel=$('moveDestinationSelect');
+  if(!lotSel||!destSel)return;
+  const currentLot=lotSel.value,currentDest=destSel.value;
+  const assigned=allLots().filter(x=>currentLocationForLot(x.lot)).sort((a,b)=>String(a.produit||'').localeCompare(String(b.produit||''),'fr')||a.lot.localeCompare(b.lot));
+  lotSel.innerHTML='<option value="">— Choisir un lot —</option>'+assigned.map(x=>'<option value="'+esc(x.lot)+'">'+esc(x.produit||'Produit')+' — '+esc(x.lot)+'</option>').join('');
+  destSel.innerHTML='<option value="">— Nouvel emplacement —</option>'+allOfficialLocations().map(loc=>'<option value="'+loc+'">'+loc+'</option>').join('');
+  if(assigned.some(x=>x.lot===currentLot))lotSel.value=currentLot;
+  if(allOfficialLocations().includes(currentDest))destSel.value=currentDest;
+  showMoveCurrentLocation();
+}
+function showMoveCurrentLocation(){
+  const lot=$('moveLotSelect')?.value||'',el=$('moveCurrentLocation');
+  if(!el)return;
+  if(!lot){el.textContent='';return}
+  const x=lotById(lot),loc=currentLocationForLot(lot);
+  el.innerHTML='<b>'+esc(x?.produit||'Produit')+' — '+esc(lot)+'</b><br>Emplacement actuel : <b>'+esc(loc||'non affecté')+'</b>';
+}
+async function moveSelectedLot(){
+  const lot=$('moveLotSelect').value,dest=$('moveDestinationSelect').value,el=$('moveStatus'),btn=$('moveLotBtn');
+  if(!lot){el.innerHTML='<div class="empty">Choisissez un lot.</div>';return}
+  if(!dest){el.innerHTML='<div class="empty">Choisissez le nouvel emplacement.</div>';return}
+  const source=currentLocationForLot(lot);
+  if(source===dest){el.innerHTML='<div class="notice">Le lot est déjà rangé à <b>'+esc(dest)+'</b>.</div>';return}
+  const prod=lotById(lot);
+  btn.disabled=true;btn.textContent='✓ Déplacement en cours…';
+  const sync=await sendToSheet('assign',{lot,location:dest});
+  if(sync.ok){
+    let a=assignments().filter(x=>x.lot!==lot);
+    a.push({id:lot+'@'+dest,lot,location:dest,assignedAt:new Date().toISOString()});
+    set(LS.assign,a);
+    const ll=localLots(),i=ll.findIndex(x=>x.lot===lot);
+    if(i>=0){ll[i]={...ll[i],emplacement:dest,zone:dest.split('-').slice(1,3).join('-')};set(LS.lots,ll)}
+    const mv=get(LS.moves,[]);
+    mv.push({date:today(),lot,produit:prod?.produit||'',type:'Transfert',quantite:0,unite:prod?.unite||'',source:source,destination:dest,commentaire:'Déplacement simplifié',createdAt:new Date().toISOString()});
+    set(LS.moves,mv);
+    el.innerHTML='<div class="notice" style="border-color:#86efac;background:#ecfdf5;color:#166534"><b>✓ '+esc(lot)+' déplacé</b><br>'+esc(source||'non affecté')+' → <b>'+esc(dest)+'</b><br>Synchronisé avec Google Sheets.</div>';
+    updateStats();
+    if(activeLocation)renderLocationStock();
+    if($('locationViewSelect')?.value)showLocationView();
+  }else{
+    el.innerHTML='<div class="notice" style="border-color:#fde68a;background:#fffbeb;color:#92400e"><b>⚠ Déplacement non enregistré</b><br>La synchronisation Google Sheets n’a pas été confirmée.</div>';
+  }
+  btn.disabled=false;btn.textContent='Déplacer ce lot';
 }
 function populateFifoProducts(){
   const sel=$('fifoProductSelect');if(!sel)return;
@@ -452,7 +515,7 @@ $('importStockBtn').onclick=importWorkbook;$('clearCatalogBtn').onclick=clearCat
 $('startBtn').onclick=startScanner;$('stopBtn').onclick=stopScanner;$('manualBtn').onclick=()=>showResult($('manualCode').value);$('manualCode').addEventListener('keydown',e=>{if(e.key==='Enter')showResult(e.target.value)});
 $('findLotBtn').onclick=()=>previewLot($('lotInput').value);$('lotInput').addEventListener('keydown',e=>{if(e.key==='Enter')previewLot(e.target.value)});
 $('assignLotBtn').onclick=()=>{const lot=normalizeLot($('lotInput').value);if(activeLocation)assignLotTo(lot,activeLocation)};
-$('searchLotBtn').onclick=searchLot;$('searchLot').addEventListener('keydown',e=>{if(e.key==='Enter')searchLot()});$('categorySearchBtn').onclick=searchCategory;$('categorySearch').addEventListener('change',searchCategory);$('fifoSearchBtn').onclick=showFifoView;$('fifoProductSelect').addEventListener('change',showFifoView);$('locationViewBtn').onclick=showLocationView;$('locationViewSelect').addEventListener('change',showLocationView);$('showExpiryBtn').onclick=showExpiryAlerts;
+$('searchLotBtn').onclick=searchLot;$('searchLot').addEventListener('keydown',e=>{if(e.key==='Enter')searchLot()});$('categorySearchBtn').onclick=searchCategory;$('categorySearch').addEventListener('change',searchCategory);$('moveLotBtn').onclick=moveSelectedLot;$('moveLotSelect').addEventListener('change',showMoveCurrentLocation);$('fifoSearchBtn').onclick=showFifoView;$('fifoProductSelect').addEventListener('change',showFifoView);$('locationViewBtn').onclick=showLocationView;$('locationViewSelect').addEventListener('change',showLocationView);$('showExpiryBtn').onclick=showExpiryAlerts;
 $('exportLotsCsvBtn').onclick=exportLots;$('exportOrdersCsvBtn').onclick=exportOrders;$('exportJsonBtn').onclick=exportJson;
 $('syncUrl').value=localStorage.getItem(LS.syncUrl)||'';
 $('syncKey').value=localStorage.getItem(LS.syncKey)||'';
@@ -475,7 +538,7 @@ updateStats();
 if(localStorage.getItem(LS.syncUrl))syncLotsFromSheet();
 if('serviceWorker' in navigator)window.addEventListener('load',async()=>{
   try{
-    const reg=await navigator.serviceWorker.register('./service-worker.js?v=12',{updateViaCache:'none'});
+    const reg=await navigator.serviceWorker.register('./service-worker.js?v=13',{updateViaCache:'none'});
     reg.update().catch(()=>{});
     navigator.serviceWorker.addEventListener('controllerchange',()=>{
       if(!sessionStorage.getItem('stock42SwReload')){
