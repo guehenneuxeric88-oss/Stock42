@@ -149,7 +149,7 @@ input,select,textarea{width:100%;padding:12px;border:1px solid #d1d5db;border-ra
 <section class="card">
   <div class="section-title">Rechercher un produit ou un lot</div>
   <div class="manual"><input id="searchLot" placeholder="Ex. sel, café, huile, 27 ou L0027"><button id="searchLotBtn" class="btn secondary">Rechercher</button></div>
-  <div class="hint" style="margin-top:8px">Tapez un nom de produit ou un numéro de lot.</div>
+  <div class="hint" style="margin-top:8px">Tapez un nom de produit ou un numéro de lot. Les accents et petites fautes sont tolérés.</div>
   <div id="lotSearchResult" style="margin-top:10px"></div>
 </section>
 
@@ -332,6 +332,43 @@ if(btn){
   setTimeout(()=>{btn.disabled=false;btn.textContent=btn.dataset.oldText||'Affecter ce lot'},1800);
 }}
 function renderLocationStock(){if(!activeLocation)return;const rows=assignments().filter(x=>x.location===activeLocation).map(a=>({...a,lotData:lotById(a.lot)}));const el=$('locationStock');if(!rows.length){el.innerHTML='<div class="empty">Aucun lot affecté.</div>';return}rows.sort((a,b)=>String(a.lotData?.ddm||'9999').localeCompare(String(b.lotData?.ddm||'9999')));el.innerHTML=rows.map((x,i)=>'<div class="list-item"><div class="item-title">'+esc(x.lot)+(i===0? ' <span class="badge blue">FIFO</span>':'')+'</div><div>'+esc(x.lotData?.produit||'Produit non renseigné')+'</div><div class="item-meta">'+esc(x.lotData?.quantite??'')+' '+esc(x.lotData?.unite||'')+(x.lotData?.ddm?' • '+esc(x.lotData.ddm):'')+'</div></div>').join('')}
+function normalizeSearchText(v){
+  return String(v||'')
+    .toLocaleLowerCase('fr-FR')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-z0-9]+/g,' ')
+    .trim();
+}
+function levenshtein(a,b){
+  a=normalizeSearchText(a);b=normalizeSearchText(b);
+  const m=a.length,n=b.length;
+  if(!m)return n;if(!n)return m;
+  const prev=Array.from({length:n+1},(_,i)=>i),cur=new Array(n+1);
+  for(let i=1;i<=m;i++){
+    cur[0]=i;
+    for(let j=1;j<=n;j++)cur[j]=Math.min(cur[j-1]+1,prev[j]+1,prev[j-1]+(a[i-1]===b[j-1]?0:1));
+    for(let j=0;j<=n;j++)prev[j]=cur[j];
+  }
+  return prev[n];
+}
+function tolerantProductScore(query,product){
+  const q=normalizeSearchText(query),p=normalizeSearchText(product);
+  if(!q||!p)return 999;
+  if(p===q)return 0;
+  if(p.startsWith(q))return 1;
+  if(p.includes(q))return 2;
+  const qWords=q.split(' ').filter(Boolean),pWords=p.split(' ').filter(Boolean);
+  if(qWords.every(w=>pWords.some(pw=>pw===w||pw.startsWith(w)||w.startsWith(pw))))return 3;
+  let best=999;
+  for(const qw of qWords){
+    for(const pw of pWords){
+      const d=levenshtein(qw,pw);
+      const limit=qw.length<=4?1:2;
+      if(d<=limit)best=Math.min(best,4+d);
+    }
+  }
+  return best;
+}
 function searchLot(){
   const raw=$('searchLot').value.trim(),el=$('lotSearchResult');
   if(!raw){el.innerHTML='<div class="empty">Saisissez un produit ou un numéro de lot.</div>';return}
@@ -343,10 +380,10 @@ function searchLot(){
     el.innerHTML='<div class="notice"><b>'+esc(lot)+'</b> — '+esc(x.produit||'')+'<br>'+esc(x.quantite??'')+' '+esc(x.unite||'')+(x.ddm?' • DDM/DLC '+esc(x.ddm):'')+'<br>Emplacement : <b>'+esc(places.join(', ')||x.emplacement||'non affecté')+'</b></div>';
     return;
   }
-  const q=raw.toLocaleLowerCase('fr-FR');
-  const results=allLots().filter(x=>String(x.produit||'').toLocaleLowerCase('fr-FR').includes(q));
-  if(!results.length){el.innerHTML='<div class="empty">Aucun produit trouvé pour « '+esc(raw)+' ».</div>';return}
-  results.sort((a,b)=>String(a.produit||'').localeCompare(String(b.produit||''),'fr')||String(a.ddm||'9999').localeCompare(String(b.ddm||'9999')));
+  const scored=allLots().map(x=>({x,score:tolerantProductScore(raw,x.produit||'')})).filter(r=>r.score<999);
+  if(!scored.length){el.innerHTML='<div class="empty">Aucun produit trouvé pour « '+esc(raw)+' ».</div>';return}
+  scored.sort((a,b)=>a.score-b.score||String(a.x.produit||'').localeCompare(String(b.x.produit||''),'fr')||String(a.x.ddm||'9999').localeCompare(String(b.x.ddm||'9999')));
+  const results=scored.map(r=>r.x);
   el.innerHTML=results.map(x=>{
     const places=assignments().filter(a=>a.lot===x.lot).map(a=>a.location);
     const loc=places.join(', ')||x.emplacement||'non affecté';
