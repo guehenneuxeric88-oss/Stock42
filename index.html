@@ -20,7 +20,7 @@ input,select,textarea{width:100%;padding:12px;border:1px solid #d1d5db;border-ra
 .list-item{padding:12px 0;border-bottom:1px solid #eee}.list-item:last-child{border-bottom:0}.item-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.item-title{font-weight:900}.item-meta{font-size:.82rem;color:#6b7280;margin-top:3px}.empty{padding:10px 0;color:#9ca3af;font-size:.9rem}
 .reader{overflow:hidden;border-radius:14px;min-height:235px;background:#111827}.status{font-size:.88rem;color:#6b7280;margin-top:9px}.result{display:none}.ok{border-left:6px solid #16a34a}.bad{border-left:6px solid #dc2626}.code{font-size:1.35rem;font-weight:900;letter-spacing:.04em}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.kv{background:#f9fafb;border-radius:12px;padding:10px}.k{font-size:.76rem;color:#6b7280}.v{font-weight:800;margin-top:2px}.manual{display:flex;gap:8px}.manual input{min-width:0;flex:1}
-.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}.tab{padding:10px 8px;border-radius:11px;border:0;background:#e5e7eb;font-weight:800}.tab.active{background:#111827;color:#fff}
+.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}.tab{padding:10px 8px;border-radius:11px;border:0;background:#e5e7eb;font-weight:800}.tab.active{background:#111827;color:#fff}
 .hidden{display:none!important}body.guest-mode .admin-only{display:none!important}body.guest-mode #guestModeBtn{background:#111827;color:#fff}.guest-banner{display:none;margin-bottom:12px;padding:10px 12px;border-radius:12px;background:#ecfdf5;color:#166534;font-weight:800;font-size:.88rem}body.guest-mode .guest-banner{display:block}.footer{text-align:center;color:#9ca3af;font-size:.78rem;margin-top:24px}
 @media(max-width:500px){.two,.three,.grid{grid-template-columns:1fr}.tabs{grid-template-columns:1fr}#mobileDashboard .grid{grid-template-columns:1fr 1fr}#mobileDashboard .two{grid-template-columns:1fr 1fr}#mobileDashboard .kv{padding:9px}#mobileDashboard .v{font-size:1.08rem}}
 </style>
@@ -76,6 +76,7 @@ input,select,textarea{width:100%;padding:12px;border:1px solid #d1d5db;border-ra
 <section class="card admin-only">
   <div class="tabs">
     <button class="tab active" data-pane="orderPane">Nouvelle commande</button>
+    <button class="tab" data-pane="quickPane">Entrée rapide</button>
     <button class="tab" data-pane="ordersPane">Commandes en cours</button>
     <button class="tab" data-pane="receivePane">Réception</button>
   </div>
@@ -102,6 +103,30 @@ input,select,textarea{width:100%;padding:12px;border:1px solid #d1d5db;border-ra
     <div class="field"><label>Notes</label><textarea id="oNotes"></textarea></div>
     <button id="saveOrderBtn" class="btn primary">Enregistrer la commande</button>
     <div id="orderStatus" class="status"></div>
+  </div>
+
+  <div id="quickPane" class="hidden">
+    <div class="section-title">Entrée rapide d’un achat déjà reçu</div>
+    <div class="notice">Une seule validation crée la commande, le lot, la réception et, si vous choisissez un emplacement, le rangement.</div>
+    <div class="two">
+      <div class="field"><label>Produit</label><select id="qProduct"><option value="">— Choisir un produit —</option></select><div id="qNewProductWrap" class="hidden" style="margin-top:8px"><input id="qNewProduct" placeholder="Nom du nouveau produit"></div></div>
+      <div class="field"><label>Catégorie</label><select id="qCategory"><option value="">— Choisir une catégorie —</option><option>Boissons</option><option>Céréales / féculents</option><option>Condiments</option><option>Conserves</option><option>Épicerie</option><option>Huiles</option><option>Légumineuses</option><option>Produits laitiers</option></select></div>
+    </div>
+    <div class="three">
+      <div class="field"><label>Quantité</label><input id="qQty" type="number" step="any" min="0"></div>
+      <div class="field"><label>Unité</label><select id="qUnit"><option value="">—</option><option>unité</option><option>boîte</option><option>bocal</option><option>paquet</option><option>kg</option><option>g</option><option>L</option><option>ml</option></select></div>
+      <div class="field"><label>DDM / DLC</label><input id="qExpiry" placeholder="JJ/MM/AAAA"></div>
+    </div>
+    <div class="two">
+      <div class="field"><label>Type date</label><select id="qDateType"><option>DDM</option><option>DLC</option><option>Sans date</option></select></div>
+      <div class="field"><label>Fournisseur</label><input id="qSupplier" placeholder="Ex. Super U"></div>
+    </div>
+    <div class="two">
+      <div class="field"><label>Conditionnement</label><input id="qPack" placeholder="Ex. Net 460 g"></div>
+      <div class="field"><label>Emplacement</label><select id="qLocation"><option value="">— À affecter plus tard —</option></select></div>
+    </div>
+    <button id="quickSaveBtn" class="btn primary">Créer et ranger le lot</button>
+    <div id="quickStatus" class="status"></div>
   </div>
 
   <div id="ordersPane" class="hidden">
@@ -386,7 +411,33 @@ function toggleNewProductField(){
     if(ref?.category&&[...$('oCategory').options].some(o=>o.value===ref.category))$('oCategory').value=ref.category;
   }
 }
-function updateStats(){ $('catalogCount').textContent=allLots().length;$('nextLot').textContent=nextLot();const t=localStorage.getItem(LS.imported);$('importStatus').textContent=t?'Dernier import : '+new Date(t).toLocaleString('fr-FR')+' • '+catalog().length+' lot(s) chargé(s).':'Aucun tableau importé sur cet appareil.';renderOrders();populateOrderProducts();populateCategorySearch();populateInventoryLocations();populateMoveControls();populateFifoProducts();populateLocationView();updateExpiryStats();updateMobileDashboard() }
+function populateQuickProducts(){
+  const sel=$('qProduct');if(!sel)return;
+  const current=sel.value;
+  const refs=productReferences();
+  sel.innerHTML='<option value="">— Choisir un produit —</option>'+refs.map(x=>'<option value="'+esc(x.name)+'">'+esc(x.name)+'</option>').join('')+'<option value="__new__">+ Ajouter un nouveau produit</option>';
+  if(current==='__new__'||refs.some(x=>x.name===current))sel.value=current;
+  toggleQuickNewProduct();
+}
+function toggleQuickNewProduct(){
+  const sel=$('qProduct'),wrap=$('qNewProductWrap');
+  if(!sel||!wrap)return;
+  const isNew=sel.value==='__new__';
+  wrap.classList.toggle('hidden',!isNew);
+  if(isNew){setTimeout(()=>$('qNewProduct')?.focus(),0);return}
+  if(sel.value){
+    const ref=productReferences().find(x=>x.name===sel.value);
+    if(ref?.category&&[...$('qCategory').options].some(o=>o.value===ref.category))$('qCategory').value=ref.category;
+  }
+}
+function populateQuickLocations(){
+  const sel=$('qLocation');if(!sel)return;
+  const current=sel.value;
+  sel.innerHTML='<option value="">— À affecter plus tard —</option>'+allOfficialLocations().map(loc=>'<option value="'+loc+'">'+loc+'</option>').join('');
+  if(allOfficialLocations().includes(current))sel.value=current;
+}
+
+function updateStats(){ $('catalogCount').textContent=allLots().length;$('nextLot').textContent=nextLot();const t=localStorage.getItem(LS.imported);$('importStatus').textContent=t?'Dernier import : '+new Date(t).toLocaleString('fr-FR')+' • '+catalog().length+' lot(s) chargé(s).':'Aucun tableau importé sur cet appareil.';renderOrders();populateOrderProducts();populateQuickProducts();populateQuickLocations();populateCategorySearch();populateInventoryLocations();populateMoveControls();populateFifoProducts();populateLocationView();updateExpiryStats();updateMobileDashboard() }
 function parseNumber(v){if(typeof v==='number')return v;const s=String(v??'').replace(/\s/g,'').replace(',','.').replace(/[^0-9.-]/g,'');return s?Number(s):null}
 function excelDate(v){if(!v)return'';if(v instanceof Date)return v.toLocaleDateString('fr-FR');return String(v)}
 async function importWorkbook(){
@@ -413,6 +464,52 @@ async function saveOrder(){
   if(!category){$('orderStatus').textContent='Choisissez une catégorie.';return}
   const a=orders();const rec={id:nextOrder(),status:'Commandée',product,category,qty,unit:$('oUnit').value,price:parseNumber($('oPrice').value),supplier:$('oSupplier').value.trim(),reference:$('oReference').value.trim(),orderDate:$('oDate').value||today(),expected:$('oExpected').value,notes:$('oNotes').value.trim(),createdAt:new Date().toISOString()};
   a.push(rec);set(LS.orders,a);const sync=await sendToSheet('order',rec);$('orderStatus').innerHTML='<span class="badge green">Commande '+esc(rec.id)+' enregistrée</span> '+(sync.ok?'• Google Sheets OK':'• enregistrée localement');['oProduct','oCategory','oQty','oPrice','oSupplier','oReference','oExpected','oNotes','oNewProduct'].forEach(id=>$(id).value='');$('oUnit').value='';$('oDate').value=today();updateStats()
+}
+async function saveQuickEntry(){
+  const btn=$('quickSaveBtn'),status=$('quickStatus');
+  if(btn.disabled)return;
+  const selected=$('qProduct').value;
+  const product=(selected==='__new__'?$('qNewProduct').value:selected).trim();
+  const category=$('qCategory').value.trim();
+  const qty=parseNumber($('qQty').value);
+  const unit=$('qUnit').value;
+  if(!product||!category||qty===null||!unit){status.textContent='Produit, catégorie, quantité et unité sont obligatoires.';return}
+  const orderId=nextOrder(),lot=nextLot(),location=$('qLocation').value;
+  const order={id:orderId,status:'Commandée',product,category,qty,unit,price:null,supplier:$('qSupplier').value.trim(),reference:'',orderDate:today(),expected:today(),notes:'Entrée rapide',createdAt:new Date().toISOString()};
+  const rec={lot,dateReception:today(),produit:product,categorie:category,quantite:qty,unite:unit,ddm:$('qExpiry').value.trim(),typeDate:$('qDateType').value,fournisseur:order.supplier,reference:orderId,zone:'',emplacement:'',statut:'En stock',conditionnement:$('qPack').value.trim(),lotFabricant:'',notes:'Entrée rapide',sourceOrder:orderId,createdAt:new Date().toISOString()};
+  btn.disabled=true;btn.textContent='✓ Enregistrement en cours…';status.textContent='Création de la commande…';
+  const orderSync=await sendToSheet('order',order);
+  if(!orderSync.ok){status.innerHTML='<div class="notice" style="border-color:#fde68a;background:#fffbeb;color:#92400e"><b>⚠ Entrée rapide interrompue</b><br>La création de la commande n’a pas été confirmée par Google Sheets.</div>';btn.disabled=false;btn.textContent='Créer et ranger le lot';return}
+  const os=orders();os.push(order);set(LS.orders,os);
+  status.textContent='Création du lot '+lot+'…';
+  const receiveSync=await sendToSheet('receive',{...rec,location:'',orderId});
+  if(!receiveSync.ok){
+    status.innerHTML='<div class="notice" style="border-color:#fde68a;background:#fffbeb;color:#92400e"><b>⚠ Commande '+esc(orderId)+' créée, mais réception non confirmée.</b><br>Vous pouvez la terminer depuis « Commandes en cours ».</div>';
+    updateStats();btn.disabled=false;btn.textContent='Créer et ranger le lot';return;
+  }
+  const lots=localLots();lots.push(rec);set(LS.lots,lots);
+  const updated=orders();const oi=updated.findIndex(x=>x.id===orderId);if(oi>=0)updated[oi]={...updated[oi],status:'Reçue',receivedAt:new Date().toISOString(),lot};set(LS.orders,updated);
+  const mv=get(LS.moves,[]);mv.push({date:today(),lot,produit:product,type:'Entrée',quantite:qty,unite:unit,source:'',destination:'',commentaire:'Réception '+orderId+' • Entrée rapide',reference:orderId,createdAt:new Date().toISOString()});set(LS.moves,mv);
+  let assignOk=true;
+  if(location){
+    status.textContent='Affectation de '+lot+' à '+location+'…';
+    const assignSync=await sendToSheet('assign',{lot,location});
+    assignOk=!!assignSync.ok;
+    if(assignOk){
+      let a=assignments().filter(x=>x.lot!==lot);a.push({id:lot+'@'+location,lot,location,assignedAt:new Date().toISOString()});set(LS.assign,a);
+      const ll=localLots(),li=ll.findIndex(x=>x.lot===lot);if(li>=0){ll[li]={...ll[li],emplacement:location,zone:location.split('-').slice(1,3).join('-')};set(LS.lots,ll)}
+      const mm=get(LS.moves,[]);mm.push({date:today(),lot,produit:product,type:'Transfert',quantite:0,unite:unit,source:'',destination:location,commentaire:'Affectation entrée rapide',createdAt:new Date().toISOString()});set(LS.moves,mm);
+    }
+  }
+  updateStats();
+  status.innerHTML=location&&assignOk
+    ? '<div class="notice" style="border-color:#86efac;background:#ecfdf5;color:#166534"><b>✓ '+esc(lot)+' créé et rangé</b><br>'+esc(product)+' • '+esc(qty)+' '+esc(unit)+' • '+esc(location)+'</div>'
+    : location&&!assignOk
+      ? '<div class="notice" style="border-color:#fde68a;background:#fffbeb;color:#92400e"><b>✓ '+esc(lot)+' créé</b><br>Le lot existe, mais l’affectation à '+esc(location)+' n’a pas été confirmée.</div>'
+      : '<div class="notice" style="border-color:#86efac;background:#ecfdf5;color:#166534"><b>✓ '+esc(lot)+' créé</b><br>Lot à affecter ultérieurement.</div>';
+  ['qProduct','qCategory','qQty','qExpiry','qSupplier','qPack','qNewProduct','qLocation'].forEach(id=>$(id).value='');
+  $('qUnit').value='';$('qDateType').value='DDM';populateQuickProducts();populateQuickLocations();
+  btn.disabled=false;btn.textContent='Créer et ranger le lot';
 }
 function renderOrders(){
   const el=$('ordersList'),pending=orders().filter(x=>x.status==='Commandée');if(!pending.length){el.innerHTML='<div class="empty">Aucune commande en cours.</div>';return}
@@ -814,7 +911,7 @@ async function stopScanner(){if(scanner&&running){try{await scanner.stop();await
 
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>showPane(b.dataset.pane));
 $('oDate').value=today();
-$('importStockBtn').onclick=importWorkbook;$('clearCatalogBtn').onclick=clearCatalog;$('saveOrderBtn').onclick=saveOrder;$('oProduct').addEventListener('change',toggleNewProductField);$('cancelReceiveBtn').onclick=cancelReceive;$('confirmReceiveBtn').onclick=confirmReceive;
+$('importStockBtn').onclick=importWorkbook;$('clearCatalogBtn').onclick=clearCatalog;$('saveOrderBtn').onclick=saveOrder;$('oProduct').addEventListener('change',toggleNewProductField);$('qProduct').addEventListener('change',toggleQuickNewProduct);$('quickSaveBtn').onclick=saveQuickEntry;$('cancelReceiveBtn').onclick=cancelReceive;$('confirmReceiveBtn').onclick=confirmReceive;
 $('startBtn').onclick=startScanner;$('stopBtn').onclick=stopScanner;$('manualBtn').onclick=()=>showResult($('manualCode').value);$('manualCode').addEventListener('keydown',e=>{if(e.key==='Enter')showResult(e.target.value)});
 $('findLotBtn').onclick=()=>previewLot($('lotInput').value);$('lotInput').addEventListener('keydown',e=>{if(e.key==='Enter')previewLot(e.target.value)});
 $('assignLotBtn').onclick=()=>{const lot=normalizeLot($('lotInput').value);if(activeLocation)assignLotTo(lot,activeLocation)};
@@ -844,7 +941,7 @@ if(!readAutoBackups().length)createAutomaticBackup('Initiale');
 if(localStorage.getItem(LS.syncUrl))syncLotsFromSheet();
 if('serviceWorker' in navigator)window.addEventListener('load',async()=>{
   try{
-    const reg=await navigator.serviceWorker.register('./service-worker.js?v=20',{updateViaCache:'none'});
+    const reg=await navigator.serviceWorker.register('./service-worker.js?v=21',{updateViaCache:'none'});
     reg.update().catch(()=>{});
     navigator.serviceWorker.addEventListener('controllerchange',()=>{
       if(!sessionStorage.getItem('stock42SwReload')){
