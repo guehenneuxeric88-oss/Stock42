@@ -28,6 +28,7 @@ body[data-app-view="entries"] .app [data-app-view="entries"],
 body[data-app-view="stock"] .app [data-app-view="stock"],
 body[data-app-view="products"] .app [data-app-view="products"],
 body[data-app-view="config"] .app [data-app-view="config"]{display:block}
+body[data-app-view="entries"].scanner-active .app #scannerCard{display:block}
 .main-nav{position:sticky;top:0;z-index:30;display:grid;grid-template-columns:repeat(5,1fr);gap:7px;background:rgba(248,250,252,.9);backdrop-filter:blur(12px);padding:8px 0 10px;margin-bottom:10px}
 .main-nav button{border:0;border-radius:12px;background:#f8fafc;color:#64748b;padding:9px 4px 8px;font-weight:800;font-size:.76rem;line-height:1.15;cursor:pointer}
 .main-nav button .nav-icon{display:block;font-size:1.2rem;margin-bottom:3px}
@@ -230,7 +231,7 @@ body.guest-mode .admin-only{display:none!important}body.guest-mode #guestModeBtn
 </section>
 
 <div data-app-view="stock"><div class="view-heading">Stock</div><div class="view-sub">Consulter, déplacer et inventorier</div></div>
-<section class="card admin-only" data-app-view="stock">
+<section id="scannerCard" class="card admin-only" data-app-view="stock">
   <div id="scannerTitle" class="section-title">Scanner un emplacement</div>
   <div id="reader" class="reader"></div>
   <video id="productReader" class="reader hidden" playsinline muted style="width:100%;object-fit:cover"></video>
@@ -953,6 +954,7 @@ async function startQuickProductScanner(){
   setScannerUi('product');
   el.innerHTML='<div class="notice">Scanner prêt : placez le code-barres du produit dans le cadre.</div>';
   await stopScanner();
+  document.body.classList.add('scanner-active');
   $('reader').classList.add('hidden');
   $('productReader').classList.remove('hidden');
   $('productReader').scrollIntoView({behavior:'smooth',block:'center'});
@@ -985,6 +987,7 @@ async function startQuickScanner(){
   quickScanMode=true;quickProductScanMode=false;moveScanMode=false;
   setScannerUi('location');
   el.innerHTML='<div class="notice">Scanner prêt : visez le QR de l’emplacement où le nouveau lot sera rangé.</div>';
+  document.body.classList.add('scanner-active');
   $('reader').scrollIntoView({behavior:'smooth',block:'center'});
   await startScanner();
   if(!running){
@@ -1253,14 +1256,14 @@ async function stopScanner(){
   running=false;$('startBtn').disabled=false;$('stopBtn').disabled=true;$('status').textContent='Scanner arrêté.';
 }
 
-document.querySelectorAll('#mainNav button[data-view]').forEach(b=>b.onclick=()=>setAppView(b.dataset.view));
+document.querySelectorAll('#mainNav button[data-view]').forEach(b=>b.onclick=async()=>{if(running||productScannerControls){quickProductScanMode=false;quickScanMode=false;moveScanMode=false;await stopScanner()}document.body.classList.remove('scanner-active');setAppView(b.dataset.view)});
 if($('productRefSearch'))$('productRefSearch').addEventListener('input',renderProductReference);
 if($('productSyncBtn'))$('productSyncBtn').onclick=async()=>{const ok=await syncProductsFromSheet();$('productRefStatus').textContent=ok?'Référentiel synchronisé.':'Synchronisation indisponible pour le moment.'};
 if($('productNewBtn'))$('productNewBtn').onclick=openNewProductFromMenu;
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>showPane(b.dataset.pane));
 $('oDate').value=today();
 $('importStockBtn').onclick=importWorkbook;$('clearCatalogBtn').onclick=clearCatalog;$('saveOrderBtn').onclick=saveOrder;$('oProduct').addEventListener('change',toggleNewProductField);$('qProduct').addEventListener('change',toggleQuickNewProduct);$('quickProductScanBtn').onclick=startQuickProductScanner;$('quickScanBtn').onclick=startQuickScanner;$('quickSaveBtn').onclick=saveQuickEntry;$('cancelReceiveBtn').onclick=cancelReceive;$('confirmReceiveBtn').onclick=confirmReceive;
-$('startBtn').onclick=()=>{moveScanMode=false;quickScanMode=false;quickProductScanMode=false;setScannerUi('location');startScanner()};$('stopBtn').onclick=async()=>{moveScanMode=false;quickScanMode=false;quickProductScanMode=false;await stopScanner();setScannerUi('location')};$('manualBtn').onclick=()=>showResult($('manualCode').value);$('manualCode').addEventListener('keydown',e=>{if(e.key==='Enter')showResult(e.target.value)});
+$('startBtn').onclick=()=>{moveScanMode=false;quickScanMode=false;quickProductScanMode=false;setScannerUi('location');startScanner()};$('stopBtn').onclick=async()=>{moveScanMode=false;quickScanMode=false;quickProductScanMode=false;await stopScanner();document.body.classList.remove('scanner-active');setScannerUi('location')};$('manualBtn').onclick=()=>showResult($('manualCode').value);$('manualCode').addEventListener('keydown',e=>{if(e.key==='Enter')showResult(e.target.value)});
 $('findLotBtn').onclick=()=>previewLot($('lotInput').value);$('lotInput').addEventListener('keydown',e=>{if(e.key==='Enter')previewLot(e.target.value)});
 $('assignLotBtn').onclick=()=>{const lot=normalizeLot($('lotInput').value);if(activeLocation)assignLotTo(lot,activeLocation)};
 $('searchLotBtn').onclick=searchLot;$('searchLot').addEventListener('keydown',e=>{if(e.key==='Enter')searchLot()});$('categorySearchBtn').onclick=searchCategory;$('categorySearch').addEventListener('change',searchCategory);$('inventoryLoadBtn').onclick=loadInventoryLocation;$('inventoryLocationSelect').addEventListener('change',loadInventoryLocation);$('inventoryUseActiveBtn').onclick=useActiveInventoryLocation;$('inventoryConfirmBtn').onclick=confirmQuickInventory;$('moveScanBtn').onclick=startMoveScanner;$('moveLotBtn').onclick=moveSelectedLot;$('moveLotSelect').addEventListener('change',showMoveCurrentLocation);$('fifoSearchBtn').onclick=showFifoView;$('fifoProductSelect').addEventListener('change',showFifoView);$('locationViewBtn').onclick=showLocationView;$('locationViewSelect').addEventListener('change',showLocationView);$('showExpiryBtn').onclick=showExpiryAlerts;$('guestModeBtn').onclick=toggleGuestMode;
@@ -1291,7 +1294,7 @@ if(!readAutoBackups().length)createAutomaticBackup('Initiale');
 if(localStorage.getItem(LS.syncUrl))syncLotsFromSheet();
 if('serviceWorker' in navigator)window.addEventListener('load',async()=>{
   try{
-    const reg=await navigator.serviceWorker.register('./service-worker.js?v=32',{updateViaCache:'none'});
+    const reg=await navigator.serviceWorker.register('./service-worker.js?v=33',{updateViaCache:'none'});
     reg.update().catch(()=>{});
     navigator.serviceWorker.addEventListener('controllerchange',()=>{
       if(!sessionStorage.getItem('stock42SwReload')){
