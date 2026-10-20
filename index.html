@@ -83,7 +83,7 @@ input,select,textarea{width:100%;padding:12px;border:1px solid #d1d5db;border-ra
   <div id="orderPane">
     <div class="section-title">2. Nouvelle commande</div>
     <div class="two">
-      <div class="field"><label>Produit</label><input id="oProduct" placeholder="Ex. Riz basmati"></div>
+      <div class="field"><label>Produit</label><select id="oProduct"><option value="">— Choisir un produit —</option></select><div id="oNewProductWrap" class="hidden" style="margin-top:8px"><input id="oNewProduct" placeholder="Nom du nouveau produit"></div></div>
       <div class="field"><label>Catégorie</label><select id="oCategory"><option value="">— Choisir une catégorie —</option><option>Boissons</option><option>Céréales / féculents</option><option>Condiments</option><option>Conserves</option><option>Épicerie</option><option>Huiles</option><option>Légumineuses</option><option>Produits laitiers</option></select></div>
     </div>
     <div class="three">
@@ -352,7 +352,41 @@ function updateMobileDashboard(){
       : '<b>✓ Aucun point urgent détecté.</b>';
   }
 }
-function updateStats(){ $('catalogCount').textContent=allLots().length;$('nextLot').textContent=nextLot();const t=localStorage.getItem(LS.imported);$('importStatus').textContent=t?'Dernier import : '+new Date(t).toLocaleString('fr-FR')+' • '+catalog().length+' lot(s) chargé(s).':'Aucun tableau importé sur cet appareil.';renderOrders();populateCategorySearch();populateInventoryLocations();populateMoveControls();populateFifoProducts();populateLocationView();updateExpiryStats();updateMobileDashboard() }
+function productReferences(){
+  const refs=new Map();
+  allLots().forEach(x=>{
+    const name=String(x.produit||'').trim();
+    if(name)refs.set(name,{name,category:String(x.categorie||'').trim()});
+  });
+  orders().forEach(x=>{
+    const name=String(x.product||'').trim();
+    if(!name)return;
+    const current=refs.get(name)||{name,category:''};
+    if(!current.category&&x.category)current.category=String(x.category).trim();
+    refs.set(name,current);
+  });
+  return [...refs.values()].sort((a,b)=>a.name.localeCompare(b.name,'fr'));
+}
+function populateOrderProducts(){
+  const sel=$('oProduct');if(!sel)return;
+  const current=sel.value;
+  const refs=productReferences();
+  sel.innerHTML='<option value="">— Choisir un produit —</option>'+refs.map(x=>'<option value="'+esc(x.name)+'">'+esc(x.name)+'</option>').join('')+'<option value="__new__">+ Ajouter un nouveau produit</option>';
+  if(current==='__new__'||refs.some(x=>x.name===current))sel.value=current;
+  toggleNewProductField();
+}
+function toggleNewProductField(){
+  const sel=$('oProduct'),wrap=$('oNewProductWrap');
+  if(!sel||!wrap)return;
+  const isNew=sel.value==='__new__';
+  wrap.classList.toggle('hidden',!isNew);
+  if(isNew){setTimeout(()=>$('oNewProduct')?.focus(),0);return}
+  if(sel.value){
+    const ref=productReferences().find(x=>x.name===sel.value);
+    if(ref?.category&&[...$('oCategory').options].some(o=>o.value===ref.category))$('oCategory').value=ref.category;
+  }
+}
+function updateStats(){ $('catalogCount').textContent=allLots().length;$('nextLot').textContent=nextLot();const t=localStorage.getItem(LS.imported);$('importStatus').textContent=t?'Dernier import : '+new Date(t).toLocaleString('fr-FR')+' • '+catalog().length+' lot(s) chargé(s).':'Aucun tableau importé sur cet appareil.';renderOrders();populateOrderProducts();populateCategorySearch();populateInventoryLocations();populateMoveControls();populateFifoProducts();populateLocationView();updateExpiryStats();updateMobileDashboard() }
 function parseNumber(v){if(typeof v==='number')return v;const s=String(v??'').replace(/\s/g,'').replace(',','.').replace(/[^0-9.-]/g,'');return s?Number(s):null}
 function excelDate(v){if(!v)return'';if(v instanceof Date)return v.toLocaleDateString('fr-FR');return String(v)}
 async function importWorkbook(){
@@ -371,9 +405,14 @@ async function importWorkbook(){
 }
 function clearCatalog(){if(!confirm('Effacer uniquement le catalogue importé de ce téléphone ? Les commandes et nouveaux lots saisis dans l’application seront conservés.'))return;localStorage.removeItem(LS.catalog);localStorage.removeItem(LS.imported);updateStats()}
 async function saveOrder(){
-  const product=$('oProduct').value.trim(),qty=parseNumber($('oQty').value);if(!product||qty===null){$('orderStatus').textContent='Produit et quantité sont obligatoires.';return}
-  const a=orders();const rec={id:nextOrder(),status:'Commandée',product,category:$('oCategory').value.trim(),qty,unit:$('oUnit').value,price:parseNumber($('oPrice').value),supplier:$('oSupplier').value.trim(),reference:$('oReference').value.trim(),orderDate:$('oDate').value||today(),expected:$('oExpected').value,notes:$('oNotes').value.trim(),createdAt:new Date().toISOString()};
-  a.push(rec);set(LS.orders,a);const sync=await sendToSheet('order',rec);$('orderStatus').innerHTML='<span class="badge green">Commande '+esc(rec.id)+' enregistrée</span> '+(sync.ok?'• Google Sheets OK':'• enregistrée localement');['oProduct','oCategory','oQty','oPrice','oSupplier','oReference','oExpected','oNotes'].forEach(id=>$(id).value='');$('oUnit').value='';$('oDate').value=today();renderOrders()
+  const selected=$('oProduct').value;
+  const product=(selected==='__new__'?$('oNewProduct').value:selected).trim();
+  const qty=parseNumber($('oQty').value);
+  if(!product||qty===null){$('orderStatus').textContent='Produit et quantité sont obligatoires.';return}
+  const category=$('oCategory').value.trim();
+  if(!category){$('orderStatus').textContent='Choisissez une catégorie.';return}
+  const a=orders();const rec={id:nextOrder(),status:'Commandée',product,category,qty,unit:$('oUnit').value,price:parseNumber($('oPrice').value),supplier:$('oSupplier').value.trim(),reference:$('oReference').value.trim(),orderDate:$('oDate').value||today(),expected:$('oExpected').value,notes:$('oNotes').value.trim(),createdAt:new Date().toISOString()};
+  a.push(rec);set(LS.orders,a);const sync=await sendToSheet('order',rec);$('orderStatus').innerHTML='<span class="badge green">Commande '+esc(rec.id)+' enregistrée</span> '+(sync.ok?'• Google Sheets OK':'• enregistrée localement');['oProduct','oCategory','oQty','oPrice','oSupplier','oReference','oExpected','oNotes','oNewProduct'].forEach(id=>$(id).value='');$('oUnit').value='';$('oDate').value=today();updateStats()
 }
 function renderOrders(){
   const el=$('ordersList'),pending=orders().filter(x=>x.status==='Commandée');if(!pending.length){el.innerHTML='<div class="empty">Aucune commande en cours.</div>';return}
@@ -775,7 +814,7 @@ async function stopScanner(){if(scanner&&running){try{await scanner.stop();await
 
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>showPane(b.dataset.pane));
 $('oDate').value=today();
-$('importStockBtn').onclick=importWorkbook;$('clearCatalogBtn').onclick=clearCatalog;$('saveOrderBtn').onclick=saveOrder;$('cancelReceiveBtn').onclick=cancelReceive;$('confirmReceiveBtn').onclick=confirmReceive;
+$('importStockBtn').onclick=importWorkbook;$('clearCatalogBtn').onclick=clearCatalog;$('saveOrderBtn').onclick=saveOrder;$('oProduct').addEventListener('change',toggleNewProductField);$('cancelReceiveBtn').onclick=cancelReceive;$('confirmReceiveBtn').onclick=confirmReceive;
 $('startBtn').onclick=startScanner;$('stopBtn').onclick=stopScanner;$('manualBtn').onclick=()=>showResult($('manualCode').value);$('manualCode').addEventListener('keydown',e=>{if(e.key==='Enter')showResult(e.target.value)});
 $('findLotBtn').onclick=()=>previewLot($('lotInput').value);$('lotInput').addEventListener('keydown',e=>{if(e.key==='Enter')previewLot(e.target.value)});
 $('assignLotBtn').onclick=()=>{const lot=normalizeLot($('lotInput').value);if(activeLocation)assignLotTo(lot,activeLocation)};
@@ -805,7 +844,7 @@ if(!readAutoBackups().length)createAutomaticBackup('Initiale');
 if(localStorage.getItem(LS.syncUrl))syncLotsFromSheet();
 if('serviceWorker' in navigator)window.addEventListener('load',async()=>{
   try{
-    const reg=await navigator.serviceWorker.register('./service-worker.js?v=19',{updateViaCache:'none'});
+    const reg=await navigator.serviceWorker.register('./service-worker.js?v=20',{updateViaCache:'none'});
     reg.update().catch(()=>{});
     navigator.serviceWorker.addEventListener('controllerchange',()=>{
       if(!sessionStorage.getItem('stock42SwReload')){
