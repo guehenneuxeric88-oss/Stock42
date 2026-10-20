@@ -222,17 +222,21 @@ input,select,textarea{width:100%;padding:12px;border:1px solid #d1d5db;border-ra
   <div id="inventoryStatus" class="status"></div>
 </section>
 
-<section class="card admin-only">
+<section class="card admin-only" id="moveCard">
   <div class="section-title">Déplacement simplifié</div>
-  <div class="hint">Choisissez un lot déjà rangé, puis son nouvel emplacement.</div>
+  <div class="hint">Choisissez le lot, puis scannez le QR du nouvel emplacement. La liste déroulante reste disponible en secours.</div>
   <div style="margin-top:10px">
     <select id="moveLotSelect"><option value="">— Choisir un lot —</option></select>
   </div>
   <div id="moveCurrentLocation" class="status" style="margin-top:8px"></div>
-  <div style="margin-top:10px">
+  <div class="row" style="margin-top:10px">
+    <button id="moveScanBtn" class="btn secondary">Scanner le nouvel emplacement</button>
+  </div>
+  <div class="field" style="margin-top:10px">
+    <label>Ou choisir l’emplacement manuellement</label>
     <select id="moveDestinationSelect"><option value="">— Nouvel emplacement —</option></select>
   </div>
-  <button id="moveLotBtn" class="btn primary" style="margin-top:12px">Déplacer ce lot</button>
+  <button id="moveLotBtn" class="btn primary" style="margin-top:12px">Confirmer le déplacement</button>
   <div id="moveStatus" class="status"></div>
 </section>
 
@@ -286,7 +290,7 @@ input,select,textarea{width:100%;padding:12px;border:1px solid #d1d5db;border-ra
 </main>
 <script>
 const VALID=/^42-R([1-3])-N([1-5])-([ABC])$/i, LOT=/^L\d{4}$/;
-let scanner=null,running=false,activeLocation=null,receiveOrderId=null;
+let scanner=null,running=false,activeLocation=null,receiveOrderId=null,moveScanMode=false;
 const $=id=>document.getElementById(id);
 const LS={catalog:'stock42Catalog',lots:'stock42Lots',orders:'stock42Orders',moves:'stock42Movements',assign:'stock42Assignments',history:'stock42History',imported:'stock42ImportedAt',syncUrl:'stock42SyncUrl',syncKey:'stock42SyncKey',guestMode:'stock42GuestMode',autoBackups:'stock42AutoBackups'};
 const get=(k,d=[])=>{try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}};
@@ -532,7 +536,21 @@ async function confirmReceive(){
   $('receiveStatus').innerHTML='<span class="badge green">'+esc(lot)+' créé</span> Réception enregistrée. '+(sync.ok?'• Google Sheets OK':'• enregistrée localement');receiveOrderId=null;updateStats();renderOrders();if(activeLocation)renderLocationStock();$('rLot').value=nextLot();btn.disabled=false;
 }
 function showPane(id){document.querySelectorAll('[id$="Pane"]').forEach(x=>x.classList.add('hidden'));$(id).classList.remove('hidden');document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.pane===id))}
-function showResult(raw){const p=parseCode(raw),box=$('result');box.style.display='block';box.classList.remove('ok','bad');$('resultCode').textContent=p.code||'Code vide';if(p.valid){box.classList.add('ok');$('resultMsg').textContent='Emplacement reconnu.';$('details').innerHTML='<div class="kv"><div class="k">Site</div><div class="v">42</div></div><div class="kv"><div class="k">Rayonnage</div><div class="v">R'+p.rack+'</div></div><div class="kv"><div class="k">Niveau</div><div class="v">N'+p.level+'</div></div><div class="kv"><div class="k">Sous-zone</div><div class="v">'+p.zoneLetter+' — '+p.zone+'</div></div>';activeLocation=p.code;$('activeLocation').textContent=p.code;$('locationTitle').textContent=p.code;$('assignCard').classList.remove('hidden');$('locationStockCard').classList.remove('hidden');addHistory(p.code);renderLocationStock();if(navigator.vibrate)navigator.vibrate(70)}else{box.classList.add('bad');$('resultMsg').textContent='Code non reconnu pour le site 42.';$('details').innerHTML=''}box.scrollIntoView({behavior:'smooth',block:'center'})}
+function showResult(raw){
+  const p=parseCode(raw);
+  if(moveScanMode){
+    if(!p.valid){$('status').textContent='QR non reconnu. Scannez un emplacement 42-Rx-Nx-X.';return}
+    moveScanMode=false;
+    $('moveDestinationSelect').value=p.code;
+    $('moveStatus').innerHTML='<div class="notice"><b>✓ Nouvel emplacement scanné : '+esc(p.code)+'</b><br>Vérifiez puis appuyez sur « Confirmer le déplacement ».</div>';
+    if(navigator.vibrate)navigator.vibrate(70);
+    stopScanner().then(()=>$('moveCard').scrollIntoView({behavior:'smooth',block:'center'}));
+    return;
+  }
+  const box=$('result');box.style.display='block';box.classList.remove('ok','bad');$('resultCode').textContent=p.code||'Code vide';
+  if(p.valid){box.classList.add('ok');$('resultMsg').textContent='Emplacement reconnu.';$('details').innerHTML='<div class="kv"><div class="k">Site</div><div class="v">42</div></div><div class="kv"><div class="k">Rayonnage</div><div class="v">R'+p.rack+'</div></div><div class="kv"><div class="k">Niveau</div><div class="v">N'+p.level+'</div></div><div class="kv"><div class="k">Sous-zone</div><div class="v">'+p.zoneLetter+' — '+p.zone+'</div></div>';activeLocation=p.code;$('activeLocation').textContent=p.code;$('locationTitle').textContent=p.code;$('assignCard').classList.remove('hidden');$('locationStockCard').classList.remove('hidden');addHistory(p.code);renderLocationStock();if(navigator.vibrate)navigator.vibrate(70)}else{box.classList.add('bad');$('resultMsg').textContent='Code non reconnu pour le site 42.';$('details').innerHTML=''}
+  box.scrollIntoView({behavior:'smooth',block:'center'})
+}
 function addHistory(code){let h=get(LS.history,[]);h=h.filter(x=>x.code!==code);h.unshift({code,time:new Date().toISOString()});set(LS.history,h.slice(0,12))}
 function previewLot(raw,target='lotPreview'){const lot=normalizeLot(raw),x=lotById(lot),el=$(target);if(!LOT.test(lot)){el.innerHTML='<div class="empty">Numéro de lot invalide.</div>';if(target==='lotPreview')$('assignLotBtn').disabled=true;return null}if(!x){el.innerHTML='<div class="empty">'+esc(lot)+' n’est pas encore connu.</div>';if(target==='lotPreview')$('assignLotBtn').disabled=true;return null}el.innerHTML='<div class="notice"><b>'+esc(lot)+'</b> — '+esc(x.produit||'Produit non renseigné')+'<br>'+esc(x.quantite??'')+' '+esc(x.unite||'')+(x.ddm?' • DDM/DLC '+esc(x.ddm):'')+'</div>';if(target==='lotPreview'){$('lotInput').value=lot;$('assignLotBtn').disabled=false}return x}
 async function assignLotTo(lot,location,notify=true){lot=normalizeLot(lot);if(!lotById(lot)||!VALID.test(location))return;const oldLocation=currentLocationForLot(lot);let a=assignments().filter(x=>x.lot!==lot);a.push({id:lot+'@'+location,lot,location,assignedAt:new Date().toISOString()});set(LS.assign,a);const ll=localLots();const i=ll.findIndex(x=>x.lot===lot);if(i>=0){ll[i]={...ll[i],emplacement:location,zone:location.split('-').slice(1,3).join('-')};set(LS.lots,ll)}const mv=get(LS.moves,[]);const prod=lotById(lot);mv.push({date:today(),lot,produit:prod?.produit||'',type:'Transfert',quantite:0,unite:prod?.unite||'',source:oldLocation,destination:location,commentaire:oldLocation?'Déplacement emplacement':'Affectation emplacement',createdAt:new Date().toISOString()});set(LS.moves,mv);
@@ -716,6 +734,15 @@ function showMoveCurrentLocation(){
   if(!lot){el.textContent='';return}
   const x=lotById(lot),loc=currentLocationForLot(lot);
   el.innerHTML='<b>'+esc(x?.produit||'Produit')+' — '+esc(lot)+'</b><br>Emplacement actuel : <b>'+esc(loc||'non affecté')+'</b>';
+}
+async function startMoveScanner(){
+  const lot=$('moveLotSelect').value,el=$('moveStatus');
+  if(!lot){el.innerHTML='<div class="empty">Choisissez d’abord le lot à déplacer.</div>';return}
+  moveScanMode=true;
+  el.innerHTML='<div class="notice">Scanner prêt : visez le QR du <b>nouvel emplacement</b>.</div>';
+  $('reader').scrollIntoView({behavior:'smooth',block:'center'});
+  await startScanner();
+  if(!running){moveScanMode=false;el.innerHTML='<div class="notice" style="border-color:#fde68a;background:#fffbeb;color:#92400e">Caméra indisponible. Utilisez la liste déroulante en secours.</div>'}
 }
 async function moveSelectedLot(){
   const lot=$('moveLotSelect').value,dest=$('moveDestinationSelect').value,el=$('moveStatus'),btn=$('moveLotBtn');
@@ -912,10 +939,10 @@ async function stopScanner(){if(scanner&&running){try{await scanner.stop();await
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>showPane(b.dataset.pane));
 $('oDate').value=today();
 $('importStockBtn').onclick=importWorkbook;$('clearCatalogBtn').onclick=clearCatalog;$('saveOrderBtn').onclick=saveOrder;$('oProduct').addEventListener('change',toggleNewProductField);$('qProduct').addEventListener('change',toggleQuickNewProduct);$('quickSaveBtn').onclick=saveQuickEntry;$('cancelReceiveBtn').onclick=cancelReceive;$('confirmReceiveBtn').onclick=confirmReceive;
-$('startBtn').onclick=startScanner;$('stopBtn').onclick=stopScanner;$('manualBtn').onclick=()=>showResult($('manualCode').value);$('manualCode').addEventListener('keydown',e=>{if(e.key==='Enter')showResult(e.target.value)});
+$('startBtn').onclick=startScanner;$('stopBtn').onclick=async()=>{moveScanMode=false;await stopScanner()};$('manualBtn').onclick=()=>showResult($('manualCode').value);$('manualCode').addEventListener('keydown',e=>{if(e.key==='Enter')showResult(e.target.value)});
 $('findLotBtn').onclick=()=>previewLot($('lotInput').value);$('lotInput').addEventListener('keydown',e=>{if(e.key==='Enter')previewLot(e.target.value)});
 $('assignLotBtn').onclick=()=>{const lot=normalizeLot($('lotInput').value);if(activeLocation)assignLotTo(lot,activeLocation)};
-$('searchLotBtn').onclick=searchLot;$('searchLot').addEventListener('keydown',e=>{if(e.key==='Enter')searchLot()});$('categorySearchBtn').onclick=searchCategory;$('categorySearch').addEventListener('change',searchCategory);$('inventoryLoadBtn').onclick=loadInventoryLocation;$('inventoryLocationSelect').addEventListener('change',loadInventoryLocation);$('inventoryUseActiveBtn').onclick=useActiveInventoryLocation;$('inventoryConfirmBtn').onclick=confirmQuickInventory;$('moveLotBtn').onclick=moveSelectedLot;$('moveLotSelect').addEventListener('change',showMoveCurrentLocation);$('fifoSearchBtn').onclick=showFifoView;$('fifoProductSelect').addEventListener('change',showFifoView);$('locationViewBtn').onclick=showLocationView;$('locationViewSelect').addEventListener('change',showLocationView);$('showExpiryBtn').onclick=showExpiryAlerts;$('guestModeBtn').onclick=toggleGuestMode;
+$('searchLotBtn').onclick=searchLot;$('searchLot').addEventListener('keydown',e=>{if(e.key==='Enter')searchLot()});$('categorySearchBtn').onclick=searchCategory;$('categorySearch').addEventListener('change',searchCategory);$('inventoryLoadBtn').onclick=loadInventoryLocation;$('inventoryLocationSelect').addEventListener('change',loadInventoryLocation);$('inventoryUseActiveBtn').onclick=useActiveInventoryLocation;$('inventoryConfirmBtn').onclick=confirmQuickInventory;$('moveScanBtn').onclick=startMoveScanner;$('moveLotBtn').onclick=moveSelectedLot;$('moveLotSelect').addEventListener('change',showMoveCurrentLocation);$('fifoSearchBtn').onclick=showFifoView;$('fifoProductSelect').addEventListener('change',showFifoView);$('locationViewBtn').onclick=showLocationView;$('locationViewSelect').addEventListener('change',showLocationView);$('showExpiryBtn').onclick=showExpiryAlerts;$('guestModeBtn').onclick=toggleGuestMode;
 $('backupNowBtn').onclick=()=>createAutomaticBackup('Manuelle');$('restoreBackupBtn').onclick=restoreLatestBackup;$('exportLotsCsvBtn').onclick=exportLots;$('exportOrdersCsvBtn').onclick=exportOrders;$('exportJsonBtn').onclick=exportJson;
 $('syncUrl').value=localStorage.getItem(LS.syncUrl)||'';
 $('syncKey').value=localStorage.getItem(LS.syncKey)||'';
@@ -941,7 +968,7 @@ if(!readAutoBackups().length)createAutomaticBackup('Initiale');
 if(localStorage.getItem(LS.syncUrl))syncLotsFromSheet();
 if('serviceWorker' in navigator)window.addEventListener('load',async()=>{
   try{
-    const reg=await navigator.serviceWorker.register('./service-worker.js?v=21',{updateViaCache:'none'});
+    const reg=await navigator.serviceWorker.register('./service-worker.js?v=22',{updateViaCache:'none'});
     reg.update().catch(()=>{});
     navigator.serviceWorker.addEventListener('controllerchange',()=>{
       if(!sessionStorage.getItem('stock42SwReload')){
