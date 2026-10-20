@@ -171,7 +171,7 @@ input,select,textarea{width:100%;padding:12px;border:1px solid #d1d5db;border-ra
 </section>
 
 <section class="card admin-only">
-  <div class="section-title">4. Scanner un emplacement</div>
+  <div id="scannerTitle" class="section-title">4. Scanner un emplacement</div>
   <div id="reader" class="reader"></div>
   <div class="row" style="margin-top:12px"><button id="startBtn" class="btn primary">Démarrer le scanner</button><button id="stopBtn" class="btn secondary" disabled>Arrêter</button></div>
   <div id="status" class="status">Scannez un QR 42-Rx-Nx-X.</div>
@@ -862,6 +862,7 @@ async function handleQuickProductBarcode(raw){
 async function startQuickProductScanner(){
   const el=$('quickStatus');
   quickProductScanMode=true;moveScanMode=false;quickScanMode=false;
+  setScannerUi('product');
   el.innerHTML='<div class="notice">Scanner prêt : placez le code-barres du produit dans le cadre.</div>';
   $('reader').scrollIntoView({behavior:'smooth',block:'center'});
   await startScanner();
@@ -869,7 +870,8 @@ async function startQuickProductScanner(){
 }
 async function startQuickScanner(){
   const el=$('quickStatus');
-  quickScanMode=true;
+  quickScanMode=true;quickProductScanMode=false;moveScanMode=false;
+  setScannerUi('location');
   el.innerHTML='<div class="notice">Scanner prêt : visez le QR de l’emplacement où le nouveau lot sera rangé.</div>';
   $('reader').scrollIntoView({behavior:'smooth',block:'center'});
   await startScanner();
@@ -881,7 +883,8 @@ async function startQuickScanner(){
 async function startMoveScanner(){
   const lot=$('moveLotSelect').value,el=$('moveStatus');
   if(!lot){el.innerHTML='<div class="empty">Choisissez d’abord le lot à déplacer.</div>';return}
-  moveScanMode=true;
+  moveScanMode=true;quickProductScanMode=false;quickScanMode=false;
+  setScannerUi('move');
   el.innerHTML='<div class="notice">Scanner prêt : visez le QR du <b>nouvel emplacement</b>.</div>';
   $('reader').scrollIntoView({behavior:'smooth',block:'center'});
   await startScanner();
@@ -1078,13 +1081,43 @@ function restoreLatestBackup(){
   el.innerHTML='<b>✓ Dernière sauvegarde restaurée.</b> La clé API actuelle a été conservée.';
 }
 function exportJson(){const data={version:3,exportedAt:new Date().toISOString(),catalog:catalog(),lots:localLots(),orders:orders(),movements:get(LS.moves,[]),assignments:assignments()};const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='stock42_sauvegarde.json';a.click();URL.revokeObjectURL(url)}
-async function startScanner(){if(running)return;$('status').textContent='Initialisation caméra…';try{scanner=new Html5Qrcode('reader');const cams=await Html5Qrcode.getCameras();if(!cams?.length)throw new Error('Aucune caméra');const back=cams.find(c=>/back|rear|environment|arrière/i.test(c.label))||cams[cams.length-1];await scanner.start(back.id,{fps:10,qrbox:{width:220,height:220},aspectRatio:1},txt=>showResult(txt));running=true;$('startBtn').disabled=true;$('stopBtn').disabled=false;$('status').textContent='Scanner actif.'}catch(e){$('status').textContent='Caméra indisponible. Utilisez la saisie manuelle.'}}
+function setScannerUi(mode='location'){
+  if(mode==='product'){
+    $('scannerTitle').textContent='Scanner le code-barres du produit';
+    $('status').textContent='Placez le code-barres EAN/UPC du produit dans le cadre.';
+    $('startBtn').textContent='Scanner le produit';
+  }else if(mode==='move'){
+    $('scannerTitle').textContent='Scanner le nouvel emplacement';
+    $('status').textContent='Scannez le QR 42-Rx-Nx-X du nouvel emplacement.';
+    $('startBtn').textContent='Scanner l’emplacement';
+  }else{
+    $('scannerTitle').textContent='4. Scanner un emplacement';
+    $('status').textContent='Scannez un QR 42-Rx-Nx-X.';
+    $('startBtn').textContent='Démarrer le scanner';
+  }
+}
+async function startScanner(){
+  if(running)return;
+  const productMode=quickProductScanMode;
+  $('status').textContent=productMode?'Initialisation du scanner code-barres…':'Initialisation caméra…';
+  try{
+    scanner=new Html5Qrcode('reader');
+    const cams=await Html5Qrcode.getCameras();
+    if(!cams?.length)throw new Error('Aucune caméra');
+    const back=cams.find(c=>/back|rear|environment|arrière/i.test(c.label))||cams[cams.length-1];
+    await scanner.start(back.id,{fps:10,qrbox:productMode?{width:300,height:140}:{width:220,height:220},aspectRatio:1},txt=>showResult(txt));
+    running=true;$('startBtn').disabled=true;$('stopBtn').disabled=false;
+    $('status').textContent=productMode?'Scanner produit actif — visez les barres et les chiffres EAN/UPC.':'Scanner actif.';
+  }catch(e){
+    $('status').textContent=productMode?'Scanner code-barres indisponible. Choisissez le produit manuellement.':'Caméra indisponible. Utilisez la saisie manuelle.';
+  }
+}
 async function stopScanner(){if(scanner&&running){try{await scanner.stop();await scanner.clear()}catch(e){}running=false;$('startBtn').disabled=false;$('stopBtn').disabled=true;$('status').textContent='Scanner arrêté.'}}
 
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>showPane(b.dataset.pane));
 $('oDate').value=today();
 $('importStockBtn').onclick=importWorkbook;$('clearCatalogBtn').onclick=clearCatalog;$('saveOrderBtn').onclick=saveOrder;$('oProduct').addEventListener('change',toggleNewProductField);$('qProduct').addEventListener('change',toggleQuickNewProduct);$('quickProductScanBtn').onclick=startQuickProductScanner;$('quickScanBtn').onclick=startQuickScanner;$('quickSaveBtn').onclick=saveQuickEntry;$('cancelReceiveBtn').onclick=cancelReceive;$('confirmReceiveBtn').onclick=confirmReceive;
-$('startBtn').onclick=startScanner;$('stopBtn').onclick=async()=>{moveScanMode=false;quickScanMode=false;quickProductScanMode=false;await stopScanner()};$('manualBtn').onclick=()=>showResult($('manualCode').value);$('manualCode').addEventListener('keydown',e=>{if(e.key==='Enter')showResult(e.target.value)});
+$('startBtn').onclick=()=>{moveScanMode=false;quickScanMode=false;quickProductScanMode=false;setScannerUi('location');startScanner()};$('stopBtn').onclick=async()=>{moveScanMode=false;quickScanMode=false;quickProductScanMode=false;await stopScanner();setScannerUi('location')};$('manualBtn').onclick=()=>showResult($('manualCode').value);$('manualCode').addEventListener('keydown',e=>{if(e.key==='Enter')showResult(e.target.value)});
 $('findLotBtn').onclick=()=>previewLot($('lotInput').value);$('lotInput').addEventListener('keydown',e=>{if(e.key==='Enter')previewLot(e.target.value)});
 $('assignLotBtn').onclick=()=>{const lot=normalizeLot($('lotInput').value);if(activeLocation)assignLotTo(lot,activeLocation)};
 $('searchLotBtn').onclick=searchLot;$('searchLot').addEventListener('keydown',e=>{if(e.key==='Enter')searchLot()});$('categorySearchBtn').onclick=searchCategory;$('categorySearch').addEventListener('change',searchCategory);$('inventoryLoadBtn').onclick=loadInventoryLocation;$('inventoryLocationSelect').addEventListener('change',loadInventoryLocation);$('inventoryUseActiveBtn').onclick=useActiveInventoryLocation;$('inventoryConfirmBtn').onclick=confirmQuickInventory;$('moveScanBtn').onclick=startMoveScanner;$('moveLotBtn').onclick=moveSelectedLot;$('moveLotSelect').addEventListener('change',showMoveCurrentLocation);$('fifoSearchBtn').onclick=showFifoView;$('fifoProductSelect').addEventListener('change',showFifoView);$('locationViewBtn').onclick=showLocationView;$('locationViewSelect').addEventListener('change',showLocationView);$('showExpiryBtn').onclick=showExpiryAlerts;$('guestModeBtn').onclick=toggleGuestMode;
@@ -1113,7 +1146,7 @@ if(!readAutoBackups().length)createAutomaticBackup('Initiale');
 if(localStorage.getItem(LS.syncUrl))syncLotsFromSheet();
 if('serviceWorker' in navigator)window.addEventListener('load',async()=>{
   try{
-    const reg=await navigator.serviceWorker.register('./service-worker.js?v=25',{updateViaCache:'none'});
+    const reg=await navigator.serviceWorker.register('./service-worker.js?v=26',{updateViaCache:'none'});
     reg.update().catch(()=>{});
     navigator.serviceWorker.addEventListener('controllerchange',()=>{
       if(!sessionStorage.getItem('stock42SwReload')){
