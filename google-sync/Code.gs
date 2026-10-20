@@ -11,8 +11,11 @@ const LOTS_SHEET = 'Réception & lots';
 const MOVES_SHEET = 'Mouvements';
 const ORDERS_SHEET = 'Commandes Stock42';
 const CONFIG_SHEET = 'Configuration';
+const PRODUCTS_SHEET = 'Référentiel produits';
 
 function doGet(e) {
+  const action = String((e && e.parameter && e.parameter.action) || '');
+  if (action === 'products') return json_({ok:true,products:products_()});
   const info = {
     ok: true,
     service: 'Stock42',
@@ -268,6 +271,20 @@ function appendMovement_(d) {
   sh.getRange(row,1).setNumberFormat('dd/mm/yyyy');
   sh.getRange(row,12).setNumberFormat('dd/mm/yyyy hh:mm');
   return {ok:true,action:'movement',row:row};
+}
+
+function products_() {
+  const sh = ss_().getSheetByName(PRODUCTS_SHEET);
+  if (!sh || sh.getLastRow() < 2) return [];
+  const vals = sh.getRange(2,1,sh.getLastRow()-1,6).getDisplayValues();
+  return vals.filter(r => r[1]).map(r => ({
+    barcode: String(r[0] || '').trim(),
+    name: String(r[1] || '').trim(),
+    brand: String(r[2] || '').trim(),
+    category: String(r[3] || '').trim(),
+    pack: String(r[4] || '').trim(),
+    unit: String(r[5] || '').trim()
+  }));
 }
 
 function num_(v) {
