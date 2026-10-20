@@ -109,7 +109,7 @@ input,select,textarea{width:100%;padding:12px;border:1px solid #d1d5db;border-ra
     <div class="section-title">Entrée rapide d’un achat déjà reçu</div>
     <div class="notice">Une seule validation crée la commande, le lot, la réception et, si vous choisissez un emplacement, le rangement.</div>
     <div class="two">
-      <div class="field"><label>Produit</label><select id="qProduct"><option value="">— Choisir un produit —</option></select><div id="qNewProductWrap" class="hidden" style="margin-top:8px"><input id="qNewProduct" placeholder="Nom du nouveau produit"></div></div>
+      <div class="field"><label>Produit</label><div class="row" style="margin-bottom:8px"><button id="quickProductScanBtn" type="button" class="btn secondary">Scanner le code-barres</button></div><select id="qProduct"><option value="">— Choisir un produit —</option></select><div id="qNewProductWrap" class="hidden" style="margin-top:8px"><input id="qNewProduct" placeholder="Nom du nouveau produit"></div><div id="qBarcodeInfo" class="hint" style="margin-top:7px"></div></div>
       <div class="field"><label>Catégorie</label><select id="qCategory"><option value="">— Choisir une catégorie —</option><option>Boissons</option><option>Céréales / féculents</option><option>Condiments</option><option>Conserves</option><option>Épicerie</option><option>Huiles</option><option>Légumineuses</option><option>Produits laitiers</option></select></div>
     </div>
     <div class="three">
@@ -295,7 +295,7 @@ input,select,textarea{width:100%;padding:12px;border:1px solid #d1d5db;border-ra
 </main>
 <script>
 const VALID=/^42-R([1-3])-N([1-5])-([ABC])$/i, LOT=/^L\d{4}$/;
-let scanner=null,running=false,activeLocation=null,receiveOrderId=null,moveScanMode=false,quickScanMode=false;
+let scanner=null,running=false,activeLocation=null,receiveOrderId=null,moveScanMode=false,quickScanMode=false,quickProductScanMode=false,quickScannedBarcode='',quickScannedBrand='';
 const $=id=>document.getElementById(id);
 const LS={catalog:'stock42Catalog',lots:'stock42Lots',orders:'stock42Orders',moves:'stock42Movements',assign:'stock42Assignments',history:'stock42History',imported:'stock42ImportedAt',syncUrl:'stock42SyncUrl',syncKey:'stock42SyncKey',guestMode:'stock42GuestMode',autoBackups:'stock42AutoBackups',products:'stock42Products'};
 const get=(k,d=[])=>{try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}};
@@ -496,7 +496,7 @@ function rememberProductReference(data){
   const list=get(LS.products,[]);
   const i=list.findIndex(x=>String(x.name||'').trim()===name);
   const current=i>=0?list[i]:{name,barcode:'',brand:'',category:'',pack:'',unit:''};
-  const next={...current,name,category:data.category||current.category||'',pack:data.pack||current.pack||'',unit:data.unit||current.unit||''};
+  const next={...current,name,barcode:data.barcode||current.barcode||'',brand:data.brand||current.brand||'',category:data.category||current.category||'',pack:data.pack||current.pack||'',unit:data.unit||current.unit||''};
   if(i>=0)list[i]=next;else list.push(next);
   set(LS.products,list);
 }
@@ -533,7 +533,7 @@ async function saveQuickEntry(){
     updateStats();btn.disabled=false;btn.textContent='Créer et ranger le lot';return;
   }
   const lots=localLots();lots.push(rec);set(LS.lots,lots);
-  rememberProductReference({name:product,category,unit,pack:rec.conditionnement});
+  rememberProductReference({name:product,barcode:quickScannedBarcode,brand:quickScannedBrand,category,unit,pack:rec.conditionnement});
   const updated=orders();const oi=updated.findIndex(x=>x.id===orderId);if(oi>=0)updated[oi]={...updated[oi],status:'Reçue',receivedAt:new Date().toISOString(),lot};set(LS.orders,updated);
   const mv=get(LS.moves,[]);mv.push({date:today(),lot,produit:product,type:'Entrée',quantite:qty,unite:unit,source:'',destination:'',commentaire:'Réception '+orderId+' • Entrée rapide',reference:orderId,createdAt:new Date().toISOString()});set(LS.moves,mv);
   let assignOk=true;
@@ -554,6 +554,7 @@ async function saveQuickEntry(){
       ? '<div class="notice" style="border-color:#fde68a;background:#fffbeb;color:#92400e"><b>✓ '+esc(lot)+' créé</b><br>Le lot existe, mais l’affectation à '+esc(location)+' n’a pas été confirmée.</div>'
       : '<div class="notice" style="border-color:#86efac;background:#ecfdf5;color:#166534"><b>✓ '+esc(lot)+' créé</b><br>Lot à affecter ultérieurement.</div>';
   ['qProduct','qCategory','qQty','qExpiry','qSupplier','qPack','qNewProduct','qLocation'].forEach(id=>$(id).value='');
+  quickScannedBarcode='';quickScannedBrand='';$('qBarcodeInfo').textContent='';
   $('qUnit').value='';$('qDateType').value='DDM';populateQuickProducts();populateQuickLocations();
   btn.disabled=false;btn.textContent='Créer et ranger le lot';
 }
@@ -579,6 +580,13 @@ async function confirmReceive(){
 }
 function showPane(id){document.querySelectorAll('[id$="Pane"]').forEach(x=>x.classList.add('hidden'));$(id).classList.remove('hidden');document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.pane===id))}
 function showResult(raw){
+  if(quickProductScanMode){
+    const barcode=normalizeBarcode(raw);
+    if(barcode.length<8||barcode.length>14){$('status').textContent='Code produit non reconnu. Visez le code EAN/UPC.';return}
+    quickProductScanMode=false;
+    handleQuickProductBarcode(barcode);
+    return;
+  }
   const p=parseCode(raw);
   if(moveScanMode){
     if(!p.valid){$('status').textContent='QR non reconnu. Scannez un emplacement 42-Rx-Nx-X.';return}
@@ -785,6 +793,79 @@ function showMoveCurrentLocation(){
   if(!lot){el.textContent='';return}
   const x=lotById(lot),loc=currentLocationForLot(lot);
   el.innerHTML='<b>'+esc(x?.produit||'Produit')+' — '+esc(lot)+'</b><br>Emplacement actuel : <b>'+esc(loc||'non affecté')+'</b>';
+}
+function normalizeBarcode(raw){return String(raw||'').replace(/\D/g,'')}
+function categoryFromOpenFoodFacts(product){
+  const raw=[product?.categories, ...(Array.isArray(product?.categories_tags)?product.categories_tags:[])].join(' ').toLocaleLowerCase('fr-FR').normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  if(/lait|milk|dairy/.test(raw))return 'Produits laitiers';
+  if(/huile|oil/.test(raw))return 'Huiles';
+  if(/lentille|lentil|haricot|bean|pois chiche|chickpea|pois casse|pulse|legume sec/.test(raw))return 'Légumineuses';
+  if(/moutarde|mustard|vinaigre|vinegar|cornichon|pickle|condiment/.test(raw))return 'Condiments';
+  if(/riz|rice|pate|pasta|couscous|cereal|avoine|oat|semoule|farine|flour/.test(raw))return 'Céréales / féculents';
+  if(/boisson|beverage|jus|juice|cafe|coffee|the|tea/.test(raw))return 'Boissons';
+  if(/conserve|canned|sardine|thon|tuna|maquereau|mackerel|legume en conserve|fruit au sirop/.test(raw))return 'Conserves';
+  return 'Épicerie';
+}
+function findExistingProductForName(name){
+  const n=normalizeSearchText(name);
+  if(!n)return null;
+  const refs=productReferences();
+  const exact=refs.find(x=>normalizeSearchText(x.name)===n);if(exact)return exact;
+  const candidates=refs.filter(x=>{
+    const rn=normalizeSearchText(x.name);
+    return rn.length>=4&&(n.includes(rn)||rn.includes(n));
+  }).sort((a,b)=>b.name.length-a.name.length);
+  return candidates[0]||null;
+}
+async function handleQuickProductBarcode(raw){
+  const barcode=normalizeBarcode(raw),el=$('quickStatus');
+  if(barcode.length<8||barcode.length>14){el.innerHTML='<div class="notice" style="border-color:#fde68a;background:#fffbeb;color:#92400e">Code-barres non reconnu. Réessayez ou choisissez le produit manuellement.</div>';return}
+  quickScannedBarcode=barcode;quickScannedBrand='';
+  if(navigator.vibrate)navigator.vibrate(70);
+  await stopScanner();
+  showPane('quickPane');
+  $('quickPane').scrollIntoView({behavior:'smooth',block:'start'});
+  const local=productReferences().find(x=>String(x.barcode||'')===barcode);
+  if(local){
+    $('qProduct').value=local.name;toggleQuickNewProduct();
+    quickScannedBrand=local.brand||'';
+    $('qBarcodeInfo').innerHTML='Code-barres <b>'+esc(barcode)+'</b>'+(local.brand?' • '+esc(local.brand):'')+' • produit déjà connu';
+    el.innerHTML='<div class="notice" style="border-color:#86efac;background:#ecfdf5;color:#166534"><b>✓ Produit reconnu dans Stock 42</b><br>'+esc(local.name)+'</div>';
+    return;
+  }
+  el.innerHTML='<div class="notice">Code-barres '+esc(barcode)+' lu. Recherche du produit…</div>';
+  try{
+    const fields='code,product_name,product_name_fr,brands,quantity,categories,categories_tags';
+    const r=await fetch('https://world.openfoodfacts.org/api/v2/product/'+encodeURIComponent(barcode)+'.json?fields='+encodeURIComponent(fields),{cache:'no-store'});
+    const data=await r.json();
+    if(Number(data.status)!==1||!data.product)throw new Error('not_found');
+    const p=data.product;
+    const name=String(p.product_name_fr||p.product_name||'').trim();
+    if(!name)throw new Error('no_name');
+    quickScannedBrand=String(p.brands||'').trim();
+    const existing=findExistingProductForName(name);
+    if(existing){
+      $('qProduct').value=existing.name;toggleQuickNewProduct();
+    }else{
+      $('qProduct').value='__new__';toggleQuickNewProduct();$('qNewProduct').value=name;
+      const cat=categoryFromOpenFoodFacts(p);if([...$('qCategory').options].some(o=>o.value===cat))$('qCategory').value=cat;
+      if(p.quantity)$('qPack').value=String(p.quantity);
+    }
+    $('qBarcodeInfo').innerHTML='Code-barres <b>'+esc(barcode)+'</b>'+(quickScannedBrand?' • '+esc(quickScannedBrand):'')+' • Open Food Facts';
+    el.innerHTML='<div class="notice" style="border-color:#86efac;background:#ecfdf5;color:#166534"><b>✓ Produit identifié</b><br>'+esc(existing?existing.name:name)+(existing?'<br>Correspondance avec le référentiel Stock 42.':'<br>Vérifiez la catégorie et l’unité avant validation.')+'</div>';
+  }catch(e){
+    $('qProduct').value='__new__';toggleQuickNewProduct();
+    $('qBarcodeInfo').innerHTML='Code-barres <b>'+esc(barcode)+'</b> • produit non trouvé dans la base externe';
+    el.innerHTML='<div class="notice" style="border-color:#fde68a;background:#fffbeb;color:#92400e"><b>Produit inconnu</b><br>Saisissez son nom une fois : Stock 42 mémorisera ce code-barres pour les prochains achats.</div>';
+  }
+}
+async function startQuickProductScanner(){
+  const el=$('quickStatus');
+  quickProductScanMode=true;moveScanMode=false;quickScanMode=false;
+  el.innerHTML='<div class="notice">Scanner prêt : placez le code-barres du produit dans le cadre.</div>';
+  $('reader').scrollIntoView({behavior:'smooth',block:'center'});
+  await startScanner();
+  if(!running){quickProductScanMode=false;el.innerHTML='<div class="notice" style="border-color:#fde68a;background:#fffbeb;color:#92400e">Caméra indisponible. Choisissez le produit manuellement.</div>'}
 }
 async function startQuickScanner(){
   const el=$('quickStatus');
@@ -1002,8 +1083,8 @@ async function stopScanner(){if(scanner&&running){try{await scanner.stop();await
 
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>showPane(b.dataset.pane));
 $('oDate').value=today();
-$('importStockBtn').onclick=importWorkbook;$('clearCatalogBtn').onclick=clearCatalog;$('saveOrderBtn').onclick=saveOrder;$('oProduct').addEventListener('change',toggleNewProductField);$('qProduct').addEventListener('change',toggleQuickNewProduct);$('quickScanBtn').onclick=startQuickScanner;$('quickSaveBtn').onclick=saveQuickEntry;$('cancelReceiveBtn').onclick=cancelReceive;$('confirmReceiveBtn').onclick=confirmReceive;
-$('startBtn').onclick=startScanner;$('stopBtn').onclick=async()=>{moveScanMode=false;quickScanMode=false;await stopScanner()};$('manualBtn').onclick=()=>showResult($('manualCode').value);$('manualCode').addEventListener('keydown',e=>{if(e.key==='Enter')showResult(e.target.value)});
+$('importStockBtn').onclick=importWorkbook;$('clearCatalogBtn').onclick=clearCatalog;$('saveOrderBtn').onclick=saveOrder;$('oProduct').addEventListener('change',toggleNewProductField);$('qProduct').addEventListener('change',toggleQuickNewProduct);$('quickProductScanBtn').onclick=startQuickProductScanner;$('quickScanBtn').onclick=startQuickScanner;$('quickSaveBtn').onclick=saveQuickEntry;$('cancelReceiveBtn').onclick=cancelReceive;$('confirmReceiveBtn').onclick=confirmReceive;
+$('startBtn').onclick=startScanner;$('stopBtn').onclick=async()=>{moveScanMode=false;quickScanMode=false;quickProductScanMode=false;await stopScanner()};$('manualBtn').onclick=()=>showResult($('manualCode').value);$('manualCode').addEventListener('keydown',e=>{if(e.key==='Enter')showResult(e.target.value)});
 $('findLotBtn').onclick=()=>previewLot($('lotInput').value);$('lotInput').addEventListener('keydown',e=>{if(e.key==='Enter')previewLot(e.target.value)});
 $('assignLotBtn').onclick=()=>{const lot=normalizeLot($('lotInput').value);if(activeLocation)assignLotTo(lot,activeLocation)};
 $('searchLotBtn').onclick=searchLot;$('searchLot').addEventListener('keydown',e=>{if(e.key==='Enter')searchLot()});$('categorySearchBtn').onclick=searchCategory;$('categorySearch').addEventListener('change',searchCategory);$('inventoryLoadBtn').onclick=loadInventoryLocation;$('inventoryLocationSelect').addEventListener('change',loadInventoryLocation);$('inventoryUseActiveBtn').onclick=useActiveInventoryLocation;$('inventoryConfirmBtn').onclick=confirmQuickInventory;$('moveScanBtn').onclick=startMoveScanner;$('moveLotBtn').onclick=moveSelectedLot;$('moveLotSelect').addEventListener('change',showMoveCurrentLocation);$('fifoSearchBtn').onclick=showFifoView;$('fifoProductSelect').addEventListener('change',showFifoView);$('locationViewBtn').onclick=showLocationView;$('locationViewSelect').addEventListener('change',showLocationView);$('showExpiryBtn').onclick=showExpiryAlerts;$('guestModeBtn').onclick=toggleGuestMode;
@@ -1032,7 +1113,7 @@ if(!readAutoBackups().length)createAutomaticBackup('Initiale');
 if(localStorage.getItem(LS.syncUrl))syncLotsFromSheet();
 if('serviceWorker' in navigator)window.addEventListener('load',async()=>{
   try{
-    const reg=await navigator.serviceWorker.register('./service-worker.js?v=24',{updateViaCache:'none'});
+    const reg=await navigator.serviceWorker.register('./service-worker.js?v=25',{updateViaCache:'none'});
     reg.update().catch(()=>{});
     navigator.serviceWorker.addEventListener('controllerchange',()=>{
       if(!sessionStorage.getItem('stock42SwReload')){
