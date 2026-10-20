@@ -123,7 +123,12 @@ input,select,textarea{width:100%;padding:12px;border:1px solid #d1d5db;border-ra
     </div>
     <div class="two">
       <div class="field"><label>Conditionnement</label><input id="qPack" placeholder="Ex. Net 460 g"></div>
-      <div class="field"><label>Emplacement</label><select id="qLocation"><option value="">— À affecter plus tard —</option></select></div>
+      <div class="field">
+        <label>Emplacement</label>
+        <div class="row" style="margin-bottom:8px"><button id="quickScanBtn" type="button" class="btn secondary">Scanner l’emplacement</button></div>
+        <select id="qLocation"><option value="">— À affecter plus tard —</option></select>
+        <div class="hint" style="margin-top:6px">La liste déroulante reste disponible en secours.</div>
+      </div>
     </div>
     <button id="quickSaveBtn" class="btn primary">Créer et ranger le lot</button>
     <div id="quickStatus" class="status"></div>
@@ -290,7 +295,7 @@ input,select,textarea{width:100%;padding:12px;border:1px solid #d1d5db;border-ra
 </main>
 <script>
 const VALID=/^42-R([1-3])-N([1-5])-([ABC])$/i, LOT=/^L\d{4}$/;
-let scanner=null,running=false,activeLocation=null,receiveOrderId=null,moveScanMode=false;
+let scanner=null,running=false,activeLocation=null,receiveOrderId=null,moveScanMode=false,quickScanMode=false;
 const $=id=>document.getElementById(id);
 const LS={catalog:'stock42Catalog',lots:'stock42Lots',orders:'stock42Orders',moves:'stock42Movements',assign:'stock42Assignments',history:'stock42History',imported:'stock42ImportedAt',syncUrl:'stock42SyncUrl',syncKey:'stock42SyncKey',guestMode:'stock42GuestMode',autoBackups:'stock42AutoBackups'};
 const get=(k,d=[])=>{try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}};
@@ -547,6 +552,15 @@ function showResult(raw){
     stopScanner().then(()=>$('moveCard').scrollIntoView({behavior:'smooth',block:'center'}));
     return;
   }
+  if(quickScanMode){
+    if(!p.valid){$('status').textContent='QR non reconnu. Scannez un emplacement 42-Rx-Nx-X.';return}
+    quickScanMode=false;
+    $('qLocation').value=p.code;
+    $('quickStatus').innerHTML='<div class="notice"><b>✓ Emplacement scanné : '+esc(p.code)+'</b><br>Vous pouvez terminer la saisie puis créer le lot.</div>';
+    if(navigator.vibrate)navigator.vibrate(70);
+    stopScanner().then(()=>{showPane('quickPane');$('quickPane').scrollIntoView({behavior:'smooth',block:'start'})});
+    return;
+  }
   const box=$('result');box.style.display='block';box.classList.remove('ok','bad');$('resultCode').textContent=p.code||'Code vide';
   if(p.valid){box.classList.add('ok');$('resultMsg').textContent='Emplacement reconnu.';$('details').innerHTML='<div class="kv"><div class="k">Site</div><div class="v">42</div></div><div class="kv"><div class="k">Rayonnage</div><div class="v">R'+p.rack+'</div></div><div class="kv"><div class="k">Niveau</div><div class="v">N'+p.level+'</div></div><div class="kv"><div class="k">Sous-zone</div><div class="v">'+p.zoneLetter+' — '+p.zone+'</div></div>';activeLocation=p.code;$('activeLocation').textContent=p.code;$('locationTitle').textContent=p.code;$('assignCard').classList.remove('hidden');$('locationStockCard').classList.remove('hidden');addHistory(p.code);renderLocationStock();if(navigator.vibrate)navigator.vibrate(70)}else{box.classList.add('bad');$('resultMsg').textContent='Code non reconnu pour le site 42.';$('details').innerHTML=''}
   box.scrollIntoView({behavior:'smooth',block:'center'})
@@ -734,6 +748,17 @@ function showMoveCurrentLocation(){
   if(!lot){el.textContent='';return}
   const x=lotById(lot),loc=currentLocationForLot(lot);
   el.innerHTML='<b>'+esc(x?.produit||'Produit')+' — '+esc(lot)+'</b><br>Emplacement actuel : <b>'+esc(loc||'non affecté')+'</b>';
+}
+async function startQuickScanner(){
+  const el=$('quickStatus');
+  quickScanMode=true;
+  el.innerHTML='<div class="notice">Scanner prêt : visez le QR de l’emplacement où le nouveau lot sera rangé.</div>';
+  $('reader').scrollIntoView({behavior:'smooth',block:'center'});
+  await startScanner();
+  if(!running){
+    quickScanMode=false;
+    el.innerHTML='<div class="notice" style="border-color:#fde68a;background:#fffbeb;color:#92400e">Caméra indisponible. Utilisez la liste déroulante en secours.</div>';
+  }
 }
 async function startMoveScanner(){
   const lot=$('moveLotSelect').value,el=$('moveStatus');
@@ -938,8 +963,8 @@ async function stopScanner(){if(scanner&&running){try{await scanner.stop();await
 
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>showPane(b.dataset.pane));
 $('oDate').value=today();
-$('importStockBtn').onclick=importWorkbook;$('clearCatalogBtn').onclick=clearCatalog;$('saveOrderBtn').onclick=saveOrder;$('oProduct').addEventListener('change',toggleNewProductField);$('qProduct').addEventListener('change',toggleQuickNewProduct);$('quickSaveBtn').onclick=saveQuickEntry;$('cancelReceiveBtn').onclick=cancelReceive;$('confirmReceiveBtn').onclick=confirmReceive;
-$('startBtn').onclick=startScanner;$('stopBtn').onclick=async()=>{moveScanMode=false;await stopScanner()};$('manualBtn').onclick=()=>showResult($('manualCode').value);$('manualCode').addEventListener('keydown',e=>{if(e.key==='Enter')showResult(e.target.value)});
+$('importStockBtn').onclick=importWorkbook;$('clearCatalogBtn').onclick=clearCatalog;$('saveOrderBtn').onclick=saveOrder;$('oProduct').addEventListener('change',toggleNewProductField);$('qProduct').addEventListener('change',toggleQuickNewProduct);$('quickScanBtn').onclick=startQuickScanner;$('quickSaveBtn').onclick=saveQuickEntry;$('cancelReceiveBtn').onclick=cancelReceive;$('confirmReceiveBtn').onclick=confirmReceive;
+$('startBtn').onclick=startScanner;$('stopBtn').onclick=async()=>{moveScanMode=false;quickScanMode=false;await stopScanner()};$('manualBtn').onclick=()=>showResult($('manualCode').value);$('manualCode').addEventListener('keydown',e=>{if(e.key==='Enter')showResult(e.target.value)});
 $('findLotBtn').onclick=()=>previewLot($('lotInput').value);$('lotInput').addEventListener('keydown',e=>{if(e.key==='Enter')previewLot(e.target.value)});
 $('assignLotBtn').onclick=()=>{const lot=normalizeLot($('lotInput').value);if(activeLocation)assignLotTo(lot,activeLocation)};
 $('searchLotBtn').onclick=searchLot;$('searchLot').addEventListener('keydown',e=>{if(e.key==='Enter')searchLot()});$('categorySearchBtn').onclick=searchCategory;$('categorySearch').addEventListener('change',searchCategory);$('inventoryLoadBtn').onclick=loadInventoryLocation;$('inventoryLocationSelect').addEventListener('change',loadInventoryLocation);$('inventoryUseActiveBtn').onclick=useActiveInventoryLocation;$('inventoryConfirmBtn').onclick=confirmQuickInventory;$('moveScanBtn').onclick=startMoveScanner;$('moveLotBtn').onclick=moveSelectedLot;$('moveLotSelect').addEventListener('change',showMoveCurrentLocation);$('fifoSearchBtn').onclick=showFifoView;$('fifoProductSelect').addEventListener('change',showFifoView);$('locationViewBtn').onclick=showLocationView;$('locationViewSelect').addEventListener('change',showLocationView);$('showExpiryBtn').onclick=showExpiryAlerts;$('guestModeBtn').onclick=toggleGuestMode;
@@ -968,7 +993,7 @@ if(!readAutoBackups().length)createAutomaticBackup('Initiale');
 if(localStorage.getItem(LS.syncUrl))syncLotsFromSheet();
 if('serviceWorker' in navigator)window.addEventListener('load',async()=>{
   try{
-    const reg=await navigator.serviceWorker.register('./service-worker.js?v=22',{updateViaCache:'none'});
+    const reg=await navigator.serviceWorker.register('./service-worker.js?v=23',{updateViaCache:'none'});
     reg.update().catch(()=>{});
     navigator.serviceWorker.addEventListener('controllerchange',()=>{
       if(!sessionStorage.getItem('stock42SwReload')){
