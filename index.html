@@ -368,7 +368,7 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 function normalizeLot(raw){let s=(raw||'').trim().toUpperCase().replace(/\s+/g,'');if(/^\d{1,4}$/.test(s))s='L'+s.padStart(4,'0');if(/^L\d{1,4}$/.test(s))s='L'+s.slice(1).padStart(4,'0');return s}
 function parseCode(raw){const code=(raw||'').trim().toUpperCase(),m=code.match(VALID);if(!m)return{valid:false,code};return{valid:true,code,rack:m[1],level:m[2],zoneLetter:m[3],zone:{A:'Gauche',B:'Centre',C:'Droite'}[m[3]]}}
 function catalog(){return get(LS.catalog,[])} function localLots(){return get(LS.lots,[])} function orders(){return get(LS.orders,[])} function assignments(){return get(LS.assign,[])}
-function allLots(){const map=new Map();[...catalog(),...localLots()].forEach(x=>{const l=normalizeLot(x.lot);if(l&&LOT.test(l))map.set(l,{...x,lot:l})});return [...map.values()].sort((a,b)=>a.lot.localeCompare(b.lot))}
+function allLots(){const map=new Map();[...localLots(),...catalog()].forEach(x=>{const l=normalizeLot(x.lot);if(l&&LOT.test(l))map.set(l,{...x,lot:l})});return [...map.values()].sort((a,b)=>a.lot.localeCompare(b.lot))}
 function nextLot(){let max=0;allLots().forEach(x=>{const n=parseInt(x.lot.slice(1),10);if(n>max)max=n});return 'L'+String(max+1).padStart(4,'0')}
 function nextOrder(){let max=0;orders().forEach(x=>{const m=String(x.id||'').match(/^C(\d+)$/);if(m)max=Math.max(max,+m[1])});return 'C'+String(max+1).padStart(4,'0')}
 async function syncLotsFromSheet(){
@@ -1294,7 +1294,7 @@ if(!readAutoBackups().length)createAutomaticBackup('Initiale');
 if(localStorage.getItem(LS.syncUrl))syncLotsFromSheet();
 if('serviceWorker' in navigator)window.addEventListener('load',async()=>{
   try{
-    const reg=await navigator.serviceWorker.register('./service-worker.js?v=33',{updateViaCache:'none'});
+    const reg=await navigator.serviceWorker.register('./service-worker.js?v=34',{updateViaCache:'none'});
     reg.update().catch(()=>{});
     navigator.serviceWorker.addEventListener('controllerchange',()=>{
       if(!sessionStorage.getItem('stock42SwReload')){
