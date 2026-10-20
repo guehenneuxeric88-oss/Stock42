@@ -84,7 +84,7 @@ input,select,textarea{width:100%;padding:12px;border:1px solid #d1d5db;border-ra
     <div class="section-title">2. Nouvelle commande</div>
     <div class="two">
       <div class="field"><label>Produit</label><input id="oProduct" placeholder="Ex. Riz basmati"></div>
-      <div class="field"><label>Catégorie</label><input id="oCategory" placeholder="Ex. Céréales / féculents"></div>
+      <div class="field"><label>Catégorie</label><select id="oCategory"><option value="">— Choisir une catégorie —</option><option>Boissons</option><option>Céréales / féculents</option><option>Condiments</option><option>Conserves</option><option>Épicerie</option><option>Huiles</option><option>Légumineuses</option><option>Produits laitiers</option></select></div>
     </div>
     <div class="three">
       <div class="field"><label>Quantité commandée</label><input id="oQty" type="number" step="any" min="0"></div>
@@ -805,7 +805,7 @@ if(!readAutoBackups().length)createAutomaticBackup('Initiale');
 if(localStorage.getItem(LS.syncUrl))syncLotsFromSheet();
 if('serviceWorker' in navigator)window.addEventListener('load',async()=>{
   try{
-    const reg=await navigator.serviceWorker.register('./service-worker.js?v=18',{updateViaCache:'none'});
+    const reg=await navigator.serviceWorker.register('./service-worker.js?v=19',{updateViaCache:'none'});
     reg.update().catch(()=>{});
     navigator.serviceWorker.addEventListener('controllerchange',()=>{
       if(!sessionStorage.getItem('stock42SwReload')){
