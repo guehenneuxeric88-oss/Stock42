@@ -1101,13 +1101,26 @@ async function startScanner(){
   const productMode=quickProductScanMode;
   $('status').textContent=productMode?'Initialisation du scanner code-barres…':'Initialisation caméra…';
   try{
-    scanner=new Html5Qrcode('reader');
+    const scannerConfig=productMode?{
+      formatsToSupport:[
+        Html5QrcodeSupportedFormats.EAN_13,
+        Html5QrcodeSupportedFormats.EAN_8,
+        Html5QrcodeSupportedFormats.UPC_A,
+        Html5QrcodeSupportedFormats.UPC_E,
+        Html5QrcodeSupportedFormats.CODE_128
+      ],
+      useBarCodeDetectorIfSupported:true
+    }:{
+      formatsToSupport:[Html5QrcodeSupportedFormats.QR_CODE],
+      useBarCodeDetectorIfSupported:true
+    };
+    scanner=new Html5Qrcode('reader',scannerConfig);
     const cams=await Html5Qrcode.getCameras();
     if(!cams?.length)throw new Error('Aucune caméra');
     const back=cams.find(c=>/back|rear|environment|arrière/i.test(c.label))||cams[cams.length-1];
     await scanner.start(back.id,{fps:10,qrbox:productMode?{width:300,height:140}:{width:220,height:220},aspectRatio:1},txt=>showResult(txt));
     running=true;$('startBtn').disabled=true;$('stopBtn').disabled=false;
-    $('status').textContent=productMode?'Scanner produit actif — visez les barres et les chiffres EAN/UPC.':'Scanner actif.';
+    $('status').textContent=productMode?'Mode CODE-BARRES actif — EAN/UPC uniquement. Visez les barres et les chiffres.':'Mode QR emplacement actif.';
   }catch(e){
     $('status').textContent=productMode?'Scanner code-barres indisponible. Choisissez le produit manuellement.':'Caméra indisponible. Utilisez la saisie manuelle.';
   }
@@ -1146,7 +1159,7 @@ if(!readAutoBackups().length)createAutomaticBackup('Initiale');
 if(localStorage.getItem(LS.syncUrl))syncLotsFromSheet();
 if('serviceWorker' in navigator)window.addEventListener('load',async()=>{
   try{
-    const reg=await navigator.serviceWorker.register('./service-worker.js?v=26',{updateViaCache:'none'});
+    const reg=await navigator.serviceWorker.register('./service-worker.js?v=27',{updateViaCache:'none'});
     reg.update().catch(()=>{});
     navigator.serviceWorker.addEventListener('controllerchange',()=>{
       if(!sessionStorage.getItem('stock42SwReload')){
