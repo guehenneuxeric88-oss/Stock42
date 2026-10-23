@@ -36,16 +36,12 @@ body[data-app-view="entries"].scanner-active .app #scannerCard{display:block}
 .view-heading{margin:8px 0 4px;font-size:1.25rem;font-weight:900}.view-sub{color:#6b7280;font-size:.88rem;margin-bottom:10px}
 .quick-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px}.quick-actions .btn{text-align:left}
 .product-ref-row{padding:10px 0;border-bottom:1px solid #eee}.product-ref-row:last-child{border-bottom:0}
-.card[data-app-view="home"] .section-title{color:#7c3aed}
-.card[data-app-view="entries"] .section-title{color:#7c3aed}
-.card[data-app-view="stock"] .section-title{color:#7c3aed}
-.card[data-app-view="products"] .section-title{color:#7c3aed}
-.card[data-app-view="config"] .section-title{color:#7c3aed}
-body[data-app-view="home"] .main-nav button[data-view="home"]{background:#ede9fe;color:#6d28d9}
-body[data-app-view="entries"] .main-nav button[data-view="entries"]{background:#ede9fe;color:#6d28d9}
-body[data-app-view="stock"] .main-nav button[data-view="stock"]{background:#ede9fe;color:#6d28d9}
-body[data-app-view="products"] .main-nav button[data-view="products"]{background:#ede9fe;color:#6d28d9}
-body[data-app-view="config"] .main-nav button[data-view="config"]{background:#ede9fe;color:#6d28d9}
+.card[data-app-view] .section-title{color:#7c3aed}
+body[data-app-view="home"] .main-nav button[data-view="home"],
+body[data-app-view="entries"] .main-nav button[data-view="entries"],
+body[data-app-view="stock"] .main-nav button[data-view="stock"],
+body[data-app-view="products"] .main-nav button[data-view="products"],
+body[data-app-view="config"] .main-nav button[data-view="config"]{background:#ddd6fe;color:#5b21b6}
 
 body.guest-mode .admin-only{display:none!important}body.guest-mode #guestModeBtn{background:#c4b5fd;color:#4c1d95}.guest-banner{display:none;margin-bottom:12px;padding:10px 12px;border-radius:12px;background:#f3e8ff;color:#7e22ce;font-weight:800;font-size:.88rem}body.guest-mode .guest-banner{display:block}.footer{text-align:center;color:#9ca3af;font-size:.78rem;margin-top:24px}
 @media(max-width:500px){body{padding-bottom:76px}.two,.three,.grid{grid-template-columns:1fr}.tabs{grid-template-columns:1fr}.main-nav{position:fixed;left:0;right:0;bottom:0;top:auto;margin:0;padding:8px max(8px,env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left));background:rgba(255,255,255,.96);box-shadow:0 -6px 22px rgba(148,163,184,.16);z-index:50}.main-nav button{background:#faf5ff;padding:8px 2px 6px;font-size:.68rem}.main-nav button .nav-icon{font-size:1.08rem}.quick-actions{grid-template-columns:1fr}#mobileDashboard .grid{grid-template-columns:1fr 1fr}#mobileDashboard .two{grid-template-columns:1fr 1fr}#mobileDashboard .kv{padding:9px}#mobileDashboard .v{font-size:1.08rem}}
@@ -1294,7 +1290,7 @@ if(!readAutoBackups().length)createAutomaticBackup('Initiale');
 if(localStorage.getItem(LS.syncUrl))syncLotsFromSheet();
 if('serviceWorker' in navigator)window.addEventListener('load',async()=>{
   try{
-    const reg=await navigator.serviceWorker.register('./service-worker.js?v=35',{updateViaCache:'none'});
+    const reg=await navigator.serviceWorker.register('./service-worker.js?v=36',{updateViaCache:'none'});
     reg.update().catch(()=>{});
     navigator.serviceWorker.addEventListener('controllerchange',()=>{
       if(!sessionStorage.getItem('stock42SwReload')){
