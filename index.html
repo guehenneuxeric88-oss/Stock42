@@ -287,8 +287,11 @@ body.guest-mode .admin-only{display:none!important}body.guest-mode #guestModeBtn
 
 <section class="card admin-only" id="exitCard" data-app-view="stock">
   <div class="section-title">Sortie de stock</div>
-  <div class="hint">Choisissez un lot, indiquez la quantité réellement sortie puis validez. La sortie est enregistrée dans l’historique des mouvements.</div>
-  <div class="field" style="margin-top:10px"><label>Lot à sortir</label><select id="exitLotSelect"><option value="">— Choisir un lot —</option></select></div>
+  <div class="hint">Scannez d’abord le QR de l’emplacement. Stock 42 affichera uniquement les lots présents à cet endroit.</div>
+  <div class="row" style="margin-top:10px"><button id="exitScanBtn" class="btn primary">Scanner l’emplacement</button></div>
+  <div class="field" style="margin-top:10px"><label>Ou choisir l’emplacement manuellement</label><select id="exitLocationSelect"><option value="">— Choisir un emplacement —</option></select></div>
+  <div id="exitLocationInfo" class="status"></div>
+  <div class="field" style="margin-top:10px"><label>Lot à sortir</label><select id="exitLotSelect"><option value="">— Scannez ou choisissez d’abord un emplacement —</option></select></div>
   <div id="exitLotInfo" class="status"></div>
   <div class="two" style="margin-top:10px">
     <div class="field"><label>Quantité sortie</label><input id="exitQty" inputmode="decimal" placeholder="Ex. 1"></div>
@@ -368,7 +371,7 @@ body.guest-mode .admin-only{display:none!important}body.guest-mode #guestModeBtn
 </main>
 <script>
 const VALID=/^42-R([1-3])-N([1-5])-([ABC])$/i, LOT=/^L\d{4}$/;
-let scanner=null,running=false,productScanner=null,productScannerControls=null,activeLocation=null,receiveOrderId=null,moveScanMode=false,quickScanMode=false,quickProductScanMode=false,quickScannedBarcode='',quickScannedBrand='';
+let scanner=null,running=false,productScanner=null,productScannerControls=null,activeLocation=null,receiveOrderId=null,moveScanMode=false,exitScanMode=false,exitLocation='',quickScanMode=false,quickProductScanMode=false,quickScannedBarcode='',quickScannedBrand='';
 const $=id=>document.getElementById(id);
 const LS={catalog:'stock42Catalog',lots:'stock42Lots',orders:'stock42Orders',moves:'stock42Movements',assign:'stock42Assignments',history:'stock42History',imported:'stock42ImportedAt',syncUrl:'stock42SyncUrl',syncKey:'stock42SyncKey',guestMode:'stock42GuestMode',autoBackups:'stock42AutoBackups',products:'stock42Products'};
 const get=(k,d=[])=>{try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}};
@@ -573,7 +576,7 @@ function openNewProductFromMenu(){
   $('qNewProduct').focus();
   $('quickPane').scrollIntoView({behavior:'smooth',block:'start'});
 }
-function updateStats(){ $('catalogCount').textContent=allLots().length;$('nextLot').textContent=nextLot();const t=localStorage.getItem(LS.imported);$('importStatus').textContent=t?'Dernier import : '+new Date(t).toLocaleString('fr-FR')+' • '+catalog().length+' lot(s) chargé(s).':'Aucun tableau importé sur cet appareil.';renderOrders();populateOrderProducts();populateQuickProducts();populateQuickLocations();populateCategorySearch();populateInventoryLocations();populateExitControls();populateMoveControls();populateFifoProducts();populateLocationView();updateExpiryStats();updateMobileDashboard();renderProductReference() }
+function updateStats(){ $('catalogCount').textContent=allLots().length;$('nextLot').textContent=nextLot();const t=localStorage.getItem(LS.imported);$('importStatus').textContent=t?'Dernier import : '+new Date(t).toLocaleString('fr-FR')+' • '+catalog().length+' lot(s) chargé(s).':'Aucun tableau importé sur cet appareil.';renderOrders();populateOrderProducts();populateQuickProducts();populateQuickLocations();populateCategorySearch();populateInventoryLocations();populateExitLocations();populateExitControls();populateMoveControls();populateFifoProducts();populateLocationView();updateExpiryStats();updateMobileDashboard();renderProductReference() }
 function parseNumber(v){if(typeof v==='number')return v;const s=String(v??'').replace(/\s/g,'').replace(',','.').replace(/[^0-9.-]/g,'');return s?Number(s):null}
 function excelDate(v){if(!v)return'';if(v instanceof Date)return v.toLocaleDateString('fr-FR');return String(v)}
 async function importWorkbook(){
@@ -688,6 +691,14 @@ function showResult(raw){
     return;
   }
   const p=parseCode(raw);
+  if(exitScanMode){
+    if(!p.valid){$('status').textContent='QR non reconnu. Scannez un emplacement 42-Rx-Nx-X.';return}
+    exitScanMode=false;setExitLocation(p.code);
+    $('exitStatus').innerHTML='<div class="notice"><b>✓ Emplacement scanné : '+esc(p.code)+'</b><br>Choisissez maintenant le lot à sortir.</div>';
+    if(navigator.vibrate)navigator.vibrate(70);
+    stopScanner().then(()=>$('exitCard').scrollIntoView({behavior:'smooth',block:'start'}));
+    return;
+  }
   if(moveScanMode){
     if(!p.valid){$('status').textContent='QR non reconnu. Scannez un emplacement 42-Rx-Nx-X.';return}
     moveScanMode=false;
@@ -886,14 +897,43 @@ function currentQtyForLot(lotData){
   const exited=exitMovementsForLot(lotData.lot).reduce((s,m)=>s+Math.abs(Number(m.quantite)||0),0);
   return Math.max(0,base-exited);
 }
+function populateExitLocations(){
+  const sel=$('exitLocationSelect');if(!sel)return;
+  const current=exitLocation||sel.value;
+  sel.innerHTML='<option value="">— Choisir un emplacement —</option>'+allOfficialLocations().map(loc=>'<option value="'+loc+'">'+loc+'</option>').join('');
+  if(allOfficialLocations().includes(current))sel.value=current;
+}
+function setExitLocation(loc){
+  exitLocation=VALID.test(loc||'')?loc:'';
+  if($('exitLocationSelect'))$('exitLocationSelect').value=exitLocation;
+  const info=$('exitLocationInfo');
+  if(info)info.innerHTML=exitLocation?'<b>Emplacement sélectionné : '+esc(exitLocation)+'</b>':'';
+  populateExitControls();
+}
 function populateExitControls(){
   const sel=$('exitLotSelect');if(!sel)return;
   const current=sel.value;
-  const rows=allLots().map(x=>({...x,available:currentQtyForLot(x)})).filter(x=>x.available>0);
-  rows.sort((a,b)=>String(a.produit||'').localeCompare(String(b.produit||''),'fr')||a.lot.localeCompare(b.lot));
+  if(!exitLocation){
+    sel.innerHTML='<option value="">— Scannez ou choisissez d’abord un emplacement —</option>';
+    showExitLotInfo();return;
+  }
+  const rows=allLots().map(x=>({...x,available:currentQtyForLot(x),loc:currentLocationForLot(x.lot)||x.emplacement||''}))
+    .filter(x=>x.available>0&&x.loc===exitLocation)
+    .sort((a,b)=>String(a.produit||'').localeCompare(String(b.produit||''),'fr')||a.lot.localeCompare(b.lot));
   sel.innerHTML='<option value="">— Choisir un lot —</option>'+rows.map(x=>'<option value="'+esc(x.lot)+'">'+esc(x.produit||'Produit')+' — '+esc(x.lot)+' — '+esc(String(x.available))+' '+esc(x.unite||'')+'</option>').join('');
   if(rows.some(x=>x.lot===current))sel.value=current;
+  $('exitLocationInfo').innerHTML='<b>Emplacement sélectionné : '+esc(exitLocation)+'</b><br>'+(rows.length?rows.length+' lot(s) disponible(s).':'Aucun lot disponible à cet emplacement.');
   showExitLotInfo();
+}
+async function startExitScanner(){
+  const el=$('exitStatus');
+  exitScanMode=true;moveScanMode=false;quickProductScanMode=false;quickScanMode=false;
+  setScannerUi('exit');
+  el.innerHTML='<div class="notice">Scanner prêt : visez le QR de l’emplacement où vous prenez le produit.</div>';
+  document.body.classList.add('scanner-active');
+  $('reader').scrollIntoView({behavior:'smooth',block:'center'});
+  await startScanner();
+  if(!running){exitScanMode=false;el.innerHTML='<div class="notice">Caméra indisponible. Choisissez l’emplacement manuellement.</div>'}
 }
 function showExitLotInfo(){
   const lot=$('exitLotSelect')?.value||'',info=$('exitLotInfo');
@@ -921,7 +961,7 @@ async function confirmStockExit(){
   const moves=get(LS.moves,[]);moves.push({...movement,id:'EXIT-'+Date.now(),createdAt:new Date().toISOString()});set(LS.moves,moves);
   const remaining=Math.max(0,available-qty);
   el.innerHTML='<div class="notice" style="border-color:#c4b5fd;background:#f5f3ff;color:#6d28d9"><b>✓ Sortie enregistrée</b><br>'+esc(String(qty))+' '+esc(x.unite||'')+' sorti(s) de '+esc(x.produit||'')+'. Reste : <b>'+esc(String(remaining))+' '+esc(x.unite||'')+'</b>.</div>';
-  $('exitQty').value='';$('exitComment').value='';updateStats();populateExitControls();
+  $('exitQty').value='';$('exitComment').value='';updateStats();setExitLocation(exitLocation);
   btn.disabled=false;btn.textContent='Enregistrer la sortie';
 }
 function populateMoveControls(){
@@ -1260,6 +1300,10 @@ function setScannerUi(mode='location'){
     $('scannerTitle').textContent='Scanner le code-barres du produit';
     $('status').textContent='Placez le code-barres EAN/UPC du produit dans le cadre.';
     $('startBtn').textContent='Scanner le produit';
+  }else if(mode==='exit'){
+    $('scannerTitle').textContent='Scanner l’emplacement de sortie';
+    $('status').textContent='Scannez le QR 42-Rx-Nx-X de l’emplacement où vous prenez le produit.';
+    $('startBtn').textContent='Scanner l’emplacement';
   }else if(mode==='move'){
     $('scannerTitle').textContent='Scanner le nouvel emplacement';
     $('status').textContent='Scannez le QR 42-Rx-Nx-X du nouvel emplacement.';
@@ -1315,17 +1359,17 @@ async function stopScanner(){
   running=false;$('startBtn').disabled=false;$('stopBtn').disabled=true;$('status').textContent='Scanner arrêté.';
 }
 
-document.querySelectorAll('#mainNav button[data-view]').forEach(b=>b.onclick=async()=>{if(running||productScannerControls){quickProductScanMode=false;quickScanMode=false;moveScanMode=false;await stopScanner()}document.body.classList.remove('scanner-active');setAppView(b.dataset.view)});
+document.querySelectorAll('#mainNav button[data-view]').forEach(b=>b.onclick=async()=>{if(running||productScannerControls){quickProductScanMode=false;quickScanMode=false;moveScanMode=false;exitScanMode=false;await stopScanner()}document.body.classList.remove('scanner-active');setAppView(b.dataset.view)});
 if($('productRefSearch'))$('productRefSearch').addEventListener('input',renderProductReference);
 if($('productSyncBtn'))$('productSyncBtn').onclick=async()=>{const ok=await syncProductsFromSheet();$('productRefStatus').textContent=ok?'Référentiel synchronisé.':'Synchronisation indisponible pour le moment.'};
 if($('productNewBtn'))$('productNewBtn').onclick=openNewProductFromMenu;
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>showPane(b.dataset.pane));
 $('oDate').value=today();
 $('importStockBtn').onclick=importWorkbook;$('clearCatalogBtn').onclick=clearCatalog;$('saveOrderBtn').onclick=saveOrder;$('oProduct').addEventListener('change',toggleNewProductField);$('qProduct').addEventListener('change',toggleQuickNewProduct);$('quickProductScanBtn').onclick=startQuickProductScanner;$('quickScanBtn').onclick=startQuickScanner;$('quickSaveBtn').onclick=saveQuickEntry;$('cancelReceiveBtn').onclick=cancelReceive;$('confirmReceiveBtn').onclick=confirmReceive;
-$('startBtn').onclick=()=>{moveScanMode=false;quickScanMode=false;quickProductScanMode=false;setScannerUi('location');startScanner()};$('stopBtn').onclick=async()=>{moveScanMode=false;quickScanMode=false;quickProductScanMode=false;await stopScanner();document.body.classList.remove('scanner-active');setScannerUi('location')};$('manualBtn').onclick=()=>showResult($('manualCode').value);$('manualCode').addEventListener('keydown',e=>{if(e.key==='Enter')showResult(e.target.value)});
+$('startBtn').onclick=()=>{moveScanMode=false;exitScanMode=false;quickScanMode=false;quickProductScanMode=false;setScannerUi('location');startScanner()};$('stopBtn').onclick=async()=>{moveScanMode=false;exitScanMode=false;quickScanMode=false;quickProductScanMode=false;await stopScanner();document.body.classList.remove('scanner-active');setScannerUi('location')};$('manualBtn').onclick=()=>showResult($('manualCode').value);$('manualCode').addEventListener('keydown',e=>{if(e.key==='Enter')showResult(e.target.value)});
 $('findLotBtn').onclick=()=>previewLot($('lotInput').value);$('lotInput').addEventListener('keydown',e=>{if(e.key==='Enter')previewLot(e.target.value)});
 $('assignLotBtn').onclick=()=>{const lot=normalizeLot($('lotInput').value);if(activeLocation)assignLotTo(lot,activeLocation)};
-$('searchLotBtn').onclick=searchLot;$('searchLot').addEventListener('keydown',e=>{if(e.key==='Enter')searchLot()});$('categorySearchBtn').onclick=searchCategory;$('categorySearch').addEventListener('change',searchCategory);$('inventoryLoadBtn').onclick=loadInventoryLocation;$('inventoryLocationSelect').addEventListener('change',loadInventoryLocation);$('inventoryUseActiveBtn').onclick=useActiveInventoryLocation;$('inventoryConfirmBtn').onclick=confirmQuickInventory;$('exitLotSelect').addEventListener('change',showExitLotInfo);$('exitConfirmBtn').onclick=confirmStockExit;$('moveScanBtn').onclick=startMoveScanner;$('moveLotBtn').onclick=moveSelectedLot;$('moveLotSelect').addEventListener('change',showMoveCurrentLocation);$('fifoSearchBtn').onclick=showFifoView;$('fifoProductSelect').addEventListener('change',showFifoView);$('locationViewBtn').onclick=showLocationView;$('locationViewSelect').addEventListener('change',showLocationView);$('showExpiryBtn').onclick=showExpiryAlerts;$('guestModeBtn').onclick=toggleGuestMode;
+$('searchLotBtn').onclick=searchLot;$('searchLot').addEventListener('keydown',e=>{if(e.key==='Enter')searchLot()});$('categorySearchBtn').onclick=searchCategory;$('categorySearch').addEventListener('change',searchCategory);$('inventoryLoadBtn').onclick=loadInventoryLocation;$('inventoryLocationSelect').addEventListener('change',loadInventoryLocation);$('inventoryUseActiveBtn').onclick=useActiveInventoryLocation;$('inventoryConfirmBtn').onclick=confirmQuickInventory;$('exitScanBtn').onclick=startExitScanner;$('exitLocationSelect').addEventListener('change',e=>setExitLocation(e.target.value));$('exitLotSelect').addEventListener('change',showExitLotInfo);$('exitConfirmBtn').onclick=confirmStockExit;$('moveScanBtn').onclick=startMoveScanner;$('moveLotBtn').onclick=moveSelectedLot;$('moveLotSelect').addEventListener('change',showMoveCurrentLocation);$('fifoSearchBtn').onclick=showFifoView;$('fifoProductSelect').addEventListener('change',showFifoView);$('locationViewBtn').onclick=showLocationView;$('locationViewSelect').addEventListener('change',showLocationView);$('showExpiryBtn').onclick=showExpiryAlerts;$('guestModeBtn').onclick=toggleGuestMode;
 $('backupNowBtn').onclick=()=>createAutomaticBackup('Manuelle');$('restoreBackupBtn').onclick=restoreLatestBackup;$('exportLotsCsvBtn').onclick=exportLots;$('exportOrdersCsvBtn').onclick=exportOrders;$('exportJsonBtn').onclick=exportJson;
 $('syncUrl').value=localStorage.getItem(LS.syncUrl)||'';
 $('syncKey').value=localStorage.getItem(LS.syncKey)||'';
@@ -1353,7 +1397,7 @@ if(!readAutoBackups().length)createAutomaticBackup('Initiale');
 if(localStorage.getItem(LS.syncUrl))syncLotsFromSheet();
 if('serviceWorker' in navigator)window.addEventListener('load',async()=>{
   try{
-    const reg=await navigator.serviceWorker.register('./service-worker.js?v=37',{updateViaCache:'none'});
+    const reg=await navigator.serviceWorker.register('./service-worker.js?v=38',{updateViaCache:'none'});
     reg.update().catch(()=>{});
     navigator.serviceWorker.addEventListener('controllerchange',()=>{
       if(!sessionStorage.getItem('stock42SwReload')){
