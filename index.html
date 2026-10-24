@@ -722,7 +722,7 @@ function showResult(raw){
   box.scrollIntoView({behavior:'smooth',block:'center'})
 }
 function addHistory(code){let h=get(LS.history,[]);h=h.filter(x=>x.code!==code);h.unshift({code,time:new Date().toISOString()});set(LS.history,h.slice(0,12))}
-function previewLot(raw,target='lotPreview'){const lot=normalizeLot(raw),x=lotById(lot),el=$(target);if(!LOT.test(lot)){el.innerHTML='<div class="empty">Numéro de lot invalide.</div>';if(target==='lotPreview')$('assignLotBtn').disabled=true;return null}if(!x){el.innerHTML='<div class="empty">'+esc(lot)+' n’est pas encore connu.</div>';if(target==='lotPreview')$('assignLotBtn').disabled=true;return null}el.innerHTML='<div class="notice"><b>'+esc(lot)+'</b> — '+esc(x.produit||'Produit non renseigné')+'<br>'+esc(x.quantite??'')+' '+esc(x.unite||'')+(x.ddm?' • DDM/DLC '+esc(x.ddm):'')+'</div>';if(target==='lotPreview'){$('lotInput').value=lot;$('assignLotBtn').disabled=false}return x}
+function previewLot(raw,target='lotPreview'){const lot=normalizeLot(raw),x=lotById(lot),el=$(target);if(!LOT.test(lot)){el.innerHTML='<div class="empty">Numéro de lot invalide.</div>';if(target==='lotPreview')$('assignLotBtn').disabled=true;return null}if(!x){el.innerHTML='<div class="empty">'+esc(lot)+' n’est pas encore connu.</div>';if(target==='lotPreview')$('assignLotBtn').disabled=true;return null}el.innerHTML='<div class="notice"><b>'+esc(lot)+'</b> — '+esc(x.produit||'Produit non renseigné')+'<br>'+esc(String(currentQtyForLot(x)))+' '+esc(x.unite||'')+(x.ddm?' • DDM/DLC '+esc(x.ddm):'')+'</div>';if(target==='lotPreview'){$('lotInput').value=lot;$('assignLotBtn').disabled=false}return x}
 async function assignLotTo(lot,location,notify=true){lot=normalizeLot(lot);if(!lotById(lot)||!VALID.test(location))return;const oldLocation=currentLocationForLot(lot);let a=assignments().filter(x=>x.lot!==lot);a.push({id:lot+'@'+location,lot,location,assignedAt:new Date().toISOString()});set(LS.assign,a);const ll=localLots();const i=ll.findIndex(x=>x.lot===lot);if(i>=0){ll[i]={...ll[i],emplacement:location,zone:location.split('-').slice(1,3).join('-')};set(LS.lots,ll)}const mv=get(LS.moves,[]);const prod=lotById(lot);mv.push({date:today(),lot,produit:prod?.produit||'',type:'Transfert',quantite:0,unite:prod?.unite||'',source:oldLocation,destination:location,commentaire:oldLocation?'Déplacement emplacement':'Affectation emplacement',createdAt:new Date().toISOString()});set(LS.moves,mv);
 const btn=$('assignLotBtn');
 if(btn){btn.disabled=true;btn.dataset.oldText=btn.textContent;btn.textContent='✓ Affectation en cours…'}
@@ -737,7 +737,7 @@ if(btn){
   btn.textContent=sync.ok?'✓ Lot affecté':'⚠ Affecté localement';
   setTimeout(()=>{btn.disabled=false;btn.textContent=btn.dataset.oldText||'Affecter ce lot'},1800);
 }}
-function renderLocationStock(){if(!activeLocation)return;const rows=assignments().filter(x=>x.location===activeLocation).map(a=>({...a,lotData:lotById(a.lot)}));const el=$('locationStock');if(!rows.length){el.innerHTML='<div class="empty">Aucun lot affecté.</div>';return}rows.sort((a,b)=>String(a.lotData?.ddm||'9999').localeCompare(String(b.lotData?.ddm||'9999')));el.innerHTML=rows.map((x,i)=>'<div class="list-item"><div class="item-title">'+esc(x.lot)+(i===0? ' <span class="badge blue">FIFO</span>':'')+'</div><div>'+esc(x.lotData?.produit||'Produit non renseigné')+'</div><div class="item-meta">'+esc(x.lotData?.quantite??'')+' '+esc(x.lotData?.unite||'')+(x.lotData?.ddm?' • '+esc(x.lotData.ddm):'')+'</div></div>').join('')}
+function renderLocationStock(){if(!activeLocation)return;const rows=assignments().filter(x=>x.location===activeLocation).map(a=>({...a,lotData:lotById(a.lot)}));const el=$('locationStock');if(!rows.length){el.innerHTML='<div class="empty">Aucun lot affecté.</div>';return}rows.sort((a,b)=>String(a.lotData?.ddm||'9999').localeCompare(String(b.lotData?.ddm||'9999')));el.innerHTML=rows.map((x,i)=>'<div class="list-item"><div class="item-title">'+esc(x.lot)+(currentQtyForLot(x.lotData)<=0?' <span class="badge">ÉPUISÉ</span>':'')+(i===0? ' <span class="badge blue">FIFO</span>':'')+'</div><div>'+esc(x.lotData?.produit||'Produit non renseigné')+'</div><div class="item-meta">'+esc(String(currentQtyForLot(x.lotData)))+' '+esc(x.lotData?.unite||'')+(x.lotData?.ddm?' • '+esc(x.lotData.ddm):'')+'</div></div>').join('')}
 function normalizeSearchText(v){
   return String(v||'')
     .toLocaleLowerCase('fr-FR')
@@ -783,7 +783,7 @@ function searchLot(){
     const lot=normalizeLot(raw);$('searchLot').value=lot;const x=lotById(lot);
     if(!x){el.innerHTML='<div class="empty">Lot introuvable.</div>';return}
     const places=assignments().filter(a=>a.lot===lot).map(a=>a.location);
-    el.innerHTML='<div class="notice"><b>'+esc(lot)+'</b> — '+esc(x.produit||'')+'<br>'+esc(x.quantite??'')+' '+esc(x.unite||'')+(x.ddm?' • DDM/DLC '+esc(x.ddm):'')+'<br>Emplacement : <b>'+esc(places.join(', ')||x.emplacement||'non affecté')+'</b></div>';
+    el.innerHTML='<div class="notice"><b>'+esc(lot)+'</b> — '+esc(x.produit||'')+'<br>'+esc(String(currentQtyForLot(x)))+' '+esc(x.unite||'')+(x.ddm?' • DDM/DLC '+esc(x.ddm):'')+'<br>Emplacement : <b>'+esc(places.join(', ')||x.emplacement||'non affecté')+'</b></div>';
     return;
   }
   const scored=allLots().map(x=>({x,score:tolerantProductScore(raw,x.produit||'')})).filter(r=>r.score<999);
@@ -793,7 +793,7 @@ function searchLot(){
   el.innerHTML=results.map(x=>{
     const places=assignments().filter(a=>a.lot===x.lot).map(a=>a.location);
     const loc=places.join(', ')||x.emplacement||'non affecté';
-    return '<div class="list-item"><div class="item-title">'+esc(x.produit||'Produit')+' <span class="badge blue">'+esc(x.lot)+'</span></div><div class="item-meta">'+esc(x.quantite??'')+' '+esc(x.unite||'')+(x.ddm?' • DDM/DLC '+esc(x.ddm):'')+'</div><div style="margin-top:6px">Emplacement : <b>'+esc(loc)+'</b></div></div>';
+    return '<div class="list-item"><div class="item-title">'+esc(x.produit||'Produit')+' <span class="badge blue">'+esc(x.lot)+'</span></div><div class="item-meta">'+esc(String(currentQtyForLot(x)))+' '+esc(x.unite||'')+(x.ddm?' • DDM/DLC '+esc(x.ddm):'')+'</div><div style="margin-top:6px">Emplacement : <b>'+esc(loc)+'</b></div></div>';
   }).join('');
 }
 function populateCategorySearch(){
@@ -812,7 +812,7 @@ function searchCategory(){
   el.innerHTML=results.map(x=>{
     const places=assignments().filter(a=>a.lot===x.lot).map(a=>a.location);
     const loc=places.join(', ')||x.emplacement||'non affecté';
-    return '<div class="list-item"><div class="item-title">'+esc(x.produit||'Produit')+' <span class="badge blue">'+esc(x.lot)+'</span></div><div class="item-meta">'+esc(x.quantite??'')+' '+esc(x.unite||'')+(x.ddm?' • DDM/DLC '+esc(x.ddm):'')+'</div><div style="margin-top:6px">Emplacement : <b>'+esc(loc)+'</b></div></div>';
+    return '<div class="list-item"><div class="item-title">'+esc(x.produit||'Produit')+' <span class="badge blue">'+esc(x.lot)+'</span></div><div class="item-meta">'+esc(String(currentQtyForLot(x)))+' '+esc(x.unite||'')+(x.ddm?' • DDM/DLC '+esc(x.ddm):'')+'</div><div style="margin-top:6px">Emplacement : <b>'+esc(loc)+'</b></div></div>';
   }).join('');
 }
 function populateInventoryLocations(){
@@ -835,7 +835,7 @@ function loadInventoryLocation(){
     return;
   }
   el.innerHTML='<div class="notice"><b>'+esc(loc)+'</b> • '+rows.length+' lot(s) attendu(s)</div>'+
-    rows.map(x=>'<label class="list-item" style="display:block;cursor:pointer"><div class="item-title"><input class="inventoryCheck" type="checkbox" data-lot="'+esc(x.a.lot)+'" checked style="width:auto;margin-right:8px"> '+esc(x.lotData?.produit||'Produit')+' <span class="badge blue">'+esc(x.a.lot)+'</span></div><div class="item-meta">'+esc(x.lotData?.quantite??'')+' '+esc(x.lotData?.unite||'')+(x.lotData?.ddm?' • '+esc(x.lotData?.typeDate||'DDM')+' '+esc(x.lotData.ddm):'')+'</div></label>').join('');
+    rows.map(x=>'<label class="list-item" style="display:block;cursor:pointer"><div class="item-title"><input class="inventoryCheck" type="checkbox" data-lot="'+esc(x.a.lot)+'" checked style="width:auto;margin-right:8px"> '+esc(x.lotData?.produit||'Produit')+' <span class="badge blue">'+esc(x.a.lot)+'</span></div><div class="item-meta">'+esc(String(currentQtyForLot(x.lotData)))+' '+esc(x.lotData?.unite||'')+(x.lotData?.ddm?' • '+esc(x.lotData?.typeDate||'DDM')+' '+esc(x.lotData.ddm):'')+'</div></label>').join('');
   btn.style.display='inline-block';
 }
 function useActiveInventoryLocation(){
@@ -1154,7 +1154,7 @@ function showFifoView(){
     results.map((x,i)=>{
       const places=assignments().filter(a=>a.lot===x.lot).map(a=>a.location);
       const loc=places.join(', ')||x.emplacement||'non affecté';
-      return '<div class="list-item"><div class="item-title">'+(i===0?'<span class="badge blue">À CONSOMMER EN PREMIER</span> ':'')+esc(x.produit||'Produit')+' <span class="badge blue">'+esc(x.lot)+'</span></div><div class="item-meta">'+esc(x.quantite??'')+' '+esc(x.unite||'')+(x.ddm?' • '+esc(x.typeDate||'DDM')+' '+esc(x.ddm):' • date absente')+'</div><div style="margin-top:6px">Emplacement : <b>'+esc(loc)+'</b></div></div>';
+      return '<div class="list-item"><div class="item-title">'+(i===0?'<span class="badge blue">À CONSOMMER EN PREMIER</span> ':'')+esc(x.produit||'Produit')+' <span class="badge blue">'+esc(x.lot)+'</span></div><div class="item-meta">'+esc(String(currentQtyForLot(x)))+' '+esc(x.unite||'')+(x.ddm?' • '+esc(x.typeDate||'DDM')+' '+esc(x.ddm):' • date absente')+'</div><div style="margin-top:6px">Emplacement : <b>'+esc(loc)+'</b></div></div>';
     }).join('');
 }
 function allOfficialLocations(){
@@ -1178,7 +1178,7 @@ function showLocationView(){
   }
   rows.sort((a,b)=>String(a.lotData?.ddm||'9999').localeCompare(String(b.lotData?.ddm||'9999')));
   el.innerHTML='<div class="notice"><b>'+esc(loc)+'</b> • '+rows.length+' lot(s)</div>'+
-    rows.map((x,i)=>'<div class="list-item"><div class="item-title">'+esc(x.a.lot)+(i===0?' <span class="badge blue">FIFO</span>':'')+' — '+esc(x.lotData?.produit||'Produit non renseigné')+'</div><div class="item-meta">'+esc(x.lotData?.quantite??'')+' '+esc(x.lotData?.unite||'')+(x.lotData?.ddm?' • '+esc(x.lotData?.typeDate||'DDM')+' '+esc(x.lotData.ddm):'')+'</div></div>').join('');
+    rows.map((x,i)=>'<div class="list-item"><div class="item-title">'+esc(x.a.lot)+(i===0?' <span class="badge blue">FIFO</span>':'')+' — '+esc(x.lotData?.produit||'Produit non renseigné')+'</div><div class="item-meta">'+esc(String(currentQtyForLot(x.lotData)))+' '+esc(x.lotData?.unite||'')+(x.lotData?.ddm?' • '+esc(x.lotData?.typeDate||'DDM')+' '+esc(x.lotData.ddm):'')+'</div></div>').join('');
 }
 function parseFrenchDate(v){
   const s=String(v||'').trim();
@@ -1224,7 +1224,7 @@ function showExpiryAlerts(){
     const places=assignments().filter(a=>a.lot===x.lot).map(a=>a.location);
     const loc=places.join(', ')||x.emplacement||'non affecté';
     const cls=st.bucket==='expired'?'bad':(st.bucket==='3m'?'notice':'list-item');
-    return '<div class="'+cls+'" style="margin-bottom:8px"><div class="item-title">'+esc(x.produit||'Produit')+' <span class="badge blue">'+esc(x.lot)+'</span></div><div class="item-meta">'+esc(x.quantite??'')+' '+esc(x.unite||'')+' • '+esc(x.typeDate||'DDM')+' '+esc(x.ddm||'non renseignée')+' • <b>'+esc(expiryLabel(st))+'</b></div><div style="margin-top:6px">Emplacement : <b>'+esc(loc)+'</b></div></div>';
+    return '<div class="'+cls+'" style="margin-bottom:8px"><div class="item-title">'+esc(x.produit||'Produit')+' <span class="badge blue">'+esc(x.lot)+'</span></div><div class="item-meta">'+esc(String(currentQtyForLot(x)))+' '+esc(x.unite||'')+' • '+esc(x.typeDate||'DDM')+' '+esc(x.ddm||'non renseignée')+' • <b>'+esc(expiryLabel(st))+'</b></div><div style="margin-top:6px">Emplacement : <b>'+esc(loc)+'</b></div></div>';
   }).join('');
 }
 function csvDownload(name,headers,rows){const data=[headers,...rows];const csv='\uFEFF'+data.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';')).join('\n');const blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();URL.revokeObjectURL(url)}
@@ -1397,7 +1397,7 @@ if(!readAutoBackups().length)createAutomaticBackup('Initiale');
 if(localStorage.getItem(LS.syncUrl))syncLotsFromSheet();
 if('serviceWorker' in navigator)window.addEventListener('load',async()=>{
   try{
-    const reg=await navigator.serviceWorker.register('./service-worker.js?v=38',{updateViaCache:'none'});
+    const reg=await navigator.serviceWorker.register('./service-worker.js?v=39',{updateViaCache:'none'});
     reg.update().catch(()=>{});
     navigator.serviceWorker.addEventListener('controllerchange',()=>{
       if(!sessionStorage.getItem('stock42SwReload')){
