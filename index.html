@@ -961,7 +961,14 @@ async function confirmStockExit(){
   const moves=get(LS.moves,[]);moves.push({...movement,id:'EXIT-'+Date.now(),createdAt:new Date().toISOString()});set(LS.moves,moves);
   const remaining=Math.max(0,available-qty);
   el.innerHTML='<div class="notice" style="border-color:#c4b5fd;background:#f5f3ff;color:#6d28d9"><b>✓ Sortie enregistrée</b><br>'+esc(String(qty))+' '+esc(x.unite||'')+' sorti(s) de '+esc(x.produit||'')+'. Reste : <b>'+esc(String(remaining))+' '+esc(x.unite||'')+'</b>.</div>';
-  $('exitQty').value='';$('exitComment').value='';updateStats();setExitLocation(exitLocation);
+  $('exitQty').value='';$('exitComment').value='';
+  const refreshedLocation=exitLocation;
+  updateStats();
+  setExitLocation(refreshedLocation);
+  showExitLotInfo();
+  if(activeLocation===refreshedLocation)renderLocationStock();
+  if($('locationViewSelect')?.value===refreshedLocation)showLocationView();
+  $('exitCard').scrollIntoView({behavior:'smooth',block:'start'});
   btn.disabled=false;btn.textContent='Enregistrer la sortie';
 }
 function populateMoveControls(){
@@ -1397,7 +1404,7 @@ if(!readAutoBackups().length)createAutomaticBackup('Initiale');
 if(localStorage.getItem(LS.syncUrl))syncLotsFromSheet();
 if('serviceWorker' in navigator)window.addEventListener('load',async()=>{
   try{
-    const reg=await navigator.serviceWorker.register('./service-worker.js?v=39',{updateViaCache:'none'});
+    const reg=await navigator.serviceWorker.register('./service-worker.js?v=40',{updateViaCache:'none'});
     reg.update().catch(()=>{});
     navigator.serviceWorker.addEventListener('controllerchange',()=>{
       if(!sessionStorage.getItem('stock42SwReload')){
