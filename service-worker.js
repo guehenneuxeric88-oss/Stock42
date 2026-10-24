@@ -1,4 +1,4 @@
-const CACHE='stock42-v37';
+const CACHE='stock42-v38';
 const LOCAL=['./','./index.html','./manifest.webmanifest','./icon.svg'];
 
 self.addEventListener('install',e=>{
