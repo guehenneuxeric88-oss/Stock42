@@ -779,6 +779,12 @@ function tolerantProductScore(query,product){
   }
   return best;
 }
+function containerLabel(x){
+  const pack=String(x?.conditionnement||'');
+  const m=pack.match(/\bSeau\s+([AB]\s*0?\d{1,2})\b/i);
+  if(!m)return '';
+  return 'Seau '+m[1].replace(/\s+/g,'').toUpperCase();
+}
 function searchLot(){
   const raw=$('searchLot').value.trim(),el=$('lotSearchResult');
   if(!raw){el.innerHTML='<div class="empty">Saisissez un produit ou un numéro de lot.</div>';return}
@@ -787,7 +793,8 @@ function searchLot(){
     const lot=normalizeLot(raw);$('searchLot').value=lot;const x=lotById(lot);
     if(!x){el.innerHTML='<div class="empty">Lot introuvable.</div>';return}
     const places=assignments().filter(a=>a.lot===lot).map(a=>a.location);
-    el.innerHTML='<div class="notice"><b>'+esc(lot)+'</b> — '+esc(x.produit||'')+'<br>'+esc(String(currentQtyForLot(x)))+' '+esc(x.unite||'')+(x.ddm?' • DDM/DLC '+esc(x.ddm):'')+'<br>Emplacement : <b>'+esc(places.join(', ')||x.emplacement||'non affecté')+'</b></div>';
+    const container=containerLabel(x);
+    el.innerHTML='<div class="notice"><b>'+esc(lot)+'</b> — '+esc(x.produit||'')+'<br>'+esc(String(currentQtyForLot(x)))+' '+esc(x.unite||'')+(x.ddm?' • DDM/DLC '+esc(x.ddm):'')+(container?'<br>Contenant : <b>'+esc(container)+'</b>':'')+'<br>Emplacement : <b>'+esc(places.join(', ')||x.emplacement||'non affecté')+'</b></div>';
     return;
   }
   const scored=allLots().map(x=>({x,score:tolerantProductScore(raw,x.produit||'')})).filter(r=>r.score<999);
@@ -797,7 +804,8 @@ function searchLot(){
   el.innerHTML=results.map(x=>{
     const places=assignments().filter(a=>a.lot===x.lot).map(a=>a.location);
     const loc=places.join(', ')||x.emplacement||'non affecté';
-    return '<div class="list-item"><div class="item-title">'+esc(x.produit||'Produit')+' <span class="badge blue">'+esc(x.lot)+'</span></div><div class="item-meta">'+esc(String(currentQtyForLot(x)))+' '+esc(x.unite||'')+(x.ddm?' • DDM/DLC '+esc(x.ddm):'')+'</div><div style="margin-top:6px">Emplacement : <b>'+esc(loc)+'</b></div></div>';
+    const container=containerLabel(x);
+    return '<div class="list-item"><div class="item-title">'+esc(x.produit||'Produit')+' <span class="badge blue">'+esc(x.lot)+'</span></div><div class="item-meta">'+esc(String(currentQtyForLot(x)))+' '+esc(x.unite||'')+(x.ddm?' • DDM/DLC '+esc(x.ddm):'')+'</div>'+(container?'<div style="margin-top:6px">Contenant : <b>'+esc(container)+'</b></div>':'')+'<div style="margin-top:6px">Emplacement : <b>'+esc(loc)+'</b></div></div>';
   }).join('');
 }
 function populateCategorySearch(){
