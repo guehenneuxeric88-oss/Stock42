@@ -68,7 +68,7 @@ body.guest-mode .admin-only{display:none!important}body.guest-mode #guestModeBtn
     <div class="kv"><div class="k">Lots connus</div><div id="dashLots" class="v">0</div></div>
     <div class="kv"><div class="k">Lots rangés</div><div id="dashRanged" class="v">0</div></div>
     <div class="kv"><div class="k">À ranger / TEMP</div><div id="dashTemp" class="v">0</div></div>
-    <div class="kv"><div class="k">Emplacements occupés</div><div id="dashLocations" class="v">0 / 45</div></div>
+    <div class="kv"><div class="k">Emplacements occupés</div><div id="dashLocations" class="v">0 / 73</div></div>
     <div class="kv"><div class="k">DDM/DLC ≤ 3 mois</div><div id="dashSoon" class="v">0</div></div>
     <div class="kv"><div class="k">Dates dépassées</div><div id="dashExpired" class="v">0</div></div>
   </div>
@@ -232,7 +232,7 @@ body.guest-mode .admin-only{display:none!important}body.guest-mode #guestModeBtn
   <div id="reader" class="reader"></div>
   <video id="productReader" class="reader hidden" playsinline muted style="width:100%;object-fit:cover"></video>
   <div class="row" style="margin-top:12px"><button id="startBtn" class="btn primary">Démarrer le scanner</button><button id="stopBtn" class="btn secondary" disabled>Arrêter</button></div>
-  <div id="status" class="status">Scannez un QR 42-Rx-Nx-X.</div>
+  <div id="status" class="status">Scannez un QR d’emplacement.</div>
 </section>
 
 <section id="result" class="card result" data-app-view="stock">
@@ -241,7 +241,7 @@ body.guest-mode .admin-only{display:none!important}body.guest-mode #guestModeBtn
 
 <section class="card admin-only" data-app-view="stock">
   <div class="section-title">Saisie manuelle emplacement</div>
-  <div class="manual"><input id="manualCode" placeholder="Ex. 42-R2-N3-B"><button id="manualBtn" class="btn secondary">Lire</button></div>
+  <div class="manual"><input id="manualCode" placeholder="Ex. 42-R2-N3-B ou 38-ETAGE-01"><button id="manualBtn" class="btn secondary">Lire</button></div>
 </section>
 
 <section id="assignCard" class="card hidden admin-only" data-app-view="stock">
@@ -370,7 +370,7 @@ body.guest-mode .admin-only{display:none!important}body.guest-mode #guestModeBtn
 <div class="footer">Stock 42 • données alimentaires conservées localement sur votre appareil</div>
 </main>
 <script>
-const VALID=/^42-R([1-3])-N([1-5])-([ABC])$/i, LOT=/^L\d{4}$/;
+const VALID=/^(?:42-R[1-3]-N[1-5]-[ABC]|38-ETAGE-(?:0[1-9]|1[0-8])|42-CONGELATEUR-0[1-6]|42-GARAGE-0[1-4])$/i, LOT=/^L\d{4}$/;
 let scanner=null,running=false,productScanner=null,productScannerControls=null,activeLocation=null,receiveOrderId=null,moveScanMode=false,exitScanMode=false,exitLocation='',quickScanMode=false,quickProductScanMode=false,quickScannedBarcode='',quickScannedBrand='';
 const $=id=>document.getElementById(id);
 const LS={catalog:'stock42Catalog',lots:'stock42Lots',orders:'stock42Orders',moves:'stock42Movements',assign:'stock42Assignments',history:'stock42History',imported:'stock42ImportedAt',syncUrl:'stock42SyncUrl',syncKey:'stock42SyncKey',guestMode:'stock42GuestMode',autoBackups:'stock42AutoBackups',products:'stock42Products'};
@@ -380,7 +380,19 @@ const set=(k,v)=>{localStorage.setItem(k,JSON.stringify(v));if(k!==LS.autoBackup
 const today=()=>new Date().toISOString().slice(0,10);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function normalizeLot(raw){let s=(raw||'').trim().toUpperCase().replace(/\s+/g,'');if(/^\d{1,4}$/.test(s))s='L'+s.padStart(4,'0');if(/^L\d{1,4}$/.test(s))s='L'+s.slice(1).padStart(4,'0');return s}
-function parseCode(raw){const code=(raw||'').trim().toUpperCase(),m=code.match(VALID);if(!m)return{valid:false,code};return{valid:true,code,rack:m[1],level:m[2],zoneLetter:m[3],zone:{A:'Gauche',B:'Centre',C:'Droite'}[m[3]]}}
+function parseCode(raw){
+  const code=(raw||'').trim().toUpperCase();
+  if(!VALID.test(code))return{valid:false,code};
+  let m=code.match(/^42-R([1-3])-N([1-5])-([ABC])$/i);
+  if(m)return{valid:true,code,site:'42',kind:'rack',rack:m[1],level:m[2],zoneLetter:m[3],zone:{A:'Gauche',B:'Centre',C:'Droite'}[m[3]]};
+  m=code.match(/^38-ETAGE-(\d{2})$/i);
+  if(m)return{valid:true,code,site:'38',kind:'etage',slot:m[1]};
+  m=code.match(/^42-CONGELATEUR-(\d{2})$/i);
+  if(m)return{valid:true,code,site:'42',kind:'congelateur',slot:m[1]};
+  m=code.match(/^42-GARAGE-(\d{2})$/i);
+  if(m)return{valid:true,code,site:'42',kind:'garage',slot:m[1]};
+  return{valid:false,code};
+}
 function catalog(){return get(LS.catalog,[])} function localLots(){return get(LS.lots,[])} function orders(){return get(LS.orders,[])} function assignments(){return get(LS.assign,[])}
 function allLots(){const map=new Map();[...localLots(),...catalog()].forEach(x=>{const l=normalizeLot(x.lot);if(l&&LOT.test(l))map.set(l,{...x,lot:l})});return [...map.values()].sort((a,b)=>a.lot.localeCompare(b.lot))}
 function nextLot(){let max=0;allLots().forEach(x=>{const n=parseInt(x.lot.slice(1),10);if(n>max)max=n});return 'L'+String(max+1).padStart(4,'0')}
@@ -461,7 +473,7 @@ function updateMobileDashboard(){
   if($('dashLots'))$('dashLots').textContent=lots.length;
   if($('dashRanged'))$('dashRanged').textContent=ranged;
   if($('dashTemp'))$('dashTemp').textContent=temp;
-  if($('dashLocations'))$('dashLocations').textContent=occupied+' / 45';
+  if($('dashLocations'))$('dashLocations').textContent=occupied+' / '+allOfficialLocations().length;
   if($('dashSoon'))$('dashSoon').textContent=soon;
   if($('dashExpired'))$('dashExpired').textContent=expired;
   if($('dashOrders'))$('dashOrders').textContent=openOrders;
@@ -630,7 +642,9 @@ async function saveQuickEntry(){
   if(!orderSync.ok){status.innerHTML='<div class="notice" style="border-color:#fde68a;background:#fffbeb;color:#92400e"><b>⚠ Entrée rapide interrompue</b><br>La création de la commande n’a pas été confirmée par Google Sheets.</div>';btn.disabled=false;btn.textContent='Créer et ranger le lot';return}
   const os=orders();os.push(order);set(LS.orders,os);
   status.textContent='Création du lot '+lot+'…';
-  const receiveSync=await sendToSheet('receive',{...rec,location:'',orderId});
+  const legacyRack=/^42-R[1-3]-N[1-5]-[ABC]$/i.test(location);
+  const receiveLocation=location&&!legacyRack?location:'';
+  const receiveSync=await sendToSheet('receive',{...rec,location:receiveLocation,orderId});
   if(!receiveSync.ok){
     status.innerHTML='<div class="notice" style="border-color:#fde68a;background:#fffbeb;color:#92400e"><b>⚠ Commande '+esc(orderId)+' créée, mais réception non confirmée.</b><br>Vous pouvez la terminer depuis « Commandes en cours ».</div>';
     updateStats();btn.disabled=false;btn.textContent='Créer et ranger le lot';return;
@@ -641,13 +655,19 @@ async function saveQuickEntry(){
   const mv=get(LS.moves,[]);mv.push({date:today(),lot,produit:product,type:'Entrée',quantite:qty,unite:unit,source:'',destination:'',commentaire:'Réception '+orderId+' • Entrée rapide',reference:orderId,createdAt:new Date().toISOString()});set(LS.moves,mv);
   let assignOk=true;
   if(location){
-    status.textContent='Affectation de '+lot+' à '+location+'…';
-    const assignSync=await sendToSheet('assign',{lot,location});
-    assignOk=!!assignSync.ok;
-    if(assignOk){
+    if(!legacyRack){
+      let a=assignments().filter(x=>x.lot!==lot);a.push({id:lot+'@'+location,lot,location,assignedAt:new Date().toISOString()});set(LS.assign,a);
+      const ll=localLots(),li=ll.findIndex(x=>x.lot===lot);if(li>=0){ll[li]={...ll[li],emplacement:location,zone:location.startsWith('38-')?'Site 38':'Site 42',statut:'Rangé'};set(LS.lots,ll)}
+      const mm=get(LS.moves,[]);mm.push({date:today(),lot,produit:product,type:'Transfert',quantite:0,unite:unit,source:'',destination:location,commentaire:'Affectation entrée rapide',createdAt:new Date().toISOString()});set(LS.moves,mm);
+    }else{
+      status.textContent='Affectation de '+lot+' à '+location+'…';
+      const assignSync=await sendToSheet('assign',{lot,location});
+      assignOk=!!assignSync.ok;
+      if(assignOk){
       let a=assignments().filter(x=>x.lot!==lot);a.push({id:lot+'@'+location,lot,location,assignedAt:new Date().toISOString()});set(LS.assign,a);
       const ll=localLots(),li=ll.findIndex(x=>x.lot===lot);if(li>=0){ll[li]={...ll[li],emplacement:location,zone:location.split('-').slice(1,3).join('-')};set(LS.lots,ll)}
       const mm=get(LS.moves,[]);mm.push({date:today(),lot,produit:product,type:'Transfert',quantite:0,unite:unit,source:'',destination:location,commentaire:'Affectation entrée rapide',createdAt:new Date().toISOString()});set(LS.moves,mm);
+      }
     }
   }
   updateStats();
@@ -692,7 +712,7 @@ function showResult(raw){
   }
   const p=parseCode(raw);
   if(exitScanMode){
-    if(!p.valid){$('status').textContent='QR non reconnu. Scannez un emplacement 42-Rx-Nx-X.';return}
+    if(!p.valid){$('status').textContent='QR non reconnu. Scannez un emplacement officiel.';return}
     exitScanMode=false;setExitLocation(p.code);
     $('exitStatus').innerHTML='<div class="notice"><b>✓ Emplacement scanné : '+esc(p.code)+'</b><br>Choisissez maintenant le lot à sortir.</div>';
     if(navigator.vibrate)navigator.vibrate(70);
@@ -718,7 +738,13 @@ function showResult(raw){
     return;
   }
   const box=$('result');box.style.display='block';box.classList.remove('ok','bad');$('resultCode').textContent=p.code||'Code vide';
-  if(p.valid){box.classList.add('ok');$('resultMsg').textContent='Emplacement reconnu.';$('details').innerHTML='<div class="kv"><div class="k">Site</div><div class="v">42</div></div><div class="kv"><div class="k">Rayonnage</div><div class="v">R'+p.rack+'</div></div><div class="kv"><div class="k">Niveau</div><div class="v">N'+p.level+'</div></div><div class="kv"><div class="k">Sous-zone</div><div class="v">'+p.zoneLetter+' — '+p.zone+'</div></div>';activeLocation=p.code;$('activeLocation').textContent=p.code;$('locationTitle').textContent=p.code;$('assignCard').classList.remove('hidden');$('locationStockCard').classList.remove('hidden');addHistory(p.code);renderLocationStock();if(navigator.vibrate)navigator.vibrate(70)}else{box.classList.add('bad');$('resultMsg').textContent='Code non reconnu pour le site 42.';$('details').innerHTML=''}
+  if(p.valid){box.classList.add('ok');$('resultMsg').textContent='Emplacement reconnu.';
+  let detail='<div class="kv"><div class="k">Site</div><div class="v">'+esc(p.site)+'</div></div>';
+  if(p.kind==='rack')detail+='<div class="kv"><div class="k">Rayonnage</div><div class="v">R'+p.rack+'</div></div><div class="kv"><div class="k">Niveau</div><div class="v">N'+p.level+'</div></div><div class="kv"><div class="k">Sous-zone</div><div class="v">'+p.zoneLetter+' — '+p.zone+'</div></div>';
+  else if(p.kind==='etage')detail+='<div class="kv"><div class="k">Zone</div><div class="v">Étage</div></div><div class="kv"><div class="k">Emplacement</div><div class="v">'+p.slot+'</div></div>';
+  else if(p.kind==='congelateur')detail+='<div class="kv"><div class="k">Zone</div><div class="v">Congélateur</div></div><div class="kv"><div class="k">Emplacement</div><div class="v">'+p.slot+'</div></div>';
+  else if(p.kind==='garage')detail+='<div class="kv"><div class="k">Zone</div><div class="v">Garage</div></div><div class="kv"><div class="k">Emplacement</div><div class="v">'+p.slot+'</div></div>';
+  $('details').innerHTML=detail;activeLocation=p.code;$('activeLocation').textContent=p.code;$('locationTitle').textContent=p.code;$('assignCard').classList.remove('hidden');$('locationStockCard').classList.remove('hidden');addHistory(p.code);renderLocationStock();if(navigator.vibrate)navigator.vibrate(70)}else{box.classList.add('bad');$('resultMsg').textContent='Code d’emplacement non reconnu.';$('details').innerHTML=''}
   box.scrollIntoView({behavior:'smooth',block:'center'})
 }
 function addHistory(code){let h=get(LS.history,[]);h=h.filter(x=>x.code!==code);h.unshift({code,time:new Date().toISOString()});set(LS.history,h.slice(0,12))}
@@ -1179,6 +1205,9 @@ function showFifoView(){
 function allOfficialLocations(){
   const out=[];
   for(let r=1;r<=3;r++)for(let n=1;n<=5;n++)for(const z of ['A','B','C'])out.push('42-R'+r+'-N'+n+'-'+z);
+  for(let i=1;i<=6;i++)out.push('42-CONGELATEUR-'+String(i).padStart(2,'0'));
+  for(let i=1;i<=4;i++)out.push('42-GARAGE-'+String(i).padStart(2,'0'));
+  for(let i=1;i<=18;i++)out.push('38-ETAGE-'+String(i).padStart(2,'0'));
   return out;
 }
 function populateLocationView(){
