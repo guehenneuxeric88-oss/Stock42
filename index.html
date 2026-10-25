@@ -765,11 +765,15 @@ function tolerantProductScore(query,product){
   if(p.includes(q))return 2;
   const qWords=q.split(' ').filter(Boolean),pWords=p.split(' ').filter(Boolean);
   if(qWords.every(w=>pWords.some(pw=>pw===w||pw.startsWith(w)||w.startsWith(pw))))return 3;
+  // Tolérance aux fautes uniquement pour les mots assez longs.
+  // Évite les faux positifs courts comme "pates" -> "dattes".
   let best=999;
   for(const qw of qWords){
+    if(qw.length<6)continue;
     for(const pw of pWords){
+      if(pw.length<6)continue;
       const d=levenshtein(qw,pw);
-      const limit=qw.length<=4?1:2;
+      const limit=qw.length<=7?1:2;
       if(d<=limit)best=Math.min(best,4+d);
     }
   }
