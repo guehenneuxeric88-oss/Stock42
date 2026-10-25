@@ -644,7 +644,7 @@ async function saveQuickEntry(){
   status.textContent='Création du lot '+lot+'…';
   const legacyRack=/^42-R[1-3]-N[1-5]-[ABC]$/i.test(location);
   const receiveLocation=location&&!legacyRack?location:'';
-  const receiveSync=await sendToSheet('receive',{...rec,location:receiveLocation,orderId});
+  const receiveSync=await sendToSheet('receive',{...rec,location:receiveLocation,zone:receiveLocation?(receiveLocation.startsWith('38-')?'Site 38':'Site 42'):rec.zone,statut:receiveLocation?'Rangé':rec.statut,orderId});
   if(!receiveSync.ok){
     status.innerHTML='<div class="notice" style="border-color:#fde68a;background:#fffbeb;color:#92400e"><b>⚠ Commande '+esc(orderId)+' créée, mais réception non confirmée.</b><br>Vous pouvez la terminer depuis « Commandes en cours ».</div>';
     updateStats();btn.disabled=false;btn.textContent='Créer et ranger le lot';return;
