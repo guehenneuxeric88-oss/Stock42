@@ -1011,7 +1011,13 @@ function populateExitControls(){
   }
   const rows=allLots().map(x=>({...x,available:currentQtyForLot(x),loc:currentLocationForLot(x.lot)||x.emplacement||''}))
     .filter(x=>x.available>0&&x.loc===exitLocation)
-    .sort((a,b)=>String(a.produit||'').localeCompare(String(b.produit||''),'fr')||a.lot.localeCompare(b.lot));
+    .sort((a,b)=>{
+      const da=parseFrenchDate(a.ddm),db=parseFrenchDate(b.ddm);
+      if(da&&db&&da.getTime()!==db.getTime())return da-db;
+      if(da&&!db)return -1;
+      if(!da&&db)return 1;
+      return String(a.produit||'').localeCompare(String(b.produit||''),'fr')||String(a.lot||'').localeCompare(String(b.lot||''));
+    });
   sel.innerHTML='<option value="">— Choisir un lot —</option>'+rows.map(x=>'<option value="'+esc(x.lot)+'">'+esc(x.produit||'Produit')+' — '+esc(x.lot)+' — '+esc(displayQtyForLot(x))+'</option>').join('');
   if(rows.some(x=>x.lot===current))sel.value=current;
   $('exitLocationInfo').innerHTML='<b>Emplacement sélectionné : '+esc(exitLocation)+'</b><br>'+(rows.length?rows.length+' lot(s) disponible(s).':'Aucun lot disponible à cet emplacement.');
