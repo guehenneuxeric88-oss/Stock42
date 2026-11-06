@@ -51,7 +51,7 @@ body.guest-mode .admin-only{display:none!important}body.guest-mode #guestModeBtn
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 </head>
 <body><main class="app">
-<header class="head"><div class="logo">42</div><div><div class="title">Stock 42 — V3</div><div class="sub">Commandes • réceptions • lots • emplacements • FIFO • Version 48</div></div></header>
+<header class="head"><div class="logo">42</div><div><div class="title">Stock 42 — V3</div><div class="sub">Commandes • réceptions • lots • emplacements • FIFO • Version 49</div></div></header>
 <div class="guest-banner">Mode famille / invité — consultation uniquement</div>
 <nav id="mainNav" class="main-nav" aria-label="Navigation principale">
   <button class="active" data-view="home"><span class="nav-icon">⌂</span>Accueil</button>
@@ -1018,7 +1018,7 @@ function populateExitControls(){
       if(!da&&db)return 1;
       return String(a.produit||'').localeCompare(String(b.produit||''),'fr')||String(a.lot||'').localeCompare(String(b.lot||''));
     });
-  sel.innerHTML='<option value="">— Choisir un lot —</option>'+rows.map(x=>'<option value="'+esc(x.lot)+'">'+esc(x.produit||'Produit')+' — '+esc(x.lot)+' — '+esc(displayQtyForLot(x))+'</option>').join('');
+  sel.innerHTML='<option value="">— Choisir un lot (DDM/DLC croissante) —</option>'+rows.map(x=>'<option value="'+esc(x.lot)+'">'+esc(x.produit||'Produit')+' — '+esc(x.lot)+' — '+esc(x.ddm?(x.typeDate||'DDM')+' '+x.ddm:'date absente')+' — '+esc(displayQtyForLot(x))+'</option>').join('');
   if(rows.some(x=>x.lot===current))sel.value=current;
   $('exitLocationInfo').innerHTML='<b>Emplacement sélectionné : '+esc(exitLocation)+'</b><br>'+(rows.length?rows.length+' lot(s) disponible(s).':'Aucun lot disponible à cet emplacement.');
   showExitLotInfo();
@@ -1505,7 +1505,7 @@ if(!readAutoBackups().length)createAutomaticBackup('Initiale');
 if(localStorage.getItem(LS.syncUrl))syncLotsFromSheet();
 if('serviceWorker' in navigator)window.addEventListener('load',async()=>{
   try{
-    const reg=await navigator.serviceWorker.register('./service-worker.js?v=48',{updateViaCache:'none'});
+    const reg=await navigator.serviceWorker.register('./service-worker.js?v=49',{updateViaCache:'none'});
     reg.update().catch(()=>{});
     navigator.serviceWorker.addEventListener('controllerchange',()=>{
       if(!sessionStorage.getItem('stock42SwReload')){
