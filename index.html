@@ -930,9 +930,12 @@ function exitMovementsForLot(lot){
 }
 function currentQtyForLot(lotData){
   if(!lotData)return 0;
-  const base=Number(lotData.quantite);
-  if(!Number.isFinite(base))return 0;
-  const exited=exitMovementsForLot(lotData.lot).reduce((s,m)=>s+Math.abs(Number(m.quantite)||0),0);
+  const base=parseNumber(lotData.quantite);
+  if(base===null||!Number.isFinite(base)||base<0)return 0;
+  const exited=exitMovementsForLot(lotData.lot).reduce((sum,m)=>{
+    const quantity=parseNumber(m.quantite);
+    return sum+(quantity===null||!Number.isFinite(quantity)?0:Math.abs(quantity));
+  },0);
   return Math.max(0,base-exited);
 }
 function populateExitLocations(){
