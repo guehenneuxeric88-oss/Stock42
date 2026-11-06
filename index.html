@@ -51,7 +51,7 @@ body.guest-mode .admin-only{display:none!important}body.guest-mode #guestModeBtn
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 </head>
 <body><main class="app">
-<header class="head"><div class="logo">42</div><div><div class="title">Stock 42 — V3</div><div class="sub">Commandes • réceptions • lots • emplacements • FIFO • Version 47</div></div></header>
+<header class="head"><div class="logo">42</div><div><div class="title">Stock 42 — V3</div><div class="sub">Commandes • réceptions • lots • emplacements • FIFO • Version 48</div></div></header>
 <div class="guest-banner">Mode famille / invité — consultation uniquement</div>
 <nav id="mainNav" class="main-nav" aria-label="Navigation principale">
   <button class="active" data-view="home"><span class="nav-icon">⌂</span>Accueil</button>
@@ -811,45 +811,56 @@ function containerLabel(x){
   if(!m)return '';
   return 'Seau '+m[1].replace(/\s+/g,'').toUpperCase();
 }
-function displayQtyForLot(x){
-  const qty=currentQtyForLot(x);
+function displayQtyForLot(x, quantityOverride){
+  // Format unique pour tous les écrans. Aucune modification des quantités ni des mouvements.
+  const qty=quantityOverride===undefined?currentQtyForLot(x):Number(quantityOverride);
   const unit=String(x?.unite||'').trim();
-  const base=String(qty)+' '+unit;
+  const num=n=>Number(n).toLocaleString('fr-FR',{maximumFractionDigits:3});
+  const base=num(qty)+' '+unit;
   const pack=String(x?.conditionnement||'').trim();
-  // Affichage dérivé du conditionnement Google Sheets, sans écrire dans le stock.
-  // Priorité aux descriptions connues, retour au poids d'origine si incohérence.
-  if(pack){
-    const m=pack.match(/^(?:(\d+)\s+)?(paquets?|boîtes?|(?:bocal|bocaux)|pots?|bouteilles?|briques?|unités?|sachets?)\s+(?:Poinette\s+)?de\s+(\d+(?:[,.]\d+)?)\s*(kg|g|ml|L)\b/i);
-    if(m){
-      const nominal=Number(m[3].replace(',','.'));
-      const sizeUnit=m[4].toLowerCase();
-      const plural=m[2].toLowerCase();
-      const singular=plural.startsWith('boît')?'boîte':plural.startsWith('boca')?'bocal':plural.startsWith('bouteill')?'bouteille':plural.startsWith('briqu')?'brique':plural.startsWith('paquet')?'paquet':plural.startsWith('pot')?'pot':plural.startsWith('sachet')?'sachet':'unité';
-      const pl={boîte:'boîtes',bocal:'bocaux',bouteille:'bouteilles',brique:'briques',paquet:'paquets',pot:'pots',sachet:'sachets',unité:'unités'}[singular];
-      const unitLow=unit.toLowerCase();
-      let count=qty;
-      if(unitLow==='kg'&&(sizeUnit==='g'||sizeUnit==='kg'))count=qty/(sizeUnit==='g'?nominal/1000:nominal);
-      else if(unitLow==='g'&&(sizeUnit==='g'||sizeUnit==='kg'))count=qty/(sizeUnit==='g'?nominal:nominal*1000);
-      else if(unitLow==='l'&&(sizeUnit==='ml'||sizeUnit==='l'))count=qty/(sizeUnit==='ml'?nominal/1000:nominal);
-      else if(unitLow==='ml'&&(sizeUnit==='ml'||sizeUnit==='l'))count=qty/(sizeUnit==='ml'?nominal:nominal*1000);
-      if(Number.isFinite(count)&&count>=0&&Math.abs(count-Math.round(count))<0.000001){
-        const n=Math.round(count);
-        const brand=/\bPoinette\b/i.test(pack)?' Poinette':'';
-        return n+' '+(n===1?singular:pl)+brand+' de '+nominal+' '+m[4]+' ('+base+')';
-      }
+  if(!pack||/^(Emballage d'origine|Bouteille \/ brique)$/i.test(pack))return base;
+  const unitLow=unit.toLowerCase();
+  const unitIsMass=unitLow==='kg'||unitLow==='g';
+  const unitIsVolume=unitLow==='l'||unitLow==='ml';
+  const asCount=(size,sizeUnit)=>{
+    let count=qty;
+    const u=sizeUnit.toLowerCase();
+    if(unitIsMass&&(u==='kg'||u==='kgs'||u==='g'))
+      count=qty/(unitLow==='kg'?(u==='g'?size/1000:size):(u==='g'?size:size*1000));
+    else if(unitIsVolume&&(u==='l'||u==='litre'||u==='litres'||u==='ml'))
+      count=qty/(unitLow==='l'?(u==='ml'?size/1000:size):(u==='ml'?size:size*1000));
+    else if(unitIsMass||unitIsVolume)return null;
+    return Number.isFinite(count)&&count>=0&&Math.abs(count-Math.round(count))<0.000001?Math.round(count):null;
+  };
+  // Les seaux Mylar: afficher d'abord le nombre de sacs, puis le détail traçable du seau.
+  const mylar=pack.match(/(\d+)\s+sacs?\s+Mylar\s+de\s+(\d+(?:[,.]\d+)?)\s*(kg|kgs|g)\b/i);
+  if(mylar){
+    const size=Number(mylar[2].replace(',','.'));
+    const n=asCount(size,mylar[3]);
+    if(n!==null)return n+' sac'+(n===1?'':'s')+' Mylar de '+num(size)+' '+(mylar[3].toLowerCase()==='kgs'?'kg':mylar[3])+' ('+base+') • '+pack;
+    return base+' • Conditionnement initial : '+pack;
+  }
+  // Paquets, bocaux, boîtes, bouteilles et sachets conditionnés avec poids/volume.
+  const m=pack.match(/^(?:(\d+)\s+)?(paquets?|boîtes?|bocaux|bocal|pots?|bouteilles?|briques?|unités?|sachets?)\s+(?:Poinette\s+)?de\s+(\d+(?:[,.]\d+)?)\s*(kg|g|ml|l)\b/i);
+  if(m){
+    const size=Number(m[3].replace(',','.'));
+    const count=asCount(size,m[4]);
+    if(count!==null){
+      const word=m[2].toLowerCase();
+      const singular=word.startsWith('boît')?'boîte':word.startsWith('boca')?'bocal':word.startsWith('bouteill')?'bouteille':word.startsWith('briqu')?'brique':word.startsWith('paquet')?'paquet':word.startsWith('pot')?'pot':word.startsWith('sachet')?'sachet':'unité';
+      const plurals={boîte:'boîtes',bocal:'bocaux',bouteille:'bouteilles',brique:'briques',paquet:'paquets',pot:'pots',sachet:'sachets',unité:'unités'};
+      const brand=/\bPoinette\b/i.test(pack)?' Poinette':'';
+      const extra=pack.slice(m[0].length).trim();
+      return count+' '+(count===1?singular:plurals[singular])+brand+' de '+num(size)+' '+(m[4].toLowerCase()==='l'?'L':m[4])+' ('+base+')'+(extra?' • '+extra:'');
     }
-    // Pour les seaux Mylar, conserver la traçabilité des sacs et du seau.
-    if(/\bSeau\b/i.test(pack))return base+' • '+pack;
-    if(!/^(Emballage d'origine|Bouteille \/ brique)$/i.test(pack))return base+' • '+pack;
+    return base+' • Conditionnement initial : '+pack;
   }
-  // Sécurité pour les deux lots déjà validés avant la centralisation du catalogue.
-  const lot=normalizeLot(x?.lot||'');
-  if(unit.toLowerCase()==='kg'&&(lot==='L0004'||lot==='L0007')){
-    const size=lot==='L0004'?800:200;
-    const count=qty*1000/size;
-    if(Number.isInteger(count))return count+' '+(lot==='L0004'?'paquets de 800 g':'boîtes de 200 g')+' ('+base+')';
-  }
-  return base;
+  // Cas des paquets de rouleaux ou conditionnements multipacks.
+  const rolls=pack.match(/^Paquet de (\d+) rouleaux$/i);
+  if(rolls&&unitLow==='paquet')return num(qty)+' paquets de '+rolls[1]+' rouleaux';
+  const multi=pack.match(/^(\d+) fois (\d+(?:[,.]\d+)?) litres?$/i);
+  if(multi&&unitLow==='paquet')return num(qty)+' paquets de '+multi[1]+' × '+multi[2]+' L';
+  return base+' • '+pack;
 }
 function searchLot(){
   const raw=$('searchLot').value.trim(),el=$('lotSearchResult');
@@ -1001,7 +1012,7 @@ function populateExitControls(){
   const rows=allLots().map(x=>({...x,available:currentQtyForLot(x),loc:currentLocationForLot(x.lot)||x.emplacement||''}))
     .filter(x=>x.available>0&&x.loc===exitLocation)
     .sort((a,b)=>String(a.produit||'').localeCompare(String(b.produit||''),'fr')||a.lot.localeCompare(b.lot));
-  sel.innerHTML='<option value="">— Choisir un lot —</option>'+rows.map(x=>'<option value="'+esc(x.lot)+'">'+esc(x.produit||'Produit')+' — '+esc(x.lot)+' — '+esc(String(x.available))+' '+esc(x.unite||'')+'</option>').join('');
+  sel.innerHTML='<option value="">— Choisir un lot —</option>'+rows.map(x=>'<option value="'+esc(x.lot)+'">'+esc(x.produit||'Produit')+' — '+esc(x.lot)+' — '+esc(displayQtyForLot(x))+'</option>').join('');
   if(rows.some(x=>x.lot===current))sel.value=current;
   $('exitLocationInfo').innerHTML='<b>Emplacement sélectionné : '+esc(exitLocation)+'</b><br>'+(rows.length?rows.length+' lot(s) disponible(s).':'Aucun lot disponible à cet emplacement.');
   showExitLotInfo();
@@ -1022,7 +1033,7 @@ function showExitLotInfo(){
   if(!lot){info.textContent='';if($('exitUnit'))$('exitUnit').value='';return}
   const x=lotById(lot),available=currentQtyForLot(x),loc=currentLocationForLot(lot)||x?.emplacement||'';
   if($('exitUnit'))$('exitUnit').value=x?.unite||'';
-  info.innerHTML='<b>'+esc(x?.produit||'Produit')+' — '+esc(lot)+'</b><br>Disponible : <b>'+esc(String(available))+' '+esc(x?.unite||'')+'</b>'+(loc?'<br>Emplacement : <b>'+esc(loc)+'</b>':'');
+  info.innerHTML='<b>'+esc(x?.produit||'Produit')+' — '+esc(lot)+'</b><br>Disponible : <b>'+esc(displayQtyForLot(x))+'</b>'+(loc?'<br>Emplacement : <b>'+esc(loc)+'</b>':'');
 }
 async function confirmStockExit(){
   const lot=$('exitLotSelect')?.value||'',qty=Number(String($('exitQty')?.value||'').replace(',','.')),reason=$('exitReason')?.value||'Consommation',comment=$('exitComment')?.value||'',el=$('exitStatus'),btn=$('exitConfirmBtn');
@@ -1030,7 +1041,7 @@ async function confirmStockExit(){
   if(!x){el.innerHTML='<div class="notice">Choisissez d’abord un lot.</div>';return}
   const available=currentQtyForLot(x);
   if(!Number.isFinite(qty)||qty<=0){el.innerHTML='<div class="notice">Saisissez une quantité de sortie valide.</div>';return}
-  if(qty>available){el.innerHTML='<div class="notice" style="border-color:#fecaca;background:#fff1f2;color:#9f1239">Impossible : la quantité demandée dépasse le stock disponible ('+esc(String(available))+' '+esc(x.unite||'')+').</div>';return}
+  if(qty>available){el.innerHTML='<div class="notice" style="border-color:#fecaca;background:#fff1f2;color:#9f1239">Impossible : la quantité demandée dépasse le stock disponible ('+esc(displayQtyForLot(x))+').</div>';return}
   btn.disabled=true;btn.textContent='Enregistrement…';
   const loc=currentLocationForLot(lot)||x.emplacement||'';
   const movement={date:today(),lot:x.lot,produit:x.produit||'',type:'Sortie consommation',quantite:qty,unite:x.unite||'',source:loc,destination:'',commentaire:reason+(comment?' — '+comment:''),reference:''};
@@ -1041,7 +1052,7 @@ async function confirmStockExit(){
   }
   const moves=get(LS.moves,[]);moves.push({...movement,id:'EXIT-'+Date.now(),createdAt:new Date().toISOString()});set(LS.moves,moves);
   const remaining=Math.max(0,available-qty);
-  el.innerHTML='<div class="notice" style="border-color:#c4b5fd;background:#f5f3ff;color:#6d28d9"><b>✓ Sortie enregistrée</b><br>'+esc(String(qty))+' '+esc(x.unite||'')+' sorti(s) de '+esc(x.produit||'')+'. Reste : <b>'+esc(String(remaining))+' '+esc(x.unite||'')+'</b>.</div>';
+  el.innerHTML='<div class="notice" style="border-color:#c4b5fd;background:#f5f3ff;color:#6d28d9"><b>✓ Sortie enregistrée</b><br>'+esc(String(qty))+' '+esc(x.unite||'')+' sorti(s) de '+esc(x.produit||'')+'. Reste : <b>'+esc(displayQtyForLot(x,remaining))+'</b>.</div>';
   $('exitQty').value='';$('exitComment').value='';
   const refreshedLocation=exitLocation;
   updateStats();
@@ -1057,7 +1068,7 @@ function populateMoveControls(){
   if(!lotSel||!destSel)return;
   const currentLot=lotSel.value,currentDest=destSel.value;
   const assigned=allLots().filter(x=>currentLocationForLot(x.lot)).sort((a,b)=>String(a.produit||'').localeCompare(String(b.produit||''),'fr')||a.lot.localeCompare(b.lot));
-  lotSel.innerHTML='<option value="">— Choisir un lot —</option>'+assigned.map(x=>'<option value="'+esc(x.lot)+'">'+esc(x.produit||'Produit')+' — '+esc(x.lot)+'</option>').join('');
+  lotSel.innerHTML='<option value="">— Choisir un lot —</option>'+assigned.map(x=>'<option value="'+esc(x.lot)+'">'+esc(x.produit||'Produit')+' — '+esc(x.lot)+' — '+esc(displayQtyForLot(x))+'</option>').join('');
   destSel.innerHTML='<option value="">— Nouvel emplacement —</option>'+allOfficialLocations().map(loc=>'<option value="'+loc+'">'+loc+'</option>').join('');
   if(assigned.some(x=>x.lot===currentLot))lotSel.value=currentLot;
   if(allOfficialLocations().includes(currentDest))destSel.value=currentDest;
@@ -1068,7 +1079,7 @@ function showMoveCurrentLocation(){
   if(!el)return;
   if(!lot){el.textContent='';return}
   const x=lotById(lot),loc=currentLocationForLot(lot);
-  el.innerHTML='<b>'+esc(x?.produit||'Produit')+' — '+esc(lot)+'</b><br>Emplacement actuel : <b>'+esc(loc||'non affecté')+'</b>';
+  el.innerHTML='<b>'+esc(x?.produit||'Produit')+' — '+esc(lot)+'</b><br>Emplacement actuel : <b>'+esc(loc||'non affecté')+'</b><br>Stock : <b>'+esc(displayQtyForLot(x))+'</b>';
 }
 function normalizeBarcode(raw){return String(raw||'').replace(/\D/g,'')}
 function categoryFromOpenFoodFacts(product){
@@ -1488,7 +1499,7 @@ if(!readAutoBackups().length)createAutomaticBackup('Initiale');
 if(localStorage.getItem(LS.syncUrl))syncLotsFromSheet();
 if('serviceWorker' in navigator)window.addEventListener('load',async()=>{
   try{
-    const reg=await navigator.serviceWorker.register('./service-worker.js?v=47',{updateViaCache:'none'});
+    const reg=await navigator.serviceWorker.register('./service-worker.js?v=48',{updateViaCache:'none'});
     reg.update().catch(()=>{});
     navigator.serviceWorker.addEventListener('controllerchange',()=>{
       if(!sessionStorage.getItem('stock42SwReload')){
