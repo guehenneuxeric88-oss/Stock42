@@ -813,7 +813,7 @@ function containerLabel(x){
 }
 function displayQtyForLot(x){
   const qty=currentQtyForLot(x);
-  const base=String(qty).replace('.',',')+' '+String(x?.unite||'');
+  const base=String(qty)+' '+String(x?.unite||'');
   if(normalizeLot(x?.lot||'')!=='L0007')return base;
   // Essai limité au café L0007, sans modifier les quantités ni les sorties.
   const pack=String(x?.conditionnement||'');
