@@ -815,15 +815,12 @@ function displayQtyForLot(x){
   const qty=currentQtyForLot(x);
   const base=String(qty)+' '+String(x?.unite||'');
   if(normalizeLot(x?.lot||'')!=='L0007')return base;
-  // Essai limité au café L0007, sans modifier les quantités ni les sorties.
-  const pack=String(x?.conditionnement||'');
-  const m=pack.match(/(\d+)\s*[x×]\s*(\d+(?:[,.]\d+)?)\s*g\b/i);
-  if(!m||String(x?.unite||'').toLowerCase()!=='kg')return base;
-  const grams=Number(m[2].replace(',','.'));
-  if(!(grams>0))return base;
-  const boxes=qty*1000/grams;
-  if(!Number.isInteger(Math.round(boxes))||Math.abs(boxes-Math.round(boxes))>0.00001)return base;
-  return Math.round(boxes)+' boîtes de '+m[2]+' g ('+base+')';
+  // L0007 : conditionnement vérifié dans l'inventaire (10 boîtes de 200 g).
+  // Calcul d'affichage uniquement : aucune mutation du stock ou des sorties.
+  if(String(x?.unite||'').trim().toLowerCase()!=='kg')return base;
+  const boxes=qty*1000/200;
+  if(!Number.isFinite(boxes)||Math.abs(boxes-Math.round(boxes))>0.000001)return base;
+  return Math.round(boxes)+' boîtes de 200 g ('+base+')';
 }
 function searchLot(){
   const raw=$('searchLot').value.trim(),el=$('lotSearchResult');
