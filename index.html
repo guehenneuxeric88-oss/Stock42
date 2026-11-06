@@ -819,7 +819,7 @@ function displayQtyForLot(x){
   // Affichage dérivé du conditionnement Google Sheets, sans écrire dans le stock.
   // Priorité aux descriptions connues, retour au poids d'origine si incohérence.
   if(pack){
-    const m=pack.match(/^(?:(\d+)\s+)?(paquets?|boîtes?|bocaux?|pots?|bouteilles?|briques?|unités?|sachets?)\s+(?:Poinette\s+)?de\s+(\d+(?:[,.]\d+)?)\s*(kg|g|ml|L)\b/i);
+    const m=pack.match(/^(?:(\d+)\s+)?(paquets?|boîtes?|(?:bocal|bocaux)|pots?|bouteilles?|briques?|unités?|sachets?)\s+(?:Poinette\s+)?de\s+(\d+(?:[,.]\d+)?)\s*(kg|g|ml|L)\b/i);
     if(m){
       const nominal=Number(m[3].replace(',','.'));
       const sizeUnit=m[4].toLowerCase();
