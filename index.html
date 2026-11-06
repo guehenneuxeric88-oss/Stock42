@@ -763,7 +763,7 @@ if(btn){
   btn.textContent=sync.ok?'✓ Lot affecté':'⚠ Affecté localement';
   setTimeout(()=>{btn.disabled=false;btn.textContent=btn.dataset.oldText||'Affecter ce lot'},1800);
 }}
-function renderLocationStock(){if(!activeLocation)return;const rows=assignments().filter(x=>x.location===activeLocation).map(a=>({...a,lotData:lotById(a.lot)}));const el=$('locationStock');if(!rows.length){el.innerHTML='<div class="empty">Aucun lot affecté.</div>';return}rows.sort((a,b)=>String(a.lotData?.ddm||'9999').localeCompare(String(b.lotData?.ddm||'9999')));el.innerHTML=rows.map((x,i)=>'<div class="list-item"><div class="item-title">'+esc(x.lot)+(currentQtyForLot(x.lotData)<=0?' <span class="badge">ÉPUISÉ</span>':'')+(i===0? ' <span class="badge blue">FIFO</span>':'')+'</div><div>'+esc(x.lotData?.produit||'Produit non renseigné')+'</div><div class="item-meta">'+esc(displayQtyForLot(x.lotData))+(x.lotData?.ddm?' • '+esc(x.lotData.ddm):'')+'</div></div>').join('')}
+function renderLocationStock(){if(!activeLocation)return;const rows=assignments().filter(x=>x.location===activeLocation).map(a=>({...a,lotData:lotById(a.lot)})).filter(x=>x.lotData&&String(x.lotData.produit||'').trim());const el=$('locationStock');if(!rows.length){el.innerHTML='<div class="empty">Aucun lot affecté.</div>';return}rows.sort((a,b)=>String(a.lotData?.ddm||'9999').localeCompare(String(b.lotData?.ddm||'9999')));el.innerHTML=rows.map((x,i)=>'<div class="list-item"><div class="item-title">'+esc(x.lot)+(currentQtyForLot(x.lotData)<=0?' <span class="badge">ÉPUISÉ</span>':'')+(i===0? ' <span class="badge blue">FIFO</span>':'')+'</div><div>'+esc(x.lotData?.produit||'Produit non renseigné')+'</div><div class="item-meta">'+esc(displayQtyForLot(x.lotData))+(x.lotData?.ddm?' • '+esc(x.lotData.ddm):'')+'</div></div>').join('')}
 function normalizeSearchText(v){
   return String(v||'')
     .toLocaleLowerCase('fr-FR')
@@ -900,7 +900,7 @@ function populateInventoryLocations(){
   if(allOfficialLocations().includes(current))sel.value=current;
 }
 function inventoryRowsForLocation(loc){
-  return assignments().filter(a=>a.location===loc).map(a=>({a,lotData:lotById(a.lot)})).sort((x,y)=>String(x.lotData?.produit||'').localeCompare(String(y.lotData?.produit||''),'fr'));
+  return assignments().filter(a=>a.location===loc).map(a=>({a,lotData:lotById(a.lot)})).filter(x=>x.lotData&&String(x.lotData.produit||'').trim()).sort((x,y)=>String(x.lotData?.produit||'').localeCompare(String(y.lotData?.produit||''),'fr'));
 }
 function loadInventoryLocation(){
   const loc=$('inventoryLocationSelect').value,el=$('inventoryList'),btn=$('inventoryConfirmBtn');
@@ -1262,7 +1262,7 @@ function populateLocationView(){
 function showLocationView(){
   const loc=$('locationViewSelect').value,el=$('locationViewResult');
   if(!loc){el.innerHTML='<div class="empty">Choisissez un emplacement.</div>';return}
-  const rows=assignments().filter(a=>a.location===loc).map(a=>({a,lotData:lotById(a.lot)}));
+  const rows=assignments().filter(a=>a.location===loc).map(a=>({a,lotData:lotById(a.lot)})).filter(x=>x.lotData&&String(x.lotData.produit||'').trim());
   if(!rows.length){
     el.innerHTML='<div class="notice"><b>'+esc(loc)+'</b><br>Emplacement vide.</div>';
     return;
