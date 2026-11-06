@@ -813,22 +813,43 @@ function containerLabel(x){
 }
 function displayQtyForLot(x){
   const qty=currentQtyForLot(x);
-  const base=String(qty)+' '+String(x?.unite||'');
-  const lot=normalizeLot(x?.lot||'');
-  if(lot==='L0004'&&String(x?.unite||'').trim().toLowerCase()==='kg'){
-    // L0004 : cinq paquets de 800 g confirmés physiquement, affichage seulement.
-    const packs=qty*1000/800;
-    if(Number.isFinite(packs)&&Math.abs(packs-Math.round(packs))<0.000001)
-      return Math.round(packs)+' paquets de 800 g ('+base+')';
-    return base;
+  const unit=String(x?.unite||'').trim();
+  const base=String(qty)+' '+unit;
+  const pack=String(x?.conditionnement||'').trim();
+  // Affichage dérivé du conditionnement Google Sheets, sans écrire dans le stock.
+  // Priorité aux descriptions connues, retour au poids d'origine si incohérence.
+  if(pack){
+    const m=pack.match(/^(?:(\d+)\s+)?(paquets?|boîtes?|bocaux?|pots?|bouteilles?|briques?|unités?|sachets?)\s+(?:Poinette\s+)?de\s+(\d+(?:[,.]\d+)?)\s*(kg|g|ml|L)\b/i);
+    if(m){
+      const nominal=Number(m[3].replace(',','.'));
+      const sizeUnit=m[4].toLowerCase();
+      const plural=m[2].toLowerCase();
+      const singular=plural.startsWith('boît')?'boîte':plural.startsWith('boca')?'bocal':plural.startsWith('bouteill')?'bouteille':plural.startsWith('briqu')?'brique':plural.startsWith('paquet')?'paquet':plural.startsWith('pot')?'pot':plural.startsWith('sachet')?'sachet':'unité';
+      const pl={boîte:'boîtes',bocal:'bocaux',bouteille:'bouteilles',brique:'briques',paquet:'paquets',pot:'pots',sachet:'sachets',unité:'unités'}[singular];
+      const unitLow=unit.toLowerCase();
+      let count=qty;
+      if(unitLow==='kg'&&(sizeUnit==='g'||sizeUnit==='kg'))count=qty/(sizeUnit==='g'?nominal/1000:nominal);
+      else if(unitLow==='g'&&(sizeUnit==='g'||sizeUnit==='kg'))count=qty/(sizeUnit==='g'?nominal:nominal*1000);
+      else if(unitLow==='l'&&(sizeUnit==='ml'||sizeUnit==='l'))count=qty/(sizeUnit==='ml'?nominal/1000:nominal);
+      else if(unitLow==='ml'&&(sizeUnit==='ml'||sizeUnit==='l'))count=qty/(sizeUnit==='ml'?nominal:nominal*1000);
+      if(Number.isFinite(count)&&count>=0&&Math.abs(count-Math.round(count))<0.000001){
+        const n=Math.round(count);
+        const brand=/\bPoinette\b/i.test(pack)?' Poinette':'';
+        return n+' '+(n===1?singular:pl)+brand+' de '+nominal+' '+m[4]+' ('+base+')';
+      }
+    }
+    // Pour les seaux Mylar, conserver la traçabilité des sacs et du seau.
+    if(/\bSeau\b/i.test(pack))return base+' • '+pack;
+    if(!/^(Emballage d'origine|Bouteille \/ brique)$/i.test(pack))return base+' • '+pack;
   }
-  if(lot!=='L0007')return base;
-  // L0007 : conditionnement vérifié dans l'inventaire (10 boîtes de 200 g).
-  // Calcul d'affichage uniquement : aucune mutation du stock ou des sorties.
-  if(String(x?.unite||'').trim().toLowerCase()!=='kg')return base;
-  const boxes=qty*1000/200;
-  if(!Number.isFinite(boxes)||Math.abs(boxes-Math.round(boxes))>0.000001)return base;
-  return Math.round(boxes)+' boîtes de 200 g ('+base+')';
+  // Sécurité pour les deux lots déjà validés avant la centralisation du catalogue.
+  const lot=normalizeLot(x?.lot||'');
+  if(unit.toLowerCase()==='kg'&&(lot==='L0004'||lot==='L0007')){
+    const size=lot==='L0004'?800:200;
+    const count=qty*1000/size;
+    if(Number.isInteger(count))return count+' '+(lot==='L0004'?'paquets de 800 g':'boîtes de 200 g')+' ('+base+')';
+  }
+  return base;
 }
 function searchLot(){
   const raw=$('searchLot').value.trim(),el=$('lotSearchResult');
