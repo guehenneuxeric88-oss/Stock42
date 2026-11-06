@@ -814,7 +814,15 @@ function containerLabel(x){
 function displayQtyForLot(x){
   const qty=currentQtyForLot(x);
   const base=String(qty)+' '+String(x?.unite||'');
-  if(normalizeLot(x?.lot||'')!=='L0007')return base;
+  const lot=normalizeLot(x?.lot||'');
+  if(lot==='L0004'&&String(x?.unite||'').trim().toLowerCase()==='kg'){
+    // L0004 : cinq paquets de 800 g confirmés physiquement, affichage seulement.
+    const packs=qty*1000/800;
+    if(Number.isFinite(packs)&&Math.abs(packs-Math.round(packs))<0.000001)
+      return Math.round(packs)+' paquets de 800 g ('+base+')';
+    return base;
+  }
+  if(lot!=='L0007')return base;
   // L0007 : conditionnement vérifié dans l'inventaire (10 boîtes de 200 g).
   // Calcul d'affichage uniquement : aucune mutation du stock ou des sorties.
   if(String(x?.unite||'').trim().toLowerCase()!=='kg')return base;
