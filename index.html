@@ -672,7 +672,8 @@ async function approveReorder(key){
   if(guestModeEnabled())return;
   // Recalculate immediately to prevent stale suggestions or duplicate clicks.
   const x=reorderProposals().find(p=>p.key===key);
-  if(!x||!x.category){alert('Catégorie manquante : compléter la fiche produit avant validation.');return}
+  if(!x)return;
+  if(!x.category){alert('Catégorie manquante : compléter la fiche produit avant validation.');return}
   if(!confirm('Créer une commande de '+x.need+' '+x.unit+' pour '+x.name+' ?'))return;
   const check=reorderProposals().find(p=>p.key===key);if(!check)return;
   const rec={id:nextOrder(),status:'Commandée',product:check.name,category:check.category,qty:check.need,unit:check.unit,price:null,supplier:'',reference:'',orderDate:today(),expected:'',notes:'Réapprovisionnement automatique : retour à 100 %',createdAt:new Date().toISOString()};
