@@ -51,7 +51,7 @@ body.guest-mode .admin-only{display:none!important}body.guest-mode #guestModeBtn
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 </head>
 <body><main class="app">
-<header class="head"><div class="logo">42</div><div><div class="title">Stock 42 — V3</div><div class="sub">Commandes • réceptions • lots • emplacements • FIFO • Version 51</div></div></header>
+<header class="head"><div class="logo">42</div><div><div class="title">Stock 42 — V3</div><div class="sub">Commandes • réceptions • lots • emplacements • FIFO • Version 52</div></div></header>
 <div class="guest-banner">Mode famille / invité — consultation uniquement</div>
 <nav id="mainNav" class="main-nav" aria-label="Navigation principale">
   <button class="active" data-view="home"><span class="nav-icon">⌂</span>Accueil</button>
@@ -77,7 +77,13 @@ body.guest-mode .admin-only{display:none!important}body.guest-mode #guestModeBtn
     <div class="kv"><div class="k">Prochain lot</div><div id="dashNextLot" class="v">L0001</div></div>
   </div>
   <div id="dashSummary" class="status" style="margin-top:10px"></div>
-  <div id="reorderDash" class="status"></div>
+  <div class="kv" style="margin-top:12px;border:1px solid #ddd6fe">
+    <div class="k">Réapprovisionnement — seuil 75 %</div>
+    <div class="row" style="align-items:center;justify-content:space-between;margin-top:5px">
+      <div><div id="dashReorderCount" class="v" style="font-size:1.5rem">0</div><div id="dashReorderMessage" class="small">Calcul en cours…</div></div>
+      <button id="dashReorderOpen" class="btn secondary admin-only" type="button">Voir les propositions</button>
+    </div>
+  </div>
   <div class="row" style="margin-top:12px">
     <button id="guestModeBtn" class="btn secondary">Mode famille / invité</button>
   </div>
@@ -488,6 +494,9 @@ function updateMobileDashboard(){
   if($('dashExpired'))$('dashExpired').textContent=expired;
   if($('dashOrders'))$('dashOrders').textContent=openOrders;
   if($('dashNextLot'))$('dashNextLot').textContent=nextLot();
+  const baseline=get(LS.reorder,null),count=reorderProposals().length;
+  if($('dashReorderCount'))$('dashReorderCount').textContent=baseline?.items?String(count):'—';
+  if($('dashReorderMessage'))$('dashReorderMessage').textContent=!baseline?.items?'Stock de référence non initialisé':count?'produit(s) avec une commande à proposer':'Aucune commande à proposer';
   if($('dashSummary')){
     const alerts=[];
     if(temp)alerts.push(temp+' lot(s) à ranger');
@@ -1578,6 +1587,11 @@ async function stopScanner(){
 }
 
 document.querySelectorAll('#mainNav button[data-view]').forEach(b=>b.onclick=async()=>{if(running||productScannerControls){quickProductScanMode=false;quickScanMode=false;moveScanMode=false;exitScanMode=false;await stopScanner()}document.body.classList.remove('scanner-active');setAppView(b.dataset.view)});
+if($('dashReorderOpen'))$('dashReorderOpen').onclick=()=>{
+  if(guestModeEnabled())return;
+  setAppView('entries');
+  showPane('ordersPane');
+};
 if($('productRefSearch'))$('productRefSearch').addEventListener('input',renderProductReference);
 if($('productSyncBtn'))$('productSyncBtn').onclick=async()=>{const ok=await syncProductsFromSheet();$('productRefStatus').textContent=ok?'Référentiel synchronisé.':'Synchronisation indisponible pour le moment.'};
 if($('productNewBtn'))$('productNewBtn').onclick=openNewProductFromMenu;
@@ -1616,7 +1630,7 @@ if(!readAutoBackups().length)createAutomaticBackup('Initiale');
 if(localStorage.getItem(LS.syncUrl))syncLotsFromSheet();else {initializeReorderBaseline();updateStats();}
 if('serviceWorker' in navigator)window.addEventListener('load',async()=>{
   try{
-    const reg=await navigator.serviceWorker.register('./service-worker.js?v=51',{updateViaCache:'none'});
+    const reg=await navigator.serviceWorker.register('./service-worker.js?v=52',{updateViaCache:'none'});
     reg.update().catch(()=>{});
     navigator.serviceWorker.addEventListener('controllerchange',()=>{
       if(!sessionStorage.getItem('stock42SwReload')){
