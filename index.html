@@ -155,7 +155,7 @@ body.guest-mode .admin-only{display:none!important}body.guest-mode #guestModeBtn
       <div class="field"><label>Fournisseur</label><input id="qSupplier" placeholder="Ex. Super U"></div>
     </div>
     <div class="two">
-      <div class="field"><label>Conditionnement</label><input id="qPack" placeholder="Ex. Net 460 g"></div>
+      <div class="field"><label>Conditionnement / poids par unité</label><input id="qPack" placeholder="Ex. 400 g pour une boîte"><div class="hint">Obligatoire pour les boîtes, bocaux et paquets. Vérifiez le poids proposé : il peut varier selon le lot.</div></div>
       <div class="field">
         <label>Emplacement</label>
         <div class="row" style="margin-bottom:8px"><button id="quickScanBtn" type="button" class="btn secondary">Scanner l’emplacement</button></div>
@@ -541,17 +541,40 @@ function populateQuickProducts(){
   if(current==='__new__'||refs.some(x=>x.name===current))sel.value=current;
   toggleQuickNewProduct();
 }
+function usableQuickPack(value){
+  const pack=String(value||'').trim();
+  return pack&&!/^(Emballage d'origine|Bouteille \/ brique)$/i.test(pack);
+}
+function suggestedQuickPack(product,ref){
+  const lots=allLots().filter(x=>String(x.produit||'').trim()===product&&usableQuickPack(x.conditionnement));
+  // The most recent lot has priority over an old or generic product reference.
+  return lots.length?String(lots[lots.length-1].conditionnement).trim():(usableQuickPack(ref?.pack)?ref.pack:'');
+}
+function quickPackForQuantity(pack,qty,unit){
+  const input=String(pack||'').trim();
+  const low=String(unit||'').toLowerCase();
+  const singular={boîte:'boîte',bocal:'bocal',paquet:'paquet'};
+  const plural={boîte:'boîtes',bocal:'bocaux',paquet:'paquets'};
+  if(!singular[low])return input;
+  // A suggestion from a previous lot must never copy the previous quantity.
+  const previous=input.match(/^\d+\s+(?:boîtes?|bocaux|bocal|paquets?)\s+de\s+(\d+(?:[,.]\d+)?\s*(?:kg|g|ml|l))\b/i);
+  const size=previous?previous[1]:input;
+  if(/^\d+(?:[,.]\d+)?\s*(?:kg|g|ml|l)$/i.test(size))
+    return qty+' '+(qty===1?singular[low]:plural[low])+' de '+size;
+  return input;
+}
 function toggleQuickNewProduct(){
   const sel=$('qProduct'),wrap=$('qNewProductWrap');
   if(!sel||!wrap)return;
   const isNew=sel.value==='__new__';
   wrap.classList.toggle('hidden',!isNew);
+  $('qPack').value='';
   if(isNew){setTimeout(()=>$('qNewProduct')?.focus(),0);return}
   if(sel.value){
     const ref=productReferences().find(x=>x.name===sel.value);
     if(ref?.category&&[...$('qCategory').options].some(o=>o.value===ref.category))$('qCategory').value=ref.category;
     if(ref?.unit&&[...$('qUnit').options].some(o=>o.value===ref.unit))$('qUnit').value=ref.unit;
-    if(ref?.pack)$('qPack').value=ref.pack;
+    $('qPack').value=suggestedQuickPack(sel.value,ref);
   }
 }
 function populateQuickLocations(){
@@ -634,9 +657,15 @@ async function saveQuickEntry(){
   const qty=parseNumber($('qQty').value);
   const unit=$('qUnit').value;
   if(!product||!category||qty===null||!unit){status.textContent='Produit, catégorie, quantité et unité sont obligatoires.';return}
+  const inputPack=$('qPack').value.trim();
+  if(['boîte','bocal','paquet'].includes(unit)&&!usableQuickPack(inputPack)){
+    status.textContent='Précisez le conditionnement (ex. 400 g par boîte) avant de créer le lot.';
+    $('qPack').focus();return;
+  }
+  const normalizedPack=quickPackForQuantity(inputPack,qty,unit);
   const orderId=nextOrder(),lot=nextLot(),location=$('qLocation').value;
   const order={id:orderId,status:'Commandée',product,category,qty,unit,price:null,supplier:$('qSupplier').value.trim(),reference:'',orderDate:today(),expected:today(),notes:'Entrée rapide',createdAt:new Date().toISOString()};
-  const rec={lot,dateReception:today(),produit:product,categorie:category,quantite:qty,unite:unit,ddm:$('qExpiry').value.trim(),typeDate:$('qDateType').value,fournisseur:order.supplier,reference:orderId,zone:'',emplacement:'',statut:'En stock',conditionnement:$('qPack').value.trim(),lotFabricant:'',notes:'Entrée rapide',sourceOrder:orderId,createdAt:new Date().toISOString()};
+  const rec={lot,dateReception:today(),produit:product,categorie:category,quantite:qty,unite:unit,ddm:$('qExpiry').value.trim(),typeDate:$('qDateType').value,fournisseur:order.supplier,reference:orderId,zone:'',emplacement:'',statut:'En stock',conditionnement:normalizedPack,lotFabricant:'',notes:'Entrée rapide',sourceOrder:orderId,createdAt:new Date().toISOString()};
   btn.disabled=true;btn.textContent='✓ Enregistrement en cours…';status.textContent='Création de la commande…';
   const orderSync=await sendToSheet('order',order);
   if(!orderSync.ok){status.innerHTML='<div class="notice" style="border-color:#fde68a;background:#fffbeb;color:#92400e"><b>⚠ Entrée rapide interrompue</b><br>La création de la commande n’a pas été confirmée par Google Sheets.</div>';btn.disabled=false;btn.textContent='Créer et ranger le lot';return}
