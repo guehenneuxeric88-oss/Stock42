@@ -65,3 +65,46 @@ function handleStock42Backup_(input) {
 function testAccesDriveStock42() {
   Logger.log('Service Drive v3 : ' + (typeof Drive !== 'undefined' ? 'disponible' : 'absent'));
 }
+
+
+/**
+ * Receipt-only protocol for Github Pages:
+ * - POST no-cors: server stores a receipt only AFTER successful Drive creation.
+ * - GET JSONP: returns strictly {ok,saved}; never file contents or credentials.
+ *
+ * The caller's 32-character hexadecimal id is an unpredictable receipt handle.
+ * doPost MUST verify the API token before calling this function.
+ */
+function handleStock42BackupWithReceipt_(data) {
+  const id = String(data && data.receiptId || '');
+  if (!/^[a-f0-9]{32}$/.test(id)) {
+    return {ok:false, backupSaved:false, error:'Identifiant de confirmation invalide'};
+  }
+  const key = 's42r_' + id;
+  // A one-hour receipt enables a safe retry if the original browser request was opaque.
+  const prior = CacheService.getScriptCache().get(key);
+  if (prior === 'saved') return {ok:true,backupSaved:true,duplicate:true};
+  const result = handleStock42Backup_(data);
+  if (result.ok === true && result.backupSaved === true && result.fileId) {
+    CacheService.getScriptCache().put(key,'saved',3600);
+  }
+  return result;
+}
+
+/**
+ * Publicly readable receipt (no secret material). Must be added as a
+ * FIRST branch in doGet, before default handling.
+ * Using JSONP in this narrowly scoped, read-only endpoint avoids CORS.
+ */
+function stock42BackupReceiptResponse_(e) {
+  const id = String(e && e.parameter && e.parameter.receiptId || '');
+  const prefix = String(e && e.parameter && e.parameter.prefix || '');
+  if (!/^[a-f0-9]{32}$/.test(id) || !/^stock42Receipt_[a-f0-9]{32}$/.test(prefix)) {
+    return ContentService.createTextOutput('/* invalid receipt */')
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  const saved = CacheService.getScriptCache().get('s42r_' + id) === 'saved';
+  return ContentService.createTextOutput(
+    prefix + '(' + JSON.stringify({ok:true,saved:saved}) + ');'
+  ).setMimeType(ContentService.MimeType.JAVASCRIPT);
+}
