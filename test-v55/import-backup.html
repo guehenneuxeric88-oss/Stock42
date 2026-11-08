@@ -1,0 +1,33 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Stock 42 — V55 — Test sauvegarde réelle</title><style>body{font:16px system-ui,-apple-system,Segoe UI,sans-serif;background:#f7f5fc;color:#2e2344;margin:0;padding:20px}main{max-width:650px;margin:22px auto;background:#fff;border-radius:16px;padding:26px;box-shadow:0 8px 30px #30204d15}h1{font-size:1.4rem}label{display:block;font-weight:600;margin:15px 0 6px}input{box-sizing:border-box;width:100%;font:inherit;padding:12px;border-radius:9px;border:1px solid #c8bfdc}button{font:inherit;background:#5e42b3;color:white;border:0;border-radius:9px;padding:14px;cursor:pointer;margin-top:14px}button:disabled{opacity:.5}#details,#status{white-space:pre-wrap;background:#f1eef9;border-radius:9px;padding:15px;line-height:1.6;overflow-wrap:anywhere}aside{padding:14px;background:#ece6fa;border-left:4px solid #7653d0;line-height:1.5}small{color:#504565}p{line-height:1.5}</style></head><body><main><h1>Stock 42 – V55 : contrôle de sauvegarde réelle</h1><aside><b>Test isolé, sans restauration.</b> Le fichier est lu sur cet appareil et envoyé à Google Drive seulement après ton clic sur « Envoyer ». Cette page ne modifie pas le stock Stock 42 ni Google Sheets.</aside><label for="f">1. Sélectionner le JSON complet téléchargé</label><input type="file" id="f" accept=".json,application/json"><div id="details">Aucun fichier sélectionné.</div><label for="url">2. URL du déploiement Apps Script V55 TEST</label><input id="url" type="url" autocomplete="off" spellcheck="false" placeholder="https://script.google.com/macros/s/.../exec"><label for="token">3. Clé API Stock 42</label><input type="password" id="token" autocomplete="off"><small>La clé n’est pas sauvegardée par cette page et ne doit pas être partagée.</small><p><button id="send" type="button" disabled>Envoyer cette copie complète vers Google Drive</button></p><div id="status" role="status" aria-live="polite">Test non commencé.</div><p><small>L’application principale reste inchangée. En cas de confirmation absente, vérifier le dossier Drive avant un nouvel envoi pour éviter les doublons.</small></p></main><script>
+const $=id=>document.getElementById(id);
+let validBackup=null;
+function receiptId(){const b=new Uint8Array(16);crypto.getRandomValues(b);return Array.from(b,x=>x.toString(16).padStart(2,'0')).join('')}
+function confirmReceipt(url,id){return new Promise(resolve=>{const cb='stock42Receipt_'+id,s=document.createElement('script');let ended=false;const done=x=>{if(ended)return;ended=true;clearTimeout(timeout);delete window[cb];s.remove();resolve(x)};const timeout=setTimeout(()=>done(false),9000);window[cb]=data=>done(data?.ok===true&&data?.saved===true);s.onerror=()=>done(false);s.src=url+(url.includes('?')?'&':'?')+'action=backupReceipt&receiptId='+id+'&prefix='+cb+'&t='+Date.now();document.head.appendChild(s)})}
+$('f').addEventListener('change',async()=>{
+ validBackup=null;$('send').disabled=true;const file=$('f').files[0];if(!file){$('details').textContent='Aucun fichier sélectionné.';return;}
+ if(file.size>5*1024*1024){$('details').textContent='Fichier trop volumineux pour ce test (maximum 5 Mo).';return;}
+ try{
+  const b=JSON.parse(await file.text());const required=['catalog','lots','orders','movements','assignments','products','history'];
+  if(b?.format!=='stock42-complete'||!required.every(k=>Array.isArray(b[k]))){throw Error('Ce fichier ne semble pas être une sauvegarde complète Stock 42.');}
+  if(!b.catalog.length&&!b.lots.length)throw Error('Sauvegarde vide : pas de données à envoyer.');
+  if(Object.prototype.hasOwnProperty.call(b,'syncKey')||Object.prototype.hasOwnProperty.call(b,'syncUrl'))throw Error('Fichier contenant des paramètres de connexion : envoi refusé.');
+  validBackup=b;$('send').disabled=false;
+  $('details').textContent='Fichier valide : '+file.name+'\nCatalogue : '+b.catalog.length+' lignes ; lots locaux : '+b.lots.length+' ; commandes : '+b.orders.length+' ; mouvements : '+b.movements.length+'.\nLa sélection ne déclenche aucun envoi.';
+ }catch(e){$('details').textContent='Envoi impossible : '+String(e.message||e);}
+});
+$('send').addEventListener('click',async()=>{
+ if(!validBackup)return;
+ const url=$('url').value.trim(),token=$('token').value.trim();
+ if(!/^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec(?:\?.*)?$/.test(url)){ $('status').textContent='URL de déploiement V55 TEST invalide.';return;}
+ if(!token){$('status').textContent='Clé API manquante.';return;}
+ if(!confirm('Envoyer une copie réelle de la sauvegarde sélectionnée vers le dossier Google Drive Stock42_Sauvegardes_Automatiques ? Cette opération ne restaure et ne modifie aucun stock.'))return;
+ $('send').disabled=true;$('status').textContent='Envoi en cours, puis vérification du reçu serveur…';
+ const id=receiptId(),data={receiptId:id,backup:validBackup,filename:'Stock42_V55_verification_reelle.json'};
+ try{
+  try{await fetch(url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'backup',token,data})})}catch(e){}
+  let saved=false;
+  for(let i=0;i<5;i++){await new Promise(resolve=>setTimeout(resolve,i?3000:1200));if(await confirmReceipt(url,id)){saved=true;break}}
+  $('status').textContent=saved?'CONFIRMÉ : copie réelle enregistrée sur Google Drive. Vérifier la présence d’un nouveau fichier dans le dossier de sauvegarde.':'NON CONFIRMÉ : ne relance pas le test. Vérifie d’abord le dossier Google Drive pour éviter un doublon.';
+ }finally{$('send').disabled=false;}
+});
+</script></body></html>
