@@ -7,7 +7,11 @@
  * L9000 + L9001 sauvegardes 19:03, fichier verifie 827 octets :
  * Stock42_auto_20261108_190337_831.json, sans cle ni URL de synchronisation.
  * 142 lots reels preserves ; aucune fusion. Application ouverte et connectee requise.
- * Format compatible v54 conserve. Restauration et retention Drive non testees.
+ * Format compatible v54 conserve. Retention Drive non testee.
+ * Restauration externe validee le 08/11/2026 : 3 elements fictifs vers 2,
+ * L9000 et L9001 verifies, L9002 retire, etat conserve apres rechargement.
+ * Sauvegarde automatique apres restauration confirmee a 19:14 :
+ * Stock42_auto_20261108_191444_950.json (827 octets), contenu verifie.
  */
 /** Stock 42 V55 TEST — sauvegardes Drive uniquement. Aucun accès Sheets. */
 function doGet(e) {
@@ -31,3 +35,4 @@ function doPost(e) {
 function json_(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
 }
+
