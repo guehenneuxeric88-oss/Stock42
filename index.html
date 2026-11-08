@@ -51,7 +51,7 @@ body.guest-mode .admin-only{display:none!important}body.guest-mode #guestModeBtn
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 </head>
 <body><main class="app">
-<header class="head"><div class="logo">42</div><div><div class="title">Stock 42 — V3</div><div class="sub">Commandes • réceptions • lots • emplacements • FIFO • Version 54</div></div></header>
+<header class="head"><div class="logo">42</div><div><div class="title">Stock 42 — V3</div><div class="sub">Commandes • réceptions • lots • emplacements • FIFO • Version 55</div></div></header>
 <div class="guest-banner">Mode famille / invité — consultation uniquement</div>
 <nav id="mainNav" class="main-nav" aria-label="Navigation principale">
   <button class="active" data-view="home"><span class="nav-icon">⌂</span>Accueil</button>
@@ -396,6 +396,18 @@ body.guest-mode .admin-only{display:none!important}body.guest-mode #guestModeBtn
   </div>
   <div class="hint" style="margin-top:10px">En mode hors connexion, le catalogue enregistré reste consultable. La synchronisation Google Sheets, les recherches de produits en ligne et certaines fonctions de scanner peuvent nécessiter Internet. Une sauvegarde hors de l'iPhone reste indispensable.</div>
   <div id="externalBackupStatus" class="status"></div>
+  <div class="section-title" style="margin-top:18px">Sauvegarde automatique sur Google Drive — V55</div>
+  <div class="notice">Cette fonctionnalité nécessite l'installation du module de sauvegarde dans Google Apps Script. Elle est désactivée par défaut. Les données seront envoyées uniquement après un test confirmé par Google Drive et ton activation.</div>
+  <div class="row" style="margin-top:12px">
+    <button id="testCloudBackupBtn" type="button" class="btn secondary">Tester la connexion Drive</button>
+    <button id="toggleCloudBackupBtn" type="button" class="btn primary" disabled>Activer les sauvegardes cloud</button>
+  </div>
+  <div class="two" style="margin-top:10px">
+    <div class="kv"><div class="k">Sauvegarde cloud</div><div id="cloudBackupMode" class="v">Désactivée</div></div>
+    <div class="kv"><div class="k">Dernière sauvegarde confirmée</div><div id="cloudBackupLast" class="v">Jamais</div></div>
+  </div>
+  <div id="cloudBackupStatus" class="status"></div>
+  <div class="hint">Les changements sont sauvegardés lorsque Stock 42 est ouvert et connecté. Pas de synchronisation en arrière-plan si l'application est fermée. Les cinq sauvegardes locales continuent indépendamment.</div>
 </section>
 
 <div class="footer">Stock 42 • données alimentaires conservées localement sur votre appareil</div>
@@ -404,10 +416,13 @@ body.guest-mode .admin-only{display:none!important}body.guest-mode #guestModeBtn
 const VALID=/^(?:42-R[1-3]-N[1-5]-[ABC]|38-ETAGE-(?:0[1-9]|1[0-8])|42-CONGELATEUR-0[1-6]|42-FRIGO-0[1-5]|42-GARAGE-0[1-4])$/i, LOT=/^L\d{4}$/;
 let scanner=null,running=false,productScanner=null,productScannerControls=null,activeLocation=null,receiveOrderId=null,moveScanMode=false,exitScanMode=false,exitLocation='',quickScanMode=false,quickProductScanMode=false,quickScannedBarcode='',quickScannedBrand='';
 const $=id=>document.getElementById(id);
-const LS={catalog:'stock42Catalog',lots:'stock42Lots',orders:'stock42Orders',moves:'stock42Movements',assign:'stock42Assignments',history:'stock42History',imported:'stock42ImportedAt',syncUrl:'stock42SyncUrl',syncKey:'stock42SyncKey',guestMode:'stock42GuestMode',autoBackups:'stock42AutoBackups',products:'stock42Products',reorder:'stock42ReorderBaselineV1',lastExternalBackup:'stock42LastExternalBackup'};
+const LS={catalog:'stock42Catalog',lots:'stock42Lots',orders:'stock42Orders',moves:'stock42Movements',assign:'stock42Assignments',history:'stock42History',imported:'stock42ImportedAt',syncUrl:'stock42SyncUrl',syncKey:'stock42SyncKey',guestMode:'stock42GuestMode',autoBackups:'stock42AutoBackups',products:'stock42Products',reorder:'stock42ReorderBaselineV1',lastExternalBackup:'stock42LastExternalBackup',cloudEnabled:'stock42CloudBackupEnabled',cloudVerified:'stock42CloudBackupVerified',cloudLast:'stock42CloudBackupLast',cloudPending:'stock42CloudBackupPending'};
 const get=(k,d=[])=>{try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}};
 let autoBackupTimer=null,restoringBackup=false;
-const set=(k,v)=>{localStorage.setItem(k,JSON.stringify(v));if(k!==LS.autoBackups&&!restoringBackup)scheduleAutoBackup()};
+const set=(k,v)=>{
+  localStorage.setItem(k,JSON.stringify(v));
+  if(k!==LS.autoBackups&&!restoringBackup){scheduleAutoBackup();scheduleCloudBackup()}
+};
 const today=()=>new Date().toISOString().slice(0,10);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function normalizeLot(raw){let s=(raw||'').trim().toUpperCase().replace(/\s+/g,'');if(/^\d{1,4}$/.test(s))s='L'+s.padStart(4,'0');if(/^L\d{1,4}$/.test(s))s='L'+s.slice(1).padStart(4,'0');return s}
@@ -1491,6 +1506,81 @@ function backupPayload(){
     reorder:get(LS.reorder,null)
   };
 }
+
+let cloudTimer=null,cloudBusy=false,cloudQueued=false;
+function cloudEnabled(){return localStorage.getItem(LS.cloudEnabled)==='1'}
+function cloudVerified(){return localStorage.getItem(LS.cloudVerified)==='1'}
+function cloudExportData(){
+  // Exclude connection URL and API key from Drive backups.
+  const data=completeExportData();delete data.syncUrl;
+  return data;
+}
+function updateCloudBackupStatus(message=''){
+  if($('cloudBackupMode'))$('cloudBackupMode').textContent=cloudEnabled()?'Activée':'Désactivée';
+  if($('cloudBackupLast')){
+    const when=localStorage.getItem(LS.cloudLast);
+    $('cloudBackupLast').textContent=when?new Date(when).toLocaleString('fr-FR'):'Jamais';
+  }
+  if($('toggleCloudBackupBtn')){
+    $('toggleCloudBackupBtn').disabled=!cloudVerified()&&!cloudEnabled();
+    $('toggleCloudBackupBtn').textContent=cloudEnabled()?'Désactiver les sauvegardes cloud':'Activer les sauvegardes cloud';
+  }
+  if(message&&$('cloudBackupStatus'))$('cloudBackupStatus').textContent=message;
+}
+async function uploadCloudBackup(manual=false){
+  if(cloudBusy){cloudQueued=true;return false}
+  if(!manual&&!cloudEnabled())return false;
+  if(!navigator.onLine){
+    localStorage.setItem(LS.cloudPending,'1');
+    updateCloudBackupStatus('Hors connexion : sauvegarde cloud en attente.');
+    return false;
+  }
+  if(!(localStorage.getItem(LS.syncUrl)||'')||!(localStorage.getItem(LS.syncKey)||'')){
+    updateCloudBackupStatus('Connexion Google Sheets non configurée sur cet appareil.');
+    return false;
+  }
+  cloudBusy=true;
+  if($('testCloudBackupBtn'))$('testCloudBackupBtn').disabled=true;
+  try{
+    const payload=cloudExportData();
+    const result=await sendToSheet('backup',{filename:backupFilename(),backup:payload});
+    // A generic {ok:true} is insufficient: backend must prove that Drive created a file.
+    if(result?.ok!==true||result?.backupSaved!==true||!result?.fileId)throw Error(result?.error||'Le serveur ne confirme pas la création dans Google Drive. Module Apps Script à installer.');
+    localStorage.setItem(LS.cloudLast,new Date().toISOString());
+    localStorage.removeItem(LS.cloudPending);
+    localStorage.setItem(LS.cloudVerified,'1');
+    updateCloudBackupStatus('Sauvegarde confirmée sur Google Drive (fichier : '+String(result.fileId).slice(0,60)+').');
+    return true;
+  }catch(e){
+    localStorage.setItem(LS.cloudPending,'1');
+    updateCloudBackupStatus('Sauvegarde cloud non confirmée : '+String(e?.message||e));
+    return false;
+  }finally{
+    cloudBusy=false;
+    if($('testCloudBackupBtn'))$('testCloudBackupBtn').disabled=false;
+    updateCloudBackupStatus();
+    if(cloudQueued){cloudQueued=false;if(cloudEnabled())scheduleCloudBackup()}
+  }
+}
+function scheduleCloudBackup(){
+  if(!cloudEnabled()||restoringBackup)return;
+  localStorage.setItem(LS.cloudPending,'1');
+  clearTimeout(cloudTimer);
+  cloudTimer=setTimeout(()=>uploadCloudBackup(false),8000);
+}
+function toggleCloudBackup(){
+  if(!cloudEnabled()){
+    if(!cloudVerified()){updateCloudBackupStatus('Test Drive obligatoire avant activation.');return}
+    if(!confirm('Activer les sauvegardes automatiques dans Google Drive lors des modifications de Stock 42 ?'))return;
+    localStorage.setItem(LS.cloudEnabled,'1');
+    scheduleCloudBackup();
+  }else{
+    localStorage.setItem(LS.cloudEnabled,'0');
+    clearTimeout(cloudTimer);
+  }
+  updateCloudBackupStatus();
+}
+
 function readAutoBackups(){
   try{
     const x=JSON.parse(localStorage.getItem(LS.autoBackups)||'[]');
@@ -1609,7 +1699,7 @@ function restoreExternalBackup(data,counts){
     if(data.importedAt)localStorage.setItem(LS.imported,data.importedAt);else localStorage.removeItem(LS.imported);
     // The connection URL and API key intentionally remain unchanged.
   }finally{restoringBackup=false}
-  updateStats();updateAutoBackupStatus();
+  updateStats();updateAutoBackupStatus();scheduleCloudBackup();
   $('externalRestorePreview').innerHTML='<div class="notice"><b>Restauration locale terminée.</b> Vérifiez les stocks avant toute synchronisation Google Sheets.</div>';
 }
 
@@ -1694,6 +1784,8 @@ $('findLotBtn').onclick=()=>previewLot($('lotInput').value);$('lotInput').addEve
 $('assignLotBtn').onclick=()=>{const lot=normalizeLot($('lotInput').value);if(activeLocation)assignLotTo(lot,activeLocation)};
 $('searchLotBtn').onclick=searchLot;$('searchLot').addEventListener('keydown',e=>{if(e.key==='Enter')searchLot()});$('categorySearchBtn').onclick=searchCategory;$('categorySearch').addEventListener('change',searchCategory);$('inventoryLoadBtn').onclick=loadInventoryLocation;$('inventoryLocationSelect').addEventListener('change',loadInventoryLocation);$('inventoryUseActiveBtn').onclick=useActiveInventoryLocation;$('inventoryConfirmBtn').onclick=confirmQuickInventory;$('exitScanBtn').onclick=startExitScanner;$('exitLocationSelect').addEventListener('change',e=>setExitLocation(e.target.value));$('exitLotSelect').addEventListener('change',showExitLotInfo);$('exitConfirmBtn').onclick=confirmStockExit;$('moveScanBtn').onclick=startMoveScanner;$('moveLotBtn').onclick=moveSelectedLot;$('moveLotSelect').addEventListener('change',showMoveCurrentLocation);$('fifoSearchBtn').onclick=showFifoView;$('fifoProductSelect').addEventListener('change',showFifoView);$('locationViewBtn').onclick=showLocationView;$('locationViewSelect').addEventListener('change',showLocationView);$('showExpiryBtn').onclick=showExpiryAlerts;$('guestModeBtn').onclick=toggleGuestMode;
 $('resetReorderBaselineBtn').onclick=resetReorderBaseline;
+$('testCloudBackupBtn').onclick=()=>uploadCloudBackup(true);$('toggleCloudBackupBtn').onclick=toggleCloudBackup;
+window.addEventListener('online',()=>{if(cloudEnabled()&&localStorage.getItem(LS.cloudPending)==='1')scheduleCloudBackup()});updateCloudBackupStatus();
 $('externalBackupBtn').onclick=shareExternalBackup;$('previewRestoreBtn').onclick=previewExternalRestore;window.addEventListener('online',updateExternalBackupStatus);window.addEventListener('offline',updateExternalBackupStatus);updateExternalBackupStatus();
 $('backupNowBtn').onclick=()=>createAutomaticBackup('Manuelle');$('restoreBackupBtn').onclick=restoreLatestBackup;$('exportLotsCsvBtn').onclick=exportLots;$('exportOrdersCsvBtn').onclick=exportOrders;$('exportJsonBtn').onclick=exportJson;
 $('syncUrl').value=localStorage.getItem(LS.syncUrl)||'';
@@ -1720,9 +1812,10 @@ updateStats();
 updateAutoBackupStatus();
 if(!readAutoBackups().length)createAutomaticBackup('Initiale');
 if(localStorage.getItem(LS.syncUrl))syncLotsFromSheet();else {initializeReorderBaseline();updateStats();}
+if(cloudEnabled()&&localStorage.getItem(LS.cloudPending)==='1')scheduleCloudBackup();
 if('serviceWorker' in navigator)window.addEventListener('load',async()=>{
   try{
-    const reg=await navigator.serviceWorker.register('./service-worker.js?v=54',{updateViaCache:'none'});
+    const reg=await navigator.serviceWorker.register('./service-worker.js?v=55',{updateViaCache:'none'});
     reg.update().catch(()=>{});
     navigator.serviceWorker.addEventListener('controllerchange',()=>{
       if(!sessionStorage.getItem('stock42SwReload')){
