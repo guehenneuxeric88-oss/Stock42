@@ -1,0 +1,28 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Stock 42 — Test de restauration isolée</title><style>body{font:16px system-ui,-apple-system,Segoe UI,sans-serif;background:#f7f6fb;color:#29213d;padding:16px}main{max-width:680px;margin:24px auto;padding:26px;border-radius:16px;background:white;box-shadow:0 8px 30px #2b1e5111}h1{font-size:1.4rem}label{display:block;font-weight:600;margin:18px 0 10px}input{font:inherit;width:100%;box-sizing:border-box;padding:10px}button{font:inherit;border:0;border-radius:8px;background:#6047b7;color:white;padding:12px;margin:15px 0;cursor:pointer}button:disabled{opacity:.45}#result{background:#f2effa;padding:14px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}aside{background:#eae5f5;padding:12px;border-left:4px solid #5c40b5;line-height:1.5}p{line-height:1.5}</style></head><body><main><h1>Stock 42 – Vérification isolée de la restauration</h1><aside>Cette page ne se connecte ni à Google Drive ni à Google Sheets. Elle ne modifie pas le stockage de Stock 42. La restauration est simulée exclusivement dans la mémoire temporaire de cette page.</aside><label for="file">1. Sélectionner la sauvegarde JSON complète du 8 novembre</label><input type="file" id="file" accept=".json,application/json"><p><button type="button" id="restore" disabled>Simuler la restauration en mémoire</button></p><div id="result" role="status" aria-live="polite">Aucun fichier sélectionné.</div><p><small>La vérification compare les données sélectionnées avec leur copie restaurée. Elle ne teste pas l'écriture dans l'application principale.</small></p></main><script>
+const el=id=>document.getElementById(id);let source=null;
+const keys=['catalog','lots','orders','movements','assignments','products','history'];
+function validate(b){
+ if(!b||typeof b!=='object'||Array.isArray(b)||b.format!=='stock42-complete')throw Error('Format de fichier Stock 42 non reconnu.');
+ for(const k of keys)if(!Array.isArray(b[k]))throw Error('Champ manquant : '+k);
+ if(b.catalog.length===0&&b.lots.length===0)throw Error('Sauvegarde sans lots.');
+ const valid=/^L\d{4}$/;
+ for(const k of ['catalog','lots'])for(const lot of b[k])if(!lot||typeof lot!=='object'||!valid.test(String(lot.lot||'')))throw Error('Identifiant de lot non reconnu dans '+k);
+ return b;
+}
+el('file').addEventListener('change',async()=>{
+ el('restore').disabled=true;source=null;
+ const f=el('file').files[0];if(!f){el('result').textContent='Aucun fichier sélectionné.';return}
+ if(f.size>25*1024*1024){el('result').textContent='Fichier trop volumineux.';return}
+ try{source=validate(JSON.parse(await f.text()));el('restore').disabled=false;el('result').textContent='Fichier lisible et compatible.\nCatalogue : '+source.catalog.length+' lots\nLots locaux : '+source.lots.length+'\nClique sur « Simuler la restauration en mémoire ».'}
+ catch(e){el('result').textContent='Fichier non accepté : '+e.message}
+});
+el('restore').addEventListener('click',()=>{
+ if(!source)return;
+ try{
+  const recovered={};for(const k of keys)recovered[k]=structuredClone(source[k]);recovered.reorder=structuredClone(source.reorder??null);recovered.importedAt=source.importedAt||'';
+  for(const k of keys)if(JSON.stringify(recovered[k])!==JSON.stringify(source[k]))throw Error('Différence après restauration : '+k);
+  if(JSON.stringify(recovered.reorder)!==JSON.stringify(source.reorder??null))throw Error('Différence du seuil de réapprovisionnement.');
+  el('result').textContent='SUCCÈS — Simulation en mémoire terminée.\nCatalogue restauré : '+recovered.catalog.length+' lots\nLots locaux : '+recovered.lots.length+'\nCommandes : '+recovered.orders.length+'\nMouvements : '+recovered.movements.length+'\nEmplacements : '+recovered.assignments.length+'\nProduits : '+recovered.products.length+'\nHistorique : '+recovered.history.length+'\nRéférence réapprovisionnement : '+(recovered.reorder?'présente':'absente')+'\nComparaison des données : identique.\nAUCUNE modification de l’application ou de Google Sheets.';
+ }catch(e){el('result').textContent='ÉCHEC : '+e.message;}
+});
+</script></body></html>
