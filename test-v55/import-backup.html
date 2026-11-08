@@ -10,9 +10,13 @@ $('f').addEventListener('change',async()=>{
   const b=JSON.parse(await file.text());const required=['catalog','lots','orders','movements','assignments','products','history'];
   if(b?.format!=='stock42-complete'||!required.every(k=>Array.isArray(b[k]))){throw Error('Ce fichier ne semble pas être une sauvegarde complète Stock 42.');}
   if(!b.catalog.length&&!b.lots.length)throw Error('Sauvegarde vide : pas de données à envoyer.');
-  if(Object.prototype.hasOwnProperty.call(b,'syncKey')||Object.prototype.hasOwnProperty.call(b,'syncUrl'))throw Error('Fichier contenant des paramètres de connexion : envoi refusé.');
-  validBackup=b;$('send').disabled=false;
-  $('details').textContent='Fichier valide : '+file.name+'\nCatalogue : '+b.catalog.length+' lignes ; lots locaux : '+b.lots.length+' ; commandes : '+b.orders.length+' ; mouvements : '+b.movements.length+'.\nLa sélection ne déclenche aucun envoi.';
+  const sanitized={...b};
+  // The V54 full export contains syncUrl by design; strip it from the upload copy.
+  // Never send any connection credentials or endpoint settings to Google Drive.
+  delete sanitized.syncUrl;
+  delete sanitized.syncKey;
+  validBackup=sanitized;$('send').disabled=false;
+  $('details').textContent='Fichier valide : '+file.name+'\nCatalogue : '+b.catalog.length+' lignes ; lots locaux : '+b.lots.length+' ; commandes : '+b.orders.length+' ; mouvements : '+b.movements.length+'.\nL’adresse de synchronisation et toute clé éventuelle sont retirées de la copie envoyée. Le fichier original reste inchangé. La sélection ne déclenche aucun envoi.';
  }catch(e){$('details').textContent='Envoi impossible : '+String(e.message||e);}
 });
 $('send').addEventListener('click',async()=>{
