@@ -1,31 +1,53 @@
-# Stock 42 V55 — Sauvegardes Google Drive automatiques
+# V55 — Correctif GitHub Pages → Apps Script (CORS)
 
-Cette branche est une **préparation**, non un déploiement actif. La V54 reste en production.
+## État
+- **V54 en production inchangée**.
+- V55: correction client dans la branche `feature/sauvegarde-drive-auto-v55`.
+- Page fictive de test séparée sur `/Stock42/test-v55/`.
+- Module serveur de référence : `apps-script/Stock42DriveBackup.gs`.
+- Aucune sauvegarde automatique n'est activée avant un test réel de bout en bout.
 
-## Architecture et sécurité
+## Pourquoi le premier test a échoué
+Les réponses `ContentService` d'Apps Script sont redirigées via `script.googleusercontent.com`. Un `fetch()` cross-origin de GitHub Pages peut échouer à lire le résultat même si le POST a été traité.
 
-- L'application garde ses 5 sauvegardes locales.
-- L'utilisateur doit d'abord appuyer sur **Tester la connexion Drive**.
-- L'application n'accepte comme preuve que la réponse `{ok:true,backupSaved:true,fileId:"..."}` du serveur. Elle ne prend **jamais** un simple `ok:true` pour une preuve.
-- Après test réussi, l'utilisateur active explicitement le mode automatique.
-- Les changements locaux déclenchent une sauvegarde 8 secondes après la dernière modification, **seulement pendant l'utilisation de l'application** et en présence d'Internet.
-- En l'absence de connexion, un indicateur local note la sauvegarde en attente et l'application réessaie lorsqu'elle est rouverte ou repasse en ligne.
-- Les fichiers dans Drive ne comportent pas la clé API ni l'URL du script, qui sont supprimées du contenu sauvegardé.
-- Aucune suppression ni rotation des fichiers cloud n'est activée : on évite la perte de versions tant que le fonctionnement réel n'est pas confirmé.
+## Protocole préparé
+1. `POST` text/plain avec `mode:'no-cors'`, authentifié par le jeton **dans le corps de requête**, avec un identifiant aléatoire `receiptId` (128 bits).
+2. Après création confirmée d'un fichier Google Drive, le serveur stocke `s42r_<receiptId> = saved` en cache 1 heure.
+3. Le client vérifie le reçu avec une requête GET *read-only* JSONP, sans mot de passe, dont la réponse est uniquement `{ok:true,saved:boolean}`.
+4. Sans reçu valide, le client indique une sauvegarde **non confirmée**. **Ne jamais relancer automatiquement immédiatement après une absence de confirmation**, pour limiter les doublons.
 
-## Configuration Google Apps Script indispensable
+## À intégrer dans Code.gs (projet Google Apps Script existant)
 
-Le code actuel du serveur Apps Script n'est pas présent dans le dépôt GitHub et n'a **pas** été modifié.
+**A.** Dans `doGet(e)`, après la ligne `const action = String((e && e.parameter && e.parameter.action) || '');`, insérer :
 
-1. Dans le projet Apps Script qui sert déjà Stock 42, ajouter le fichier `apps-script/Stock42DriveBackup.gs`.
-2. Dans la fonction `doPost`, identifier le bloc existant qui valide le jeton de synchronisation.
-3. **Après** validation du jeton, brancher l'action `backup` sur `handleStock42Backup_(request.data)`. Ne pas créer une seconde fonction `doPost`. Ne pas contourner la vérification de jeton.
-4. Autoriser l'accès à Google Drive pour ce projet et redéployer sa Web App en nouvelle version.
-5. Dans la V55 de test, cliquer sur **Tester la connexion Drive** puis vérifier la présence du fichier dans le dossier `Stock42_Sauvegardes_Automatiques` du bon compte Google.
-6. Vérifier le contenu JSON et l'absence de données de connexion, puis activer les sauvegardes automatiques.
+```javascript
+if (action === 'backupReceipt') {
+  return stock42BackupReceiptResponse_(e);
+}
+```
 
-Le module crée un dossier privé dans le Drive du compte qui exécute le script, et ne touche pas au tableur ni aux stocks. Le système est **non opérationnel** tant que le serveur n'est pas mis à jour et que le test réel n'est pas concluant.
+**B.** Dans `doPost(e)`, à l'intérieur du bloc existant `if (action === 'backup')`, juste après la vérification du jeton API, remplacer
+
+```javascript
+return json_(handleStock42Backup_(data));
+```
+
+par
+
+```javascript
+return json_(data && data.receiptId
+  ? handleStock42BackupWithReceipt_(data)
+  : handleStock42Backup_(data));
+```
+
+**C.** Remplacer **entièrement** le fichier `Stock42DriveBackup.gs` par la dernière version présente dans la branche GitHub V55. Cette version utilise le service avancé Drive API v3 et le scope `drive.file`.
+
+**D.** Pour le déploiement de test uniquement, si un endpoint accessible depuis GitHub Pages est nécessaire, le déploiement « Moi uniquement » doit être changé à « Tout le monde ». Ce changement permet des requêtes non authentifiées à `doGet`, dont la branche `action=lots` présente dans `Code.gs` révèle le catalogue ; **ne pas l'effectuer avant d'avoir restreint cette route dans le déploiement de test** ou obtenu un consentement éclairé à cette exposition. Le jeton API reste obligatoire pour toute action POST modifiant le stock ou enregistrant un backup.
+
+**Attention** : les projets Apps Script qui s'exécutent « en tant que moi » ont accès au Drive de leur propriétaire selon leurs OAuth scopes. Le code ne doit ni imprimer ni renvoyer la valeur de B2.
 
 ## Limites
-
-Une PWA iPhone fermée ne peut pas garantir l'exécution du JavaScript de sauvegarde. Le mode automatique ne remplace pas une sauvegarde planifiée côté serveur. Google Sheets continue à fournir la base des lots, mais l'historique local, les commandes, préférences, emplacements et références 100 % sont copiés uniquement lorsque l'application est ouverte, le mode activé et l'envoi confirmé.
+- Les fichiers locaux de la PWA ne sont sauvés automatiquement que lorsque l'application est en cours d'exécution et connectée.
+- Un POST en mode no-cors peut être envoyé même quand le reçu est bloqué ; une réponse absente ne prouve pas que Drive n'a rien reçu.
+- On ne peut pas confirmer automatiquement la sauvegarde avec « Moi uniquement » si les requêtes interdomaines ne passent pas.
+- Il faudra tester avec deux lots fictifs et inspecter le dossier Drive avant toute mise en production.
