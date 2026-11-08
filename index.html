@@ -486,6 +486,45 @@ async function syncProductsFromSheet(){
     return true;
   }catch(e){return false}
 }
+
+function newCloudReceiptId(){
+  const bytes=new Uint8Array(16);crypto.getRandomValues(bytes);
+  return Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('');
+}
+function checkCloudReceipt(url,id){
+  return new Promise(resolve=>{
+    const cb='stock42Receipt_'+id,script=document.createElement('script');
+    let finished=false;
+    const stop=(value)=>{if(finished)return;finished=true;clearTimeout(timer);delete window[cb];script.remove();resolve(value)};
+    const timer=setTimeout(()=>stop(false),9000);
+    window[cb]=data=>stop(data?.ok===true&&data?.saved===true);
+    script.onerror=()=>stop(false);
+    script.src=url+(url.includes('?')?'&':'?')+'action=backupReceipt&receiptId='+encodeURIComponent(id)+'&prefix='+encodeURIComponent(cb)+'&t='+Date.now();
+    document.head.appendChild(script);
+  });
+}
+async function sendCloudBackupWithReceipt(data){
+  const url=localStorage.getItem(LS.syncUrl)||'',token=localStorage.getItem(LS.syncKey)||'';
+  if(!url||!token)return {ok:false,error:'Connexion Google Sheets manquante'};
+  const receiptId=newCloudReceiptId();
+  const payload={...data,receiptId};
+  // Opaque reply is NOT proof of a successful backup. Poll a separate read-only receipt.
+  try{
+    await fetch(url,{
+      method:'POST',mode:'no-cors',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({token,action:'backup',data:payload})
+    });
+  }catch(e){
+    // A network exception does not prove that Drive did not receive the POST.
+  }
+  for(let i=0;i<5;i++){
+    await new Promise(resolve=>setTimeout(resolve,i===0?1200:3000));
+    if(await checkCloudReceipt(url,receiptId))return {ok:true,backupSaved:true,receiptConfirmed:true,fileId:'confirmé-par-reçu'};
+  }
+  return {ok:false,error:'Aucune confirmation Drive. Le déploiement doit être accessible depuis cette page (accès « Moi uniquement » non compatible). Vérifier le dossier Drive avant toute nouvelle tentative.'};
+}
+
 async function sendToSheet(action,data){const u=localStorage.getItem(LS.syncUrl)||'';const k=localStorage.getItem(LS.syncKey)||'';if(!u||!k)return {ok:false,localOnly:true};try{const r=await fetch(u,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({token:k,action:action,data:data})});return JSON.parse(await r.text())}catch(e){return {ok:false,error:String(e&&e.message?e.message:e)}}}
 function lotById(l){l=normalizeLot(l);return allLots().find(x=>x.lot===l)||null}
 function guestModeEnabled(){return localStorage.getItem(LS.guestMode)==='1'}
@@ -1543,9 +1582,9 @@ async function uploadCloudBackup(manual=false){
   if($('testCloudBackupBtn'))$('testCloudBackupBtn').disabled=true;
   try{
     const payload=cloudExportData();
-    const result=await sendToSheet('backup',{filename:backupFilename(),backup:payload});
+    const result=await sendCloudBackupWithReceipt({filename:backupFilename(),backup:payload});
     // A generic {ok:true} is insufficient: backend must prove that Drive created a file.
-    if(result?.ok!==true||result?.backupSaved!==true||!result?.fileId)throw Error(result?.error||'Le serveur ne confirme pas la création dans Google Drive. Module Apps Script à installer.');
+    if(result?.ok!==true||result?.backupSaved!==true||!result?.fileId)throw Error(result?.error||'Le serveur ne confirme pas la création dans Google Drive. Le reçu sécurisé n’est pas encore disponible.');
     localStorage.setItem(LS.cloudLast,new Date().toISOString());
     localStorage.removeItem(LS.cloudPending);
     localStorage.setItem(LS.cloudVerified,'1');
