@@ -51,7 +51,7 @@ body.guest-mode .admin-only{display:none!important}body.guest-mode #guestModeBtn
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 </head>
 <body><main class="app">
-<header class="head"><div class="logo">42</div><div><div class="title">Stock 42 — V3</div><div class="sub">Commandes • réceptions • lots • emplacements • FIFO • Version 53</div></div></header>
+<header class="head"><div class="logo">42</div><div><div class="title">Stock 42 — V3</div><div class="sub">Commandes • réceptions • lots • emplacements • FIFO • Version 54</div></div></header>
 <div class="guest-banner">Mode famille / invité — consultation uniquement</div>
 <nav id="mainNav" class="main-nav" aria-label="Navigation principale">
   <button class="active" data-view="home"><span class="nav-icon">⌂</span>Accueil</button>
@@ -379,7 +379,23 @@ body.guest-mode .admin-only{display:none!important}body.guest-mode #guestModeBtn
   </div>
   <div id="autoBackupStatus" class="status"></div>
   <div class="hint" style="margin-top:10px">La clé API n'est jamais copiée dans les sauvegardes automatiques. Les lots et mouvements restent en plus synchronisés dans Google Sheets.</div>
-  <div class="row" style="margin-top:12px"><button id="exportJsonBtn" class="btn secondary">Sauvegarde JSON</button><button id="exportLotsCsvBtn" class="btn secondary">Lots CSV</button><button id="exportOrdersCsvBtn" class="btn secondary">Commandes CSV</button></div>
+
+  <div class="section-title" style="margin-top:20px">Sauvegarde externe et mode secours</div>
+  <div class="notice">Exportez une copie complète dans Fichiers → iCloud Drive, ou sur un support externe. Cette copie ne part pas automatiquement dans le cloud : choisissez l'emplacement dans la fenêtre de partage.</div>
+  <div class="row" style="margin-top:12px">
+    <button id="externalBackupBtn" class="btn primary">Exporter vers Fichiers / iCloud</button>
+    <button id="exportJsonBtn" class="btn secondary">Télécharger JSON complet</button>
+  </div>
+  <div class="field"><label>Restaurer une sauvegarde complète (fichier JSON Stock 42)</label><input id="restoreExternalFile" type="file" accept=".json,application/json"></div>
+  <button id="previewRestoreBtn" class="btn secondary" type="button">Vérifier le fichier avant restauration</button>
+  <div id="externalRestorePreview" class="status"></div>
+  <div class="row" style="margin-top:12px"><button id="exportLotsCsvBtn" class="btn secondary">Lots CSV</button><button id="exportOrdersCsvBtn" class="btn secondary">Commandes CSV</button></div>
+  <div class="two" style="margin-top:12px">
+    <div class="kv"><div class="k">Dernière copie externe préparée</div><div id="externalBackupLast" class="v">Jamais</div></div>
+    <div class="kv"><div class="k">Connexion Internet</div><div id="networkIndicator" class="v">—</div></div>
+  </div>
+  <div class="hint" style="margin-top:10px">En mode hors connexion, le catalogue enregistré reste consultable. La synchronisation Google Sheets, les recherches de produits en ligne et certaines fonctions de scanner peuvent nécessiter Internet. Une sauvegarde hors de l'iPhone reste indispensable.</div>
+  <div id="externalBackupStatus" class="status"></div>
 </section>
 
 <div class="footer">Stock 42 • données alimentaires conservées localement sur votre appareil</div>
@@ -388,7 +404,7 @@ body.guest-mode .admin-only{display:none!important}body.guest-mode #guestModeBtn
 const VALID=/^(?:42-R[1-3]-N[1-5]-[ABC]|38-ETAGE-(?:0[1-9]|1[0-8])|42-CONGELATEUR-0[1-6]|42-FRIGO-0[1-5]|42-GARAGE-0[1-4])$/i, LOT=/^L\d{4}$/;
 let scanner=null,running=false,productScanner=null,productScannerControls=null,activeLocation=null,receiveOrderId=null,moveScanMode=false,exitScanMode=false,exitLocation='',quickScanMode=false,quickProductScanMode=false,quickScannedBarcode='',quickScannedBrand='';
 const $=id=>document.getElementById(id);
-const LS={catalog:'stock42Catalog',lots:'stock42Lots',orders:'stock42Orders',moves:'stock42Movements',assign:'stock42Assignments',history:'stock42History',imported:'stock42ImportedAt',syncUrl:'stock42SyncUrl',syncKey:'stock42SyncKey',guestMode:'stock42GuestMode',autoBackups:'stock42AutoBackups',products:'stock42Products',reorder:'stock42ReorderBaselineV1'};
+const LS={catalog:'stock42Catalog',lots:'stock42Lots',orders:'stock42Orders',moves:'stock42Movements',assign:'stock42Assignments',history:'stock42History',imported:'stock42ImportedAt',syncUrl:'stock42SyncUrl',syncKey:'stock42SyncKey',guestMode:'stock42GuestMode',autoBackups:'stock42AutoBackups',products:'stock42Products',reorder:'stock42ReorderBaselineV1',lastExternalBackup:'stock42LastExternalBackup'};
 const get=(k,d=[])=>{try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}};
 let autoBackupTimer=null,restoringBackup=false;
 const set=(k,v)=>{localStorage.setItem(k,JSON.stringify(v));if(k!==LS.autoBackups&&!restoringBackup)scheduleAutoBackup()};
@@ -1524,7 +1540,79 @@ function restoreLatestBackup(){
   updateStats();
   el.innerHTML='<b>✓ Dernière sauvegarde restaurée.</b> La clé API actuelle a été conservée.';
 }
-function exportJson(){const data={version:3,exportedAt:new Date().toISOString(),catalog:catalog(),lots:localLots(),orders:orders(),movements:get(LS.moves,[]),assignments:assignments(),reorder:get(LS.reorder,null)};const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='stock42_sauvegarde.json';a.click();URL.revokeObjectURL(url)}
+
+function completeExportData(){return {...backupPayload(),format:'stock42-complete',version:54,exportedAt:new Date().toISOString()}}
+function backupFilename(){return 'Stock42_sauvegarde_complete_'+today()+'.json'}
+function backupFile(){return new File([JSON.stringify(completeExportData(),null,2)],backupFilename(),{type:'application/json'})}
+function downloadBackupFile(file){
+  const url=URL.createObjectURL(file),a=document.createElement('a');
+  a.href=url;a.download=file.name;document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),2000);
+}
+function updateExternalBackupStatus(){
+  if($('externalBackupLast')){const t=localStorage.getItem(LS.lastExternalBackup);$('externalBackupLast').textContent=t?new Date(t).toLocaleString('fr-FR'):'Jamais'}
+  if($('networkIndicator'))$('networkIndicator').textContent=navigator.onLine?'Connecté':'Hors connexion';
+}
+function markExternalBackupPrepared(message){
+  localStorage.setItem(LS.lastExternalBackup,new Date().toISOString());updateExternalBackupStatus();
+  $('externalBackupStatus').textContent=message;
+}
+async function shareExternalBackup(){
+  const file=backupFile();
+  try{
+    if(navigator.canShare&&navigator.canShare({files:[file]})&&navigator.share){
+      await navigator.share({files:[file],title:'Sauvegarde complète Stock 42'});
+      markExternalBackupPrepared('Fichier partagé. Vérifiez qu’il est bien enregistré dans Fichiers ou iCloud Drive.');
+    }else{
+      downloadBackupFile(file);
+      markExternalBackupPrepared('Fichier téléchargé. Déplacez-le vers Fichiers / iCloud Drive pour disposer d’une copie externe.');
+    }
+  }catch(e){if(e?.name!=='AbortError')$('externalBackupStatus').textContent='Partage impossible : '+String(e?.message||e)}
+}
+function exportJson(){
+  downloadBackupFile(backupFile());
+  markExternalBackupPrepared('Sauvegarde complète téléchargée. Conservez le fichier hors de cet iPhone.');
+}
+function validateExternalBackup(data){
+  if(!data||typeof data!=='object'||Array.isArray(data))throw Error('Le fichier n’est pas un objet JSON Stock 42.');
+  const fields=['catalog','lots','orders','movements','assignments','products','history'];
+  if(!fields.every(k=>Array.isArray(data[k])))throw Error('Sauvegarde incomplète : données obligatoires absentes.');
+  for(const [key,identifier] of [['catalog','lot'],['lots','lot']]){
+    if(data[key].some(x=>!x||typeof x!=='object'||!LOT.test(normalizeLot(x[identifier]))))throw Error('Numéro de lot invalide dans '+key);
+  }
+  if(data.orders.some(o=>!o||typeof o!=='object'||!String(o.id||'').trim()))throw Error('Commande invalide.');
+  if(data.reorder!==null&&data.reorder!==undefined&&(!data.reorder||typeof data.reorder!=='object'||!data.reorder.items||typeof data.reorder.items!=='object'))throw Error('Références de stock invalides.');
+  if(data.format!=='stock42-complete'&&data.version!==1)throw Error('Format non reconnu. Utilisez un export complet Stock 42.');
+  return {catalog:data.catalog.length,lots:data.lots.length,orders:data.orders.length,movements:data.movements.length,assignments:data.assignments.length};
+}
+async function previewExternalRestore(){
+  const file=$('restoreExternalFile')?.files?.[0],el=$('externalRestorePreview');
+  el.textContent='';if(!file){el.textContent='Choisissez un fichier JSON.';return}
+  if(file.size>25*1024*1024){el.textContent='Fichier trop volumineux (limite 25 Mo).';return}
+  try{
+    const parsed=JSON.parse(await file.text()),counts=validateExternalBackup(parsed);
+    el.innerHTML='<div class="notice">Sauvegarde vérifiée : '+counts.catalog+' lots importés, '+counts.lots+' lots locaux, '+counts.orders+' commandes, '+counts.movements+' mouvements. Les données actuelles seront remplacées seulement après une double confirmation.</div>';
+    const button=document.createElement('button');button.className='btn danger';button.type='button';button.textContent='Restaurer ce fichier vérifié';
+    button.onclick=()=>restoreExternalBackup(parsed,counts);el.appendChild(button);
+  }catch(e){el.textContent='Fichier refusé : '+String(e?.message||e)}
+}
+function restoreExternalBackup(data,counts){
+  if(!confirm('ATTENTION : remplacer les données locales actuelles par la sauvegarde choisie ? La synchronisation Google Sheets n’est pas modifiée.'))return;
+  if(!confirm('Seconde confirmation : vous avez conservé une copie externe récente et souhaitez restaurer '+counts.catalog+' lots importés et '+counts.lots+' lots locaux ?'))return;
+  // Snapshot local before changing anything; no write to Google Sheets during recovery.
+  createAutomaticBackup('Avant restauration externe');
+  restoringBackup=true;
+  try{
+    const kv=[[LS.catalog,data.catalog],[LS.lots,data.lots],[LS.orders,data.orders],[LS.moves,data.movements],[LS.assign,data.assignments],[LS.history,data.history],[LS.products,data.products]];
+    for(const [key,value] of kv)set(key,value);
+    if(data.reorder)set(LS.reorder,data.reorder);else localStorage.removeItem(LS.reorder);
+    if(data.importedAt)localStorage.setItem(LS.imported,data.importedAt);else localStorage.removeItem(LS.imported);
+    // The connection URL and API key intentionally remain unchanged.
+  }finally{restoringBackup=false}
+  updateStats();updateAutoBackupStatus();
+  $('externalRestorePreview').innerHTML='<div class="notice"><b>Restauration locale terminée.</b> Vérifiez les stocks avant toute synchronisation Google Sheets.</div>';
+}
+
 function setScannerUi(mode='location'){
   if(mode==='product'){
     $('scannerTitle').textContent='Scanner le code-barres du produit';
@@ -1606,6 +1694,7 @@ $('findLotBtn').onclick=()=>previewLot($('lotInput').value);$('lotInput').addEve
 $('assignLotBtn').onclick=()=>{const lot=normalizeLot($('lotInput').value);if(activeLocation)assignLotTo(lot,activeLocation)};
 $('searchLotBtn').onclick=searchLot;$('searchLot').addEventListener('keydown',e=>{if(e.key==='Enter')searchLot()});$('categorySearchBtn').onclick=searchCategory;$('categorySearch').addEventListener('change',searchCategory);$('inventoryLoadBtn').onclick=loadInventoryLocation;$('inventoryLocationSelect').addEventListener('change',loadInventoryLocation);$('inventoryUseActiveBtn').onclick=useActiveInventoryLocation;$('inventoryConfirmBtn').onclick=confirmQuickInventory;$('exitScanBtn').onclick=startExitScanner;$('exitLocationSelect').addEventListener('change',e=>setExitLocation(e.target.value));$('exitLotSelect').addEventListener('change',showExitLotInfo);$('exitConfirmBtn').onclick=confirmStockExit;$('moveScanBtn').onclick=startMoveScanner;$('moveLotBtn').onclick=moveSelectedLot;$('moveLotSelect').addEventListener('change',showMoveCurrentLocation);$('fifoSearchBtn').onclick=showFifoView;$('fifoProductSelect').addEventListener('change',showFifoView);$('locationViewBtn').onclick=showLocationView;$('locationViewSelect').addEventListener('change',showLocationView);$('showExpiryBtn').onclick=showExpiryAlerts;$('guestModeBtn').onclick=toggleGuestMode;
 $('resetReorderBaselineBtn').onclick=resetReorderBaseline;
+$('externalBackupBtn').onclick=shareExternalBackup;$('previewRestoreBtn').onclick=previewExternalRestore;window.addEventListener('online',updateExternalBackupStatus);window.addEventListener('offline',updateExternalBackupStatus);updateExternalBackupStatus();
 $('backupNowBtn').onclick=()=>createAutomaticBackup('Manuelle');$('restoreBackupBtn').onclick=restoreLatestBackup;$('exportLotsCsvBtn').onclick=exportLots;$('exportOrdersCsvBtn').onclick=exportOrders;$('exportJsonBtn').onclick=exportJson;
 $('syncUrl').value=localStorage.getItem(LS.syncUrl)||'';
 $('syncKey').value=localStorage.getItem(LS.syncKey)||'';
@@ -1633,7 +1722,7 @@ if(!readAutoBackups().length)createAutomaticBackup('Initiale');
 if(localStorage.getItem(LS.syncUrl))syncLotsFromSheet();else {initializeReorderBaseline();updateStats();}
 if('serviceWorker' in navigator)window.addEventListener('load',async()=>{
   try{
-    const reg=await navigator.serviceWorker.register('./service-worker.js?v=53',{updateViaCache:'none'});
+    const reg=await navigator.serviceWorker.register('./service-worker.js?v=54',{updateViaCache:'none'});
     reg.update().catch(()=>{});
     navigator.serviceWorker.addEventListener('controllerchange',()=>{
       if(!sessionStorage.getItem('stock42SwReload')){

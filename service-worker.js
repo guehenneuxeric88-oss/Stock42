@@ -1,4 +1,4 @@
-const CACHE='stock42-v53';
+const CACHE='stock42-v54';
 const LOCAL=['./','./index.html','./manifest.webmanifest','./icon.svg'];
 
 self.addEventListener('install',e=>{
@@ -28,6 +28,21 @@ self.addEventListener('fetch',e=>{
     return;
   }
 
+  // Public scanner and Excel libraries are cached after the first online load.
+  // An offline launch can then reuse those exact previously loaded resources.
+  const libraryOrigins=['https://unpkg.com','https://cdn.sheetjs.com'];
+  if(libraryOrigins.includes(url.origin)){
+    e.respondWith(
+      fetch(e.request).then(resp=>{
+        if(resp.ok||resp.type==='opaque'){
+          const copy=resp.clone();
+          e.waitUntil(caches.open(CACHE).then(c=>c.put(e.request,copy)).catch(()=>{}));
+        }
+        return resp;
+      }).catch(async()=>await caches.match(e.request)||Response.error())
+    );
+    return;
+  }
   if(url.origin===location.origin){
     e.respondWith(
       fetch(e.request,{cache:'no-store'}).then(resp=>{
