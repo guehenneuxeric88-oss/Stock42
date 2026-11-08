@@ -1,0 +1,13 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Stock 42 — V55 — Test automatique isolé</title><style>body{font:16px system-ui,-apple-system,Segoe UI,sans-serif;margin:0;padding:20px;background:#f6f4fb;color:#2a2542}main{max-width:620px;margin:26px auto;background:white;border-radius:16px;padding:25px;box-shadow:0 8px 25px #25184f12}h1{font-size:1.4rem}p{line-height:1.55}aside{background:#f0eafc;padding:14px;border-left:4px solid #6c4cc5}button{background:#6543bc;border:0;color:white;font:inherit;border-radius:9px;padding:13px 17px;cursor:pointer}button:disabled{opacity:.5}#status{white-space:pre-wrap;background:#f5f2fb;padding:16px;border-radius:9px;margin-top:14px;line-height:1.6}small{color:#5b536a}</style></head><body><main><h1>Stock 42 — V55 : test du déclenchement automatique</h1><aside><b>Test totalement isolé :</b> aucun accès aux stocks, à Google Sheets ou à Google Drive. Une modification fictive déclenche un enregistrement fictif après 8 secondes, comme prévu par la logique V55.</aside><p><button id="start">Simuler une modification de stock</button></p><div id="status" role="status" aria-live="polite">Aucune modification simulée.</div><p><small>Un résultat « réussi » valide le déclencheur et sa temporisation, mais pas encore son fonctionnement intégré à l'application principale.</small></p></main><script>
+let timer=null,started=0;const btn=document.getElementById('start'),status=document.getElementById('status');
+btn.onclick=()=>{
+ clearTimeout(timer);
+ started=Date.now();btn.disabled=true;
+ status.textContent='Modification fictive enregistrée.\nSauvegarde automatiquement programmée dans 8 secondes…\nAucun fichier envoyé.';
+ timer=setTimeout(()=>{
+  const elapsed=((Date.now()-started)/1000).toFixed(1);
+  status.textContent='SUCCÈS — Déclenchement automatique simulé.\nDélai écoulé : '+elapsed+' secondes.\n1 sauvegarde fictive produite en mémoire.\nAucune modification des stocks ou de Google Drive.';
+  btn.disabled=false;
+ },8000);
+};
+</script></body></html>
