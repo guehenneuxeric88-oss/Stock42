@@ -7,7 +7,14 @@
  * L9000 + L9001 sauvegardes 19:03, fichier verifie 827 octets :
  * Stock42_auto_20261108_190337_831.json, sans cle ni URL de synchronisation.
  * 142 lots reels preserves ; aucune fusion. Application ouverte et connectee requise.
- * Format compatible v54 conserve. Retention Drive non testee.
+ * Format compatible v54 conserve. Drive conserve les anciennes copies sans purge.
+ * Cloture des essais 08/11/2026 : sauvegarde confirmee apres retour en ligne
+ * a 19:25:47 ; fichier Stock42_auto_20261108_192546_679.json controle :
+ * 7 elements fictifs L9000 a L9006, aucune cle API.
+ * Limite : etat attente hors connexion non observe de bout en bout ;
+ * ce scenario reste partiellement verifie, pas de validation complete annoncee.
+ * Anciennes sauvegardes toujours presentes ; aucune suppression automatique
+ * implementee dans le serveur Drive (limite de 5 uniquement en local).
  * Restauration externe validee le 08/11/2026 : 3 elements fictifs vers 2,
  * L9000 et L9001 verifies, L9002 retire, etat conserve apres rechargement.
  * Sauvegarde automatique apres restauration confirmee a 19:14 :
@@ -34,5 +41,3 @@ function doPost(e) {
 }
 function json_(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
-}
-
