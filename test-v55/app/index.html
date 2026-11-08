@@ -1,0 +1,1881 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111827">
+<title>Stock 42 — V55 TEST ISOLÉ</title>
+
+<style>
+:root{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#334155;background:#f8fafc}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:linear-gradient(180deg,#faf5ff 0%,#f5f3ff 48%,#ede9fe 100%)}.app{max-width:680px;margin:auto;padding:18px 16px 44px}
+.head{display:flex;align-items:center;gap:12px;margin:4px 0 18px}.logo{width:52px;height:52px;border-radius:15px;background:#a78bfa;color:#fff;display:grid;place-items:center;font-weight:900;box-shadow:0 6px 18px rgba(167,139,250,.25)}
+.title{font-weight:900;font-size:1.42rem}.sub{color:#6b7280;font-size:.92rem}.card{background:rgba(255,255,255,.94);border:1px solid rgba(226,232,240,.9);border-radius:18px;padding:16px;box-shadow:0 6px 24px rgba(148,163,184,.12);margin:12px 0}
+.section-title{font-weight:900;font-size:1.06rem;margin-bottom:10px}.row{display:flex;gap:9px;flex-wrap:wrap}.btn{border:0;border-radius:12px;padding:12px 14px;font-weight:800;font-size:.94rem;cursor:pointer}
+.btn:disabled{opacity:.5;cursor:not-allowed}.primary{background:#8b5cf6;color:#fff}.secondary{background:#ede9fe;color:#6d28d9}.success{background:#f3e8ff;color:#7e22ce}.warning{background:#f5f3ff;color:#7c3aed}.danger{background:#fce7f3;color:#9d174d}
+.field{margin:10px 0}.field label{display:block;font-size:.78rem;font-weight:800;color:#64748b;margin-bottom:5px}.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}.three{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+input,select,textarea{width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:12px;font-size:1rem;background:#fff;color:#334155}textarea{min-height:78px;resize:vertical}
+.small{font-size:.82rem;color:#6b7280}.hint{font-size:.88rem;color:#6b7280;line-height:1.45}.notice{background:#f5f3ff;border:1px solid #ddd6fe;color:#5b21b6;border-radius:12px;padding:10px;font-size:.86rem;line-height:1.4}
+.badge{display:inline-block;background:#f5f3ff;color:#6d28d9;padding:3px 8px;border-radius:999px;font-size:.76rem;font-weight:800}.green{background:#f3e8ff;color:#7e22ce}.orange{background:#ede9fe;color:#6d28d9}.blue{background:#ede9fe;color:#6d28d9}.red{background:#fce7f3;color:#9d174d}
+.list-item{padding:12px 0;border-bottom:1px solid #eee}.list-item:last-child{border-bottom:0}.item-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.item-title{font-weight:900}.item-meta{font-size:.82rem;color:#6b7280;margin-top:3px}.empty{padding:10px 0;color:#9ca3af;font-size:.9rem}
+.reader{overflow:hidden;border-radius:14px;min-height:235px;background:#111827}.status{font-size:.88rem;color:#6b7280;margin-top:9px}.result{display:none}.ok{border-left:6px solid #16a34a}.bad{border-left:6px solid #dc2626}.code{font-size:1.35rem;font-weight:900;letter-spacing:.04em}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.kv{background:#faf5ff;border:1px solid #ede9fe;border-radius:12px;padding:10px}.k{font-size:.76rem;color:#6b7280}.v{font-weight:800;margin-top:2px}.manual{display:flex;gap:8px}.manual input{min-width:0;flex:1}
+.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}.tab{padding:10px 8px;border-radius:11px;border:0;background:#f5f3ff;color:#6b7280;font-weight:800}.tab.active{background:#ddd6fe;color:#5b21b6}
+.hidden{display:none!important}
+.app [data-app-view]{display:none}
+body[data-app-view="home"] .app [data-app-view="home"],
+body[data-app-view="entries"] .app [data-app-view="entries"],
+body[data-app-view="stock"] .app [data-app-view="stock"],
+body[data-app-view="products"] .app [data-app-view="products"],
+body[data-app-view="config"] .app [data-app-view="config"]{display:block}
+body[data-app-view="entries"].scanner-active .app #scannerCard{display:block}
+.main-nav{position:sticky;top:0;z-index:30;display:grid;grid-template-columns:repeat(5,1fr);gap:7px;background:rgba(248,250,252,.9);backdrop-filter:blur(12px);padding:8px 0 10px;margin-bottom:10px}
+.main-nav button{border:0;border-radius:12px;background:#faf5ff;color:#7c3aed;padding:9px 4px 8px;font-weight:800;font-size:.76rem;line-height:1.15;cursor:pointer}
+.main-nav button .nav-icon{display:block;font-size:1.2rem;margin-bottom:3px}
+.main-nav button.active{background:#ddd6fe;color:#5b21b6}
+.view-heading{margin:8px 0 4px;font-size:1.25rem;font-weight:900}.view-sub{color:#6b7280;font-size:.88rem;margin-bottom:10px}
+.quick-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px}.quick-actions .btn{text-align:left}
+.product-ref-row{padding:10px 0;border-bottom:1px solid #eee}.product-ref-row:last-child{border-bottom:0}
+.card[data-app-view] .section-title{color:#7c3aed}
+body[data-app-view="home"] .main-nav button[data-view="home"],
+body[data-app-view="entries"] .main-nav button[data-view="entries"],
+body[data-app-view="stock"] .main-nav button[data-view="stock"],
+body[data-app-view="products"] .main-nav button[data-view="products"],
+body[data-app-view="config"] .main-nav button[data-view="config"]{background:#ddd6fe;color:#5b21b6}
+
+body.guest-mode .admin-only{display:none!important}body.guest-mode #guestModeBtn{background:#c4b5fd;color:#4c1d95}.guest-banner{display:none;margin-bottom:12px;padding:10px 12px;border-radius:12px;background:#f3e8ff;color:#7e22ce;font-weight:800;font-size:.88rem}body.guest-mode .guest-banner{display:block}.footer{text-align:center;color:#9ca3af;font-size:.78rem;margin-top:24px}
+@media(max-width:500px){body{padding-bottom:76px}.two,.three,.grid{grid-template-columns:1fr}.tabs{grid-template-columns:1fr}.main-nav{position:fixed;left:0;right:0;bottom:0;top:auto;margin:0;padding:8px max(8px,env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left));background:rgba(255,255,255,.96);box-shadow:0 -6px 22px rgba(148,163,184,.16);z-index:50}.main-nav button{background:#faf5ff;padding:8px 2px 6px;font-size:.68rem}.main-nav button .nav-icon{font-size:1.08rem}.quick-actions{grid-template-columns:1fr}#mobileDashboard .grid{grid-template-columns:1fr 1fr}#mobileDashboard .two{grid-template-columns:1fr 1fr}#mobileDashboard .kv{padding:9px}#mobileDashboard .v{font-size:1.08rem}}
+</style>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+</head>
+<body><main class="app"><div style="background:#fef3c7;color:#92400e;padding:15px;border:2px solid #f59e0b;border-radius:10px;margin-bottom:15px;font-weight:700">V55 — BAC À SABLE. Données fictives uniquement. Les données Stock 42 habituelles ne sont pas lues ni modifiées. Ne renseigne PAS l’URL Google Sheets principale dans cette page.</div>
+<header class="head"><div class="logo">42</div><div><div class="title">Stock 42 — V55 TEST ISOLÉ</div><div class="sub">Commandes • réceptions • lots • emplacements • FIFO • Version 55</div></div></header>
+<div class="guest-banner">Mode famille / invité — consultation uniquement</div>
+<nav id="mainNav" class="main-nav" aria-label="Navigation principale">
+  <button class="active" data-view="home"><span class="nav-icon">⌂</span>Accueil</button>
+  <button data-view="entries"><span class="nav-icon">＋</span>Entrées</button>
+  <button data-view="stock"><span class="nav-icon">▣</span>Stock</button>
+  <button data-view="products"><span class="nav-icon">▤</span>Produits</button>
+  <button data-view="config"><span class="nav-icon">⚙</span>Config.</button>
+</nav>
+
+<div data-app-view="home"><div class="view-heading">Accueil</div><div class="view-sub">Vue d’ensemble et actions rapides</div></div>
+<section class="card" id="mobileDashboard" data-app-view="home">
+  <div class="section-title">Tableau de bord</div>
+  <div class="grid">
+    <div class="kv"><div class="k">Lots connus</div><div id="dashLots" class="v">0</div></div>
+    <div class="kv"><div class="k">Lots rangés</div><div id="dashRanged" class="v">0</div></div>
+    <div class="kv"><div class="k">À ranger / TEMP</div><div id="dashTemp" class="v">0</div></div>
+    <div class="kv"><div class="k">Emplacements occupés</div><div id="dashLocations" class="v">0 / 73</div></div>
+    <div class="kv"><div class="k">DDM/DLC ≤ 3 mois</div><div id="dashSoon" class="v">0</div></div>
+    <div class="kv"><div class="k">Dates dépassées</div><div id="dashExpired" class="v">0</div></div>
+  </div>
+  <div class="two" style="margin-top:10px">
+    <div class="kv"><div class="k">Commandes en cours</div><div id="dashOrders" class="v">0</div></div>
+    <div class="kv"><div class="k">Prochain lot</div><div id="dashNextLot" class="v">L0001</div></div>
+  </div>
+  <div id="dashSummary" class="status" style="margin-top:10px"></div>
+  <div class="kv" style="margin-top:12px;border:1px solid #ddd6fe">
+    <div class="k">Réapprovisionnement — seuil 75 %</div>
+    <div class="row" style="align-items:center;justify-content:space-between;margin-top:5px">
+      <div><div id="dashReorderCount" class="v" style="font-size:1.5rem">0</div><div id="dashReorderMessage" class="small">Calcul en cours…</div></div>
+      <button id="dashReorderOpen" class="btn secondary admin-only" type="button">Voir les propositions</button>
+    </div>
+  </div>
+  <div class="row" style="margin-top:12px">
+    <button id="guestModeBtn" class="btn secondary">Mode famille / invité</button>
+  </div>
+  <div id="guestModeStatus" class="status"></div>
+</section>
+
+<div data-app-view="config"><div class="view-heading">Configuration</div><div class="view-sub">Synchronisation, sauvegardes et réglages</div></div>
+<section class="card admin-only" data-app-view="config">
+  <div class="section-title">Connexion Google Sheets</div>
+  <div class="notice">Configuration locale de la synchronisation.</div>
+  <div class="field"><label>URL Apps Script</label><input id="syncUrl" type="url"></div>
+  <div class="field"><label>Clé API</label><input id="syncKey" type="password"></div>
+  <div class="row"><button id="saveSync" class="btn primary">Enregistrer la connexion</button><button id="syncLotsBtn" class="btn secondary">Synchroniser les lots</button></div>
+  <div id="syncMsg" class="status"></div>
+</section>
+
+<section class="card admin-only" data-app-view="config">
+  <div class="section-title">Réapprovisionnement automatique</div>
+  <div class="notice">Le stock de référence est fixé à 100 % une seule fois. Alerte à 75 % inclus, puis proposition pour revenir à 100 %. Les commandes en cours sont déduites.</div>
+  <div id="reorderBaselineStatus" class="status"></div>
+  <div class="row" style="margin-top:10px"><button id="resetReorderBaselineBtn" class="btn secondary">Redéfinir les 100 % avec le stock actuel</button></div>
+</section>
+<section class="card admin-only" data-app-view="config">
+  <div class="section-title">Importer un tableau Stock</div>
+  <div class="notice">Le fichier Excel/XLSM est lu directement sur votre téléphone. Son contenu n'est pas publié dans le dépôt GitHub.</div>
+  <div class="field"><input id="stockFile" type="file" accept=".xlsx,.xlsm,.xls"></div>
+  <div class="row"><button id="importStockBtn" class="btn primary">Importer le tableau</button><button id="clearCatalogBtn" class="btn secondary">Effacer l'import local</button></div>
+  <div id="importStatus" class="status"></div>
+  <div class="two" style="margin-top:10px">
+    <div class="kv"><div class="k">Lots connus</div><div id="catalogCount" class="v">0</div></div>
+    <div class="kv"><div class="k">Prochain lot</div><div id="nextLot" class="v">L0001</div></div>
+  </div>
+</section>
+
+<div data-app-view="entries"><div class="view-heading">Entrées</div><div class="view-sub">Ajouter des produits et gérer les commandes</div></div>
+<section class="card admin-only" data-app-view="entries">
+  <div class="tabs">
+    <button class="tab active" data-pane="orderPane">Nouvelle commande</button>
+    <button class="tab" data-pane="quickPane">Entrée rapide</button>
+    <button class="tab" data-pane="ordersPane">Commandes en cours</button>
+    <button class="tab" data-pane="receivePane">Réception</button>
+  </div>
+
+  <div id="orderPane">
+    <div class="section-title">2. Nouvelle commande</div>
+    <div class="two">
+      <div class="field"><label>Produit</label><select id="oProduct"><option value="">— Choisir un produit —</option></select><div id="oNewProductWrap" class="hidden" style="margin-top:8px"><input id="oNewProduct" placeholder="Nom du nouveau produit"></div></div>
+      <div class="field"><label>Catégorie</label><select id="oCategory"><option value="">— Choisir une catégorie —</option><option>Boissons</option><option>Céréales / féculents</option><option>Condiments</option><option>Conserves</option><option>Épicerie</option><option>Huiles</option><option>Hygiène</option><option>Légumineuses</option><option>Produits laitiers</option></select></div>
+    </div>
+    <div class="three">
+      <div class="field"><label>Quantité commandée</label><input id="oQty" type="number" step="any" min="0"></div>
+      <div class="field"><label>Unité</label><select id="oUnit"><option value="">—</option><option>unité</option><option>boîte</option><option>bocal</option><option>paquet</option><option>kg</option><option>g</option><option>L</option><option>ml</option></select></div>
+      <div class="field"><label>Prix total (€)</label><input id="oPrice" type="number" step="0.01" min="0"></div>
+    </div>
+    <div class="two">
+      <div class="field"><label>Fournisseur</label><input id="oSupplier"></div>
+      <div class="field"><label>Référence / commande</label><input id="oReference"></div>
+    </div>
+    <div class="two">
+      <div class="field"><label>Date commande</label><input id="oDate" type="date"></div>
+      <div class="field"><label>Livraison prévue</label><input id="oExpected" type="date"></div>
+    </div>
+    <div class="field"><label>Notes</label><textarea id="oNotes"></textarea></div>
+    <button id="saveOrderBtn" class="btn primary">Enregistrer la commande</button>
+    <div id="orderStatus" class="status"></div>
+  </div>
+
+  <div id="quickPane" class="hidden">
+    <div class="section-title">Entrée rapide d’un achat déjà reçu</div>
+    <div class="notice">Une seule validation crée la commande, le lot, la réception et, si vous choisissez un emplacement, le rangement.</div>
+    <div class="two">
+      <div class="field"><label>Produit</label><div class="row" style="margin-bottom:8px"><button id="quickProductScanBtn" type="button" class="btn secondary">Scanner le code-barres</button></div><select id="qProduct"><option value="">— Choisir un produit —</option></select><div id="qNewProductWrap" class="hidden" style="margin-top:8px"><input id="qNewProduct" placeholder="Nom du nouveau produit"></div><div id="qBarcodeInfo" class="hint" style="margin-top:7px"></div></div>
+      <div class="field"><label>Catégorie</label><select id="qCategory"><option value="">— Choisir une catégorie —</option><option>Boissons</option><option>Céréales / féculents</option><option>Condiments</option><option>Conserves</option><option>Épicerie</option><option>Huiles</option><option>Hygiène</option><option>Légumineuses</option><option>Produits laitiers</option></select></div>
+    </div>
+    <div class="three">
+      <div class="field"><label>Quantité</label><input id="qQty" type="number" step="any" min="0"></div>
+      <div class="field"><label>Unité</label><select id="qUnit"><option value="">—</option><option>unité</option><option>boîte</option><option>bocal</option><option>paquet</option><option>kg</option><option>g</option><option>L</option><option>ml</option></select></div>
+      <div class="field"><label>DDM / DLC</label><input id="qExpiry" placeholder="JJ/MM/AAAA"></div>
+    </div>
+    <div class="two">
+      <div class="field"><label>Type date</label><select id="qDateType"><option>DDM</option><option>DLC</option><option>Sans date</option></select></div>
+      <div class="field"><label>Fournisseur</label><input id="qSupplier" placeholder="Ex. Super U"></div>
+    </div>
+    <div class="two">
+      <div class="field"><label>Conditionnement / poids par unité</label><input id="qPack" placeholder="Ex. 400 g pour une boîte"><div class="hint">Obligatoire pour les boîtes, bocaux et paquets. Vérifiez le poids proposé : il peut varier selon le lot.</div></div>
+      <div class="field">
+        <label>Emplacement</label>
+        <div class="row" style="margin-bottom:8px"><button id="quickScanBtn" type="button" class="btn secondary">Scanner l’emplacement</button></div>
+        <select id="qLocation"><option value="">— À affecter plus tard —</option></select>
+        <div class="hint" style="margin-top:6px">La liste déroulante reste disponible en secours.</div>
+      </div>
+    </div>
+    <button id="quickSaveBtn" class="btn primary">Créer et ranger le lot</button>
+    <div id="quickStatus" class="status"></div>
+  </div>
+
+  <div id="ordersPane" class="hidden">
+    <div class="section-title">Commandes en cours</div>
+    <div class="notice" style="margin-bottom:12px">Réapprovisionnement : alerte à 75 % du stock de référence, commande proposée pour revenir à 100 %. Validation obligatoire.</div>
+    <div id="reorderList"></div>
+    <div id="ordersList"></div>
+  </div>
+
+  <div id="receivePane" class="hidden">
+    <div class="section-title">3. Réceptionner une commande</div>
+    <div id="receiveEmpty" class="empty">Sélectionnez « Réceptionner » depuis une commande en cours.</div>
+    <div id="receiveForm" class="hidden">
+      <div class="notice">Le numéro de lot est attribué automatiquement à la réception.</div>
+      <div class="two">
+        <div class="field"><label>Commande</label><input id="rOrderId" disabled></div>
+        <div class="field"><label>Nouveau lot</label><input id="rLot" disabled></div>
+      </div>
+      <div class="field"><label>Produit</label><input id="rProduct"></div>
+      <div class="three">
+        <div class="field"><label>Quantité reçue</label><input id="rQty" type="number" step="any" min="0"></div>
+        <div class="field"><label>Unité</label><select id="rUnit"><option value="">—</option><option>unité</option><option>boîte</option><option>bocal</option><option>paquet</option><option>kg</option><option>g</option><option>L</option><option>ml</option></select></div>
+        <div class="field"><label>Date réception</label><input id="rDate" type="date"></div>
+      </div>
+      <div class="two">
+        <div class="field"><label>DDM / DLC</label><input id="rExpiry" placeholder="JJ/MM/AAAA ou MM/AAAA"></div>
+        <div class="field"><label>Type date</label><select id="rDateType"><option>DDM</option><option>DLC</option><option>Sans date</option></select></div>
+      </div>
+      <div class="two">
+        <div class="field"><label>Conditionnement</label><input id="rPack" placeholder="Ex. 6 × 1 kg"></div>
+        <div class="field"><label>Lot fabricant</label><input id="rMakerLot"></div>
+      </div>
+      <div class="field"><label>Notes réception</label><textarea id="rNotes"></textarea></div>
+      <label class="small"><input id="rAssignActive" type="checkbox" style="width:auto;margin-right:6px">Affecter immédiatement à l'emplacement QR actif</label>
+      <div class="row" style="margin-top:12px"><button id="confirmReceiveBtn" class="btn primary">Valider la réception</button><button id="cancelReceiveBtn" class="btn secondary">Annuler</button></div>
+      <div id="receiveStatus" class="status"></div>
+    </div>
+  </div>
+</section>
+
+<div data-app-view="products">
+  <div class="view-heading">Produits</div>
+  <div class="view-sub">Gérer le référentiel produits</div>
+</div>
+<section class="card" data-app-view="products">
+  <div class="section-title">Référentiel produits</div>
+  <div class="two">
+    <div class="kv"><div class="k">Produits connus</div><div id="productRefCount" class="v">0</div></div>
+    <div class="kv"><div class="k">Avec code-barres</div><div id="productBarcodeCount" class="v">0</div></div>
+  </div>
+  <div class="field"><label>Rechercher un produit</label><input id="productRefSearch" placeholder="Ex. jus d’orange, lait, huile…"></div>
+  <div id="productRefList"></div>
+</section>
+<section class="card admin-only" data-app-view="products">
+  <div class="section-title">Gestion du référentiel</div>
+  <div class="hint">Les produits utilisés dans Nouvelle commande et Entrée rapide proviennent de ce référentiel. Les codes-barres reconnus sont mémorisés pour accélérer les prochaines entrées.</div>
+  <div class="row" style="margin-top:12px">
+    <button id="productSyncBtn" class="btn secondary">Synchroniser le référentiel</button>
+    <button id="productNewBtn" class="btn primary">Ajouter un produit</button>
+  </div>
+  <div id="productRefStatus" class="status"></div>
+</section>
+
+<div data-app-view="stock"><div class="view-heading">Stock</div><div class="view-sub">Consulter, déplacer et inventorier</div></div>
+<section id="scannerCard" class="card admin-only" data-app-view="stock">
+  <div id="scannerTitle" class="section-title">Scanner un emplacement</div>
+  <div id="reader" class="reader"></div>
+  <video id="productReader" class="reader hidden" playsinline muted style="width:100%;object-fit:cover"></video>
+  <div class="row" style="margin-top:12px"><button id="startBtn" class="btn primary">Démarrer le scanner</button><button id="stopBtn" class="btn secondary" disabled>Arrêter</button></div>
+  <div id="status" class="status">Scannez un QR d’emplacement.</div>
+</section>
+
+<section id="result" class="card result" data-app-view="stock">
+  <div class="small">EMPLACEMENT ACTIF</div><div id="resultCode" class="code"></div><div id="resultMsg" class="status"></div><div id="details" class="grid"></div>
+</section>
+
+<section class="card admin-only" data-app-view="stock">
+  <div class="section-title">Saisie manuelle emplacement</div>
+  <div class="manual"><input id="manualCode" placeholder="Ex. 42-R2-N3-B ou 38-ETAGE-01"><button id="manualBtn" class="btn secondary">Lire</button></div>
+</section>
+
+<section id="assignCard" class="card hidden admin-only" data-app-view="stock">
+  <div class="section-title">5. Affecter un lot à <span id="activeLocation"></span></div>
+  <div class="manual"><input id="lotInput" placeholder="Ex. 27 ou L0027" inputmode="numeric"><button id="findLotBtn" class="btn secondary">Rappeler</button></div>
+  <div id="lotPreview" style="margin-top:10px"></div>
+  <button id="assignLotBtn" class="btn primary" style="margin-top:10px" disabled>Affecter ce lot</button>
+  <div id="assignStatus" class="status"></div>
+</section>
+
+<section id="locationStockCard" class="card hidden admin-only" data-app-view="stock">
+  <div class="section-title">Contenu de <span id="locationTitle"></span></div><div id="locationStock"></div>
+</section>
+
+<section class="card" data-app-view="stock">
+  <div class="section-title">Rechercher un produit ou un lot</div>
+  <div class="manual"><input id="searchLot" placeholder="Ex. sel, café, huile, 27 ou L0027"><button id="searchLotBtn" class="btn secondary">Rechercher</button></div>
+  <div class="hint" style="margin-top:8px">Tapez un nom de produit ou un numéro de lot. Les accents et petites fautes sont tolérés.</div>
+  <div id="lotSearchResult" style="margin-top:10px"></div>
+</section>
+
+<section class="card" data-app-view="stock">
+  <div class="section-title">Rechercher par catégorie</div>
+  <div class="manual"><select id="categorySearch"><option value="">— Choisir une catégorie —</option></select><button id="categorySearchBtn" class="btn secondary">Afficher</button></div>
+  <div class="hint" style="margin-top:8px">Affiche tous les lots de la catégorie avec leur emplacement.</div>
+  <div id="categorySearchResult" style="margin-top:10px"></div>
+</section>
+
+<section class="card admin-only" data-app-view="stock">
+  <div class="section-title">Inventaire rapide</div>
+  <div class="hint">Choisissez un emplacement, vérifiez les lots présents puis validez le contrôle.</div>
+  <div class="manual" style="margin-top:10px">
+    <select id="inventoryLocationSelect"><option value="">— Choisir un emplacement —</option></select>
+    <button id="inventoryLoadBtn" class="btn secondary">Charger</button>
+  </div>
+  <div class="row" style="margin-top:10px">
+    <button id="inventoryUseActiveBtn" class="btn secondary">Utiliser l'emplacement actif</button>
+  </div>
+  <div id="inventoryList" style="margin-top:10px"></div>
+  <button id="inventoryConfirmBtn" class="btn primary" style="margin-top:12px;display:none">Enregistrer l'inventaire</button>
+  <div id="inventoryStatus" class="status"></div>
+</section>
+
+<section class="card admin-only" id="exitCard" data-app-view="stock">
+  <div class="section-title">Sortie de stock</div>
+  <div class="hint">Scannez d’abord le QR de l’emplacement. Stock 42 affichera uniquement les lots présents à cet endroit.</div>
+  <div class="row" style="margin-top:10px"><button id="exitScanBtn" class="btn primary">Scanner l’emplacement</button></div>
+  <div class="field" style="margin-top:10px"><label>Ou choisir l’emplacement manuellement</label><select id="exitLocationSelect"><option value="">— Choisir un emplacement —</option></select></div>
+  <div id="exitLocationInfo" class="status"></div>
+  <div class="field" style="margin-top:10px"><label>Lot à sortir</label><select id="exitLotSelect"><option value="">— Scannez ou choisissez d’abord un emplacement —</option></select></div>
+  <div id="exitLotInfo" class="status"></div>
+  <div class="two" style="margin-top:10px">
+    <div class="field"><label>Quantité sortie</label><input id="exitQty" inputmode="decimal" placeholder="Ex. 1"></div>
+    <div class="field"><label>Unité</label><input id="exitUnit" readonly></div>
+  </div>
+  <div class="field"><label>Motif</label><select id="exitReason"><option value="Consommation">Consommation</option><option value="Don / transfert">Don / transfert</option><option value="Perte / casse">Perte / casse</option><option value="Autre">Autre</option></select></div>
+  <div class="field"><label>Commentaire (facultatif)</label><input id="exitComment" placeholder="Ex. utilisé pour le repas"></div>
+  <button id="exitConfirmBtn" class="btn primary" style="margin-top:12px">Enregistrer la sortie</button>
+  <div id="exitStatus" class="status"></div>
+</section>
+
+<section class="card admin-only" id="moveCard" data-app-view="stock">
+  <div class="section-title">Déplacement simplifié</div>
+  <div class="hint">Choisissez le lot, puis scannez le QR du nouvel emplacement. La liste déroulante reste disponible en secours.</div>
+  <div style="margin-top:10px">
+    <select id="moveLotSelect"><option value="">— Choisir un lot —</option></select>
+  </div>
+  <div id="moveCurrentLocation" class="status" style="margin-top:8px"></div>
+  <div class="row" style="margin-top:10px">
+    <button id="moveScanBtn" class="btn secondary">Scanner le nouvel emplacement</button>
+  </div>
+  <div class="field" style="margin-top:10px">
+    <label>Ou choisir l’emplacement manuellement</label>
+    <select id="moveDestinationSelect"><option value="">— Nouvel emplacement —</option></select>
+  </div>
+  <button id="moveLotBtn" class="btn primary" style="margin-top:12px">Confirmer le déplacement</button>
+  <div id="moveStatus" class="status"></div>
+</section>
+
+<section class="card" data-app-view="stock">
+  <div class="section-title">Vue FIFO</div>
+  <div class="manual"><select id="fifoProductSelect"><option value="">— Choisir un produit —</option></select><button id="fifoSearchBtn" class="btn secondary">Afficher</button></div>
+  <div class="hint" style="margin-top:8px">Choisissez un produit pour afficher ses lots dans l'ordre où ils doivent être consommés.</div>
+  <div id="fifoResult" style="margin-top:10px"></div>
+</section>
+
+<section class="card" data-app-view="stock">
+  <div class="section-title">Vue par emplacement</div>
+  <div class="manual"><select id="locationViewSelect"><option value="">— Choisir un emplacement —</option></select><button id="locationViewBtn" class="btn secondary">Afficher</button></div>
+  <div class="hint" style="margin-top:8px">Affiche tout le contenu d'un emplacement du site 42.</div>
+  <div id="locationViewResult" style="margin-top:10px"></div>
+</section>
+
+<section class="card" data-app-view="home">
+  <div class="section-title">Alertes DDM / DLC</div>
+  <div class="two">
+    <div class="kv"><div class="k">Dépassées</div><div id="expiryExpiredCount" class="v">0</div></div>
+    <div class="kv"><div class="k">≤ 3 mois</div><div id="expiry3mCount" class="v">0</div></div>
+  </div>
+  <div class="two" style="margin-top:10px">
+    <div class="kv"><div class="k">≤ 6 mois</div><div id="expiry6mCount" class="v">0</div></div>
+    <div class="kv"><div class="k">Sans date</div><div id="expiryMissingCount" class="v">0</div></div>
+  </div>
+  <div class="row" style="margin-top:12px">
+    <button id="showExpiryBtn" class="btn secondary">Voir les alertes</button>
+  </div>
+  <div id="expiryResult" style="margin-top:10px"></div>
+</section>
+
+<section class="card admin-only" data-app-view="config">
+  <div class="section-title">Sauvegarde automatique</div>
+  <div class="notice">Stock 42 conserve automatiquement jusqu'à 5 points de restauration sur cet appareil après chaque modification.</div>
+  <div class="two" style="margin-top:10px">
+    <div class="kv"><div class="k">Dernière sauvegarde</div><div id="autoBackupLast" class="v">—</div></div>
+    <div class="kv"><div class="k">Points disponibles</div><div id="autoBackupCount" class="v">0</div></div>
+  </div>
+  <div class="row" style="margin-top:12px">
+    <button id="backupNowBtn" class="btn primary">Sauvegarder maintenant</button>
+    <button id="restoreBackupBtn" class="btn secondary">Restaurer la dernière</button>
+  </div>
+  <div id="autoBackupStatus" class="status"></div>
+  <div class="hint" style="margin-top:10px">La clé API n'est jamais copiée dans les sauvegardes automatiques. Les lots et mouvements restent en plus synchronisés dans Google Sheets.</div>
+
+  <div class="section-title" style="margin-top:20px">Sauvegarde externe et mode secours</div>
+  <div class="notice">Exportez une copie complète dans Fichiers → iCloud Drive, ou sur un support externe. Cette copie ne part pas automatiquement dans le cloud : choisissez l'emplacement dans la fenêtre de partage.</div>
+  <div class="row" style="margin-top:12px">
+    <button id="externalBackupBtn" class="btn primary">Exporter vers Fichiers / iCloud</button>
+    <button id="exportJsonBtn" class="btn secondary">Télécharger JSON complet</button>
+  </div>
+  <div class="field"><label>Restaurer une sauvegarde complète (fichier JSON Stock 42)</label><input id="restoreExternalFile" type="file" accept=".json,application/json"></div>
+  <button id="previewRestoreBtn" class="btn secondary" type="button">Vérifier le fichier avant restauration</button>
+  <div id="externalRestorePreview" class="status"></div>
+  <div class="row" style="margin-top:12px"><button id="exportLotsCsvBtn" class="btn secondary">Lots CSV</button><button id="exportOrdersCsvBtn" class="btn secondary">Commandes CSV</button></div>
+  <div class="two" style="margin-top:12px">
+    <div class="kv"><div class="k">Dernière copie externe préparée</div><div id="externalBackupLast" class="v">Jamais</div></div>
+    <div class="kv"><div class="k">Connexion Internet</div><div id="networkIndicator" class="v">—</div></div>
+  </div>
+  <div class="hint" style="margin-top:10px">En mode hors connexion, le catalogue enregistré reste consultable. La synchronisation Google Sheets, les recherches de produits en ligne et certaines fonctions de scanner peuvent nécessiter Internet. Une sauvegarde hors de l'iPhone reste indispensable.</div>
+  <div id="externalBackupStatus" class="status"></div>
+  <div class="section-title" style="margin-top:18px">Sauvegarde automatique sur Google Drive — V55</div>
+  <div class="notice">Cette fonctionnalité nécessite l'installation du module de sauvegarde dans Google Apps Script. Elle est désactivée par défaut. Les données seront envoyées uniquement après un test confirmé par Google Drive et ton activation.</div>
+  <label for="cloudUrl" class="label">URL Apps Script dédiée aux sauvegardes V55 (déploiement de test)</label>
+  <input id="cloudUrl" type="url" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off" spellcheck="false">
+  <div class="row"><button id="saveCloudUrlBtn" type="button" class="btn secondary">Enregistrer l’adresse Drive</button></div>
+  <div class="hint">Cette adresse est indépendante de la synchronisation Google Sheets. La clé API existante reste utilisée sans être incluse dans les sauvegardes.</div>
+  <div class="row"><button id="sandboxChangeBtn" class="btn secondary" type="button">Simuler une modification fictive (déclenchement V55)</button></div><div class="hint">À utiliser après activation des sauvegardes Drive. Cette action ajoute uniquement un produit fictif dans ce bac à sable.</div>
+  <div class="row" style="margin-top:12px">
+    <button id="testCloudBackupBtn" type="button" class="btn secondary">Tester la connexion Drive</button>
+    <button id="toggleCloudBackupBtn" type="button" class="btn primary" disabled>Activer les sauvegardes cloud</button>
+  </div>
+  <div class="two" style="margin-top:10px">
+    <div class="kv"><div class="k">Sauvegarde cloud</div><div id="cloudBackupMode" class="v">Désactivée</div></div>
+    <div class="kv"><div class="k">Dernière sauvegarde confirmée</div><div id="cloudBackupLast" class="v">Jamais</div></div>
+  </div>
+  <div id="cloudBackupStatus" class="status"></div>
+  <div class="hint">Les changements sont sauvegardés lorsque Stock 42 est ouvert et connecté. Pas de synchronisation en arrière-plan si l'application est fermée. Les cinq sauvegardes locales continuent indépendamment.</div>
+</section>
+
+<div class="footer">Stock 42 • données alimentaires conservées localement sur votre appareil</div>
+</main>
+<script>
+const VALID=/^(?:42-R[1-3]-N[1-5]-[ABC]|38-ETAGE-(?:0[1-9]|1[0-8])|42-CONGELATEUR-0[1-6]|42-FRIGO-0[1-5]|42-GARAGE-0[1-4])$/i, LOT=/^L\d{4}$/;
+let scanner=null,running=false,productScanner=null,productScannerControls=null,activeLocation=null,receiveOrderId=null,moveScanMode=false,exitScanMode=false,exitLocation='',quickScanMode=false,quickProductScanMode=false,quickScannedBarcode='',quickScannedBrand='';
+const $=id=>document.getElementById(id);
+const LS={catalog:'stock42V55IsolatedCatalog',lots:'stock42V55IsolatedLots',orders:'stock42V55IsolatedOrders',moves:'stock42V55IsolatedMovements',assign:'stock42V55IsolatedAssignments',history:'stock42V55IsolatedHistory',imported:'stock42V55IsolatedImportedAt',syncUrl:'stock42V55IsolatedSyncUrl',syncKey:'stock42V55IsolatedSyncKey',guestMode:'stock42V55IsolatedGuestMode',autoBackups:'stock42V55IsolatedAutoBackups',products:'stock42V55IsolatedProducts',reorder:'stock42V55IsolatedReorderBaselineV1',lastExternalBackup:'stock42V55IsolatedLastExternalBackup',cloudEnabled:'stock42V55IsolatedCloudBackupEnabled',cloudUrl:'stock42V55IsolatedCloudBackupUrl',cloudVerified:'stock42V55IsolatedCloudBackupVerified',cloudLast:'stock42V55IsolatedCloudBackupLast',cloudPending:'stock42V55IsolatedCloudBackupPending'};
+const get=(k,d=[])=>{try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}};
+let autoBackupTimer=null,restoringBackup=false;
+const set=(k,v)=>{
+  localStorage.setItem(k,JSON.stringify(v));
+  if(k!==LS.autoBackups&&!restoringBackup){scheduleAutoBackup();scheduleCloudBackup()}
+};
+const today=()=>new Date().toISOString().slice(0,10);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function normalizeLot(raw){let s=(raw||'').trim().toUpperCase().replace(/\s+/g,'');if(/^\d{1,4}$/.test(s))s='L'+s.padStart(4,'0');if(/^L\d{1,4}$/.test(s))s='L'+s.slice(1).padStart(4,'0');return s}
+function parseCode(raw){
+  const code=(raw||'').trim().toUpperCase();
+  if(!VALID.test(code))return{valid:false,code};
+  let m=code.match(/^42-R([1-3])-N([1-5])-([ABC])$/i);
+  if(m)return{valid:true,code,site:'42',kind:'rack',rack:m[1],level:m[2],zoneLetter:m[3],zone:{A:'Gauche',B:'Centre',C:'Droite'}[m[3]]};
+  m=code.match(/^38-ETAGE-(\d{2})$/i);
+  if(m)return{valid:true,code,site:'38',kind:'etage',slot:m[1]};
+  m=code.match(/^42-CONGELATEUR-(\d{2})$/i);
+  if(m)return{valid:true,code,site:'42',kind:'congelateur',slot:m[1]};
+  m=code.match(/^42-FRIGO-(\d{2})$/i);
+  if(m)return{valid:true,code,site:'42',kind:'frigo',slot:m[1]};
+  m=code.match(/^42-GARAGE-(\d{2})$/i);
+  if(m)return{valid:true,code,site:'42',kind:'garage',slot:m[1]};
+  return{valid:false,code};
+}
+function catalog(){return get(LS.catalog,[])} function localLots(){return get(LS.lots,[])} function orders(){return get(LS.orders,[])} function assignments(){return get(LS.assign,[])}
+function allLots(){const map=new Map();[...localLots(),...catalog()].forEach(x=>{const l=normalizeLot(x.lot);if(l&&LOT.test(l))map.set(l,{...x,lot:l})});return [...map.values()].sort((a,b)=>a.lot.localeCompare(b.lot))}
+function nextLot(){let max=0;allLots().forEach(x=>{const n=parseInt(x.lot.slice(1),10);if(n>max)max=n});return 'L'+String(max+1).padStart(4,'0')}
+function nextOrder(){let max=0;orders().forEach(x=>{const m=String(x.id||'').match(/^C(\d+)$/);if(m)max=Math.max(max,+m[1])});return 'C'+String(max+1).padStart(4,'0')}
+async function syncLotsFromSheet(){
+  const u=localStorage.getItem(LS.syncUrl)||'';
+  if(!u){$('syncMsg').textContent='Renseignez d’abord l’URL Apps Script.';return false}
+  $('syncMsg').textContent='Synchronisation des lots…';
+  try{
+    const sep=u.includes('?')?'&':'?';
+    const r=await fetch(u+sep+'action=lots&t='+Date.now(),{cache:'no-store'});
+    const data=await r.json();
+    if(!data.ok||!Array.isArray(data.lots))throw new Error(data.error||'Réponse invalide');
+    set(LS.catalog,data.lots);
+    localStorage.setItem(LS.imported,new Date().toISOString());
+    const byId=new Map(assignments().map(x=>[x.id,x]));
+    data.lots.filter(x=>VALID.test(x.emplacement||'')).forEach(x=>{
+      const id=x.lot+'@'+x.emplacement;
+      byId.set(id,{id,lot:x.lot,location:x.emplacement,assignedAt:new Date().toISOString()});
+    });
+    set(LS.assign,[...byId.values()]);
+    initializeReorderBaseline();
+    updateStats();
+    if(activeLocation)renderLocationStock();
+    const productsOk=await syncProductsFromSheet();
+    $('syncMsg').textContent='Google Sheets synchronisé : '+data.lots.length+' lot(s). Prochain lot : '+(data.nextLot||nextLot())+'.'+(productsOk?' Référentiel produits synchronisé.':'');
+    return true;
+  }catch(e){
+    $('syncMsg').textContent='Synchronisation impossible : '+String(e&&e.message?e.message:e);
+    return false;
+  }
+}
+async function syncProductsFromSheet(){
+  const u=localStorage.getItem(LS.syncUrl)||'';
+  if(!u)return false;
+  try{
+    const sep=u.includes('?')?'&':'?';
+    const r=await fetch(u+sep+'action=products&t='+Date.now(),{cache:'no-store'});
+    const data=await r.json();
+    if(!data.ok||!Array.isArray(data.products))return false;
+    set(LS.products,data.products);
+    updateStats();
+    return true;
+  }catch(e){return false}
+}
+
+function newCloudReceiptId(){
+  const bytes=new Uint8Array(16);crypto.getRandomValues(bytes);
+  return Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('');
+}
+function checkCloudReceipt(url,id){
+  return new Promise(resolve=>{
+    const cb='stock42V55IsolatedReceipt_'+id,script=document.createElement('script');
+    let finished=false;
+    const stop=(value)=>{if(finished)return;finished=true;clearTimeout(timer);delete window[cb];script.remove();resolve(value)};
+    const timer=setTimeout(()=>stop(false),9000);
+    window[cb]=data=>stop(data?.ok===true&&data?.saved===true);
+    script.onerror=()=>stop(false);
+    script.src=url+(url.includes('?')?'&':'?')+'action=backupReceipt&receiptId='+encodeURIComponent(id)+'&prefix='+encodeURIComponent(cb)+'&t='+Date.now();
+    document.head.appendChild(script);
+  });
+}
+async function sendCloudBackupWithReceipt(data){
+  const url=localStorage.getItem(LS.cloudUrl)||'',token=localStorage.getItem(LS.syncKey)||'';
+  if(!url||!token)return {ok:false,error:'Adresse de sauvegarde V55 ou clé API manquante'};
+  const receiptId=newCloudReceiptId();
+  const payload={...data,receiptId};
+  // Opaque reply is NOT proof of a successful backup. Poll a separate read-only receipt.
+  try{
+    await fetch(url,{
+      method:'POST',mode:'no-cors',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({token,action:'backup',data:payload})
+    });
+  }catch(e){
+    // A network exception does not prove that Drive did not receive the POST.
+  }
+  for(let i=0;i<5;i++){
+    await new Promise(resolve=>setTimeout(resolve,i===0?1200:3000));
+    if(await checkCloudReceipt(url,receiptId))return {ok:true,backupSaved:true,receiptConfirmed:true,fileId:'confirmé-par-reçu'};
+  }
+  return {ok:false,error:'Aucune confirmation Drive. Le déploiement doit être accessible depuis cette page (accès « Moi uniquement » non compatible). Vérifier le dossier Drive avant toute nouvelle tentative.'};
+}
+
+async function sendToSheet(action,data){const u=localStorage.getItem(LS.syncUrl)||'';const k=localStorage.getItem(LS.syncKey)||'';if(!u||!k)return {ok:false,localOnly:true};try{const r=await fetch(u,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({token:k,action:action,data:data})});return JSON.parse(await r.text())}catch(e){return {ok:false,error:String(e&&e.message?e.message:e)}}}
+function lotById(l){l=normalizeLot(l);return allLots().find(x=>x.lot===l)||null}
+function guestModeEnabled(){return localStorage.getItem(LS.guestMode)==='1'}
+function applyGuestMode(){
+  const on=guestModeEnabled();
+  document.body.classList.toggle('guest-mode',on);
+  const btn=$('guestModeBtn'),status=$('guestModeStatus');
+  if(btn)btn.textContent=on?'Quitter le mode invité':'Mode famille / invité';
+  if(status)status.innerHTML=on
+    ? '<b>Consultation uniquement.</b> Recherche, FIFO, emplacements et alertes restent disponibles.'
+    : 'Mode normal : toutes les fonctions de gestion sont disponibles.';
+  if(on&&running)stopScanner();
+}
+function toggleGuestMode(){
+  localStorage.setItem(LS.guestMode,guestModeEnabled()?'0':'1');
+  applyGuestMode();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function updateMobileDashboard(){
+  const lots=allLots();
+  const ranged=lots.filter(x=>VALID.test(String(x.emplacement||''))||VALID.test(currentLocationForLot(x.lot))).length;
+  const temp=lots.length-ranged;
+  const occupied=new Set(lots.map(x=>{
+    const loc=currentLocationForLot(x.lot)||String(x.emplacement||'');
+    return VALID.test(loc)?loc:'';
+  }).filter(Boolean)).size;
+  let soon=0,expired=0;
+  lots.forEach(x=>{
+    const st=expiryState(x);
+    if(st.bucket==='expired')expired++;
+    else if(st.bucket==='3m')soon++;
+  });
+  const openOrders=orders().filter(o=>String(o.status||'').toLocaleLowerCase('fr-FR')!=='reçue'&&String(o.status||'').toLocaleLowerCase('fr-FR')!=='recue').length;
+  if($('dashLots'))$('dashLots').textContent=lots.length;
+  if($('dashRanged'))$('dashRanged').textContent=ranged;
+  if($('dashTemp'))$('dashTemp').textContent=temp;
+  if($('dashLocations'))$('dashLocations').textContent=occupied+' / '+allOfficialLocations().length;
+  if($('dashSoon'))$('dashSoon').textContent=soon;
+  if($('dashExpired'))$('dashExpired').textContent=expired;
+  if($('dashOrders'))$('dashOrders').textContent=openOrders;
+  if($('dashNextLot'))$('dashNextLot').textContent=nextLot();
+  const baseline=get(LS.reorder,null),count=reorderProposals().length;
+  if($('dashReorderCount'))$('dashReorderCount').textContent=baseline?.items?String(count):'—';
+  if($('dashReorderMessage'))$('dashReorderMessage').textContent=!baseline?.items?'Stock de référence non initialisé':count?'produit(s) avec une commande à proposer':'Aucune commande à proposer';
+  if($('dashSummary')){
+    const alerts=[];
+    if(temp)alerts.push(temp+' lot(s) à ranger');
+    if(expired)alerts.push(expired+' date(s) dépassée(s)');
+    if(soon)alerts.push(soon+' échéance(s) sous 3 mois');
+    $('dashSummary').innerHTML=alerts.length
+      ? '<b>À surveiller :</b> '+esc(alerts.join(' • '))
+      : '<b>✓ Aucun point urgent détecté.</b>';
+  }
+}
+function productReferences(){
+  const refs=new Map();
+  get(LS.products,[]).forEach(x=>{
+    const name=String(x.name||x.product||'').trim();
+    if(name)refs.set(name,{name,barcode:String(x.barcode||'').trim(),brand:String(x.brand||'').trim(),category:String(x.category||'').trim(),pack:String(x.pack||'').trim(),unit:String(x.unit||'').trim()});
+  });
+  allLots().forEach(x=>{
+    const name=String(x.produit||'').trim();
+    if(!name)return;
+    const current=refs.get(name)||{name,barcode:'',brand:'',category:'',pack:'',unit:''};
+    if(!current.category&&x.categorie)current.category=String(x.categorie).trim();
+    if(!current.pack&&x.conditionnement)current.pack=String(x.conditionnement).trim();
+    if(!current.unit&&x.unite)current.unit=String(x.unite).trim();
+    refs.set(name,current);
+  });
+  orders().forEach(x=>{
+    const name=String(x.product||'').trim();
+    if(!name)return;
+    const current=refs.get(name)||{name,barcode:'',brand:'',category:'',pack:'',unit:''};
+    if(!current.category&&x.category)current.category=String(x.category).trim();
+    if(!current.unit&&x.unit)current.unit=String(x.unit).trim();
+    refs.set(name,current);
+  });
+  return [...refs.values()].sort((a,b)=>a.name.localeCompare(b.name,'fr'));
+}
+function populateOrderProducts(){
+  const sel=$('oProduct');if(!sel)return;
+  const current=sel.value;
+  const refs=productReferences();
+  sel.innerHTML='<option value="">— Choisir un produit —</option>'+refs.map(x=>'<option value="'+esc(x.name)+'">'+esc(x.name)+'</option>').join('')+'<option value="__new__">+ Ajouter un nouveau produit</option>';
+  if(current==='__new__'||refs.some(x=>x.name===current))sel.value=current;
+  toggleNewProductField();
+}
+function toggleNewProductField(){
+  const sel=$('oProduct'),wrap=$('oNewProductWrap');
+  if(!sel||!wrap)return;
+  const isNew=sel.value==='__new__';
+  wrap.classList.toggle('hidden',!isNew);
+  if(isNew){setTimeout(()=>$('oNewProduct')?.focus(),0);return}
+  if(sel.value){
+    const ref=productReferences().find(x=>x.name===sel.value);
+    if(ref?.category&&[...$('oCategory').options].some(o=>o.value===ref.category))$('oCategory').value=ref.category;
+    if(ref?.unit&&[...$('oUnit').options].some(o=>o.value===ref.unit))$('oUnit').value=ref.unit;
+  }
+}
+function populateQuickProducts(){
+  const sel=$('qProduct');if(!sel)return;
+  const current=sel.value;
+  const refs=productReferences();
+  sel.innerHTML='<option value="">— Choisir un produit —</option>'+refs.map(x=>'<option value="'+esc(x.name)+'">'+esc(x.name)+'</option>').join('')+'<option value="__new__">+ Ajouter un nouveau produit</option>';
+  if(current==='__new__'||refs.some(x=>x.name===current))sel.value=current;
+  toggleQuickNewProduct();
+}
+function usableQuickPack(value){
+  const pack=String(value||'').trim();
+  return pack&&!/^(Emballage d'origine|Bouteille \/ brique)$/i.test(pack);
+}
+function suggestedQuickPack(product,ref){
+  const lots=allLots().filter(x=>String(x.produit||'').trim()===product&&usableQuickPack(x.conditionnement));
+  // The most recent lot has priority over an old or generic product reference.
+  return lots.length?String(lots[lots.length-1].conditionnement).trim():(usableQuickPack(ref?.pack)?ref.pack:'');
+}
+function quickPackForQuantity(pack,qty,unit){
+  const input=String(pack||'').trim();
+  const low=String(unit||'').toLowerCase();
+  const singular={boîte:'boîte',bocal:'bocal',paquet:'paquet'};
+  const plural={boîte:'boîtes',bocal:'bocaux',paquet:'paquets'};
+  if(!singular[low])return input;
+  // A suggestion from a previous lot must never copy the previous quantity.
+  const previous=input.match(/^\d+\s+(?:boîtes?|bocaux|bocal|paquets?)\s+de\s+(\d+(?:[,.]\d+)?\s*(?:kg|g|ml|l))\b/i);
+  const size=previous?previous[1]:input;
+  if(/^\d+(?:[,.]\d+)?\s*(?:kg|g|ml|l)$/i.test(size))
+    return qty+' '+(qty===1?singular[low]:plural[low])+' de '+size;
+  return input;
+}
+function toggleQuickNewProduct(){
+  const sel=$('qProduct'),wrap=$('qNewProductWrap');
+  if(!sel||!wrap)return;
+  const isNew=sel.value==='__new__';
+  wrap.classList.toggle('hidden',!isNew);
+  $('qPack').value='';
+  if(isNew){setTimeout(()=>$('qNewProduct')?.focus(),0);return}
+  if(sel.value){
+    const ref=productReferences().find(x=>x.name===sel.value);
+    if(ref?.category&&[...$('qCategory').options].some(o=>o.value===ref.category))$('qCategory').value=ref.category;
+    if(ref?.unit&&[...$('qUnit').options].some(o=>o.value===ref.unit))$('qUnit').value=ref.unit;
+    $('qPack').value=suggestedQuickPack(sel.value,ref);
+  }
+}
+function populateQuickLocations(){
+  const sel=$('qLocation');if(!sel)return;
+  const current=sel.value;
+  sel.innerHTML='<option value="">— À affecter plus tard —</option>'+allOfficialLocations().map(loc=>'<option value="'+loc+'">'+loc+'</option>').join('');
+  if(allOfficialLocations().includes(current))sel.value=current;
+}
+
+function setAppView(view,scroll=true){
+  const allowed=['home','entries','stock','products','config'];
+  if(!allowed.includes(view))view='home';
+  document.body.dataset.appView=view;
+  localStorage.setItem('stock42V55IsolatedAppView',view);
+  document.querySelectorAll('#mainNav button[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===view));
+  if(view==='products')renderProductReference();
+  if(scroll)window.scrollTo({top:0,behavior:'smooth'});
+}
+function renderProductReference(){
+  const refs=productReferences();
+  if($('productRefCount'))$('productRefCount').textContent=refs.length;
+  if($('productBarcodeCount'))$('productBarcodeCount').textContent=refs.filter(x=>String(x.barcode||'').trim()).length;
+  const q=normalizeSearchText($('productRefSearch')?.value||'');
+  const rows=q?refs.filter(x=>normalizeSearchText([x.name,x.brand,x.category,x.barcode,x.pack].join(' ')).includes(q)):refs;
+  const el=$('productRefList');if(!el)return;
+  if(!rows.length){el.innerHTML='<div class="empty">Aucun produit trouvé.</div>';return}
+  el.innerHTML=rows.slice(0,80).map(x=>'<div class="product-ref-row"><div class="item-title">'+esc(x.name)+(x.brand?' <span class="badge">'+esc(x.brand)+'</span>':'')+'</div><div class="item-meta">'+esc(x.category||'Catégorie non renseignée')+(x.pack?' • '+esc(x.pack):'')+(x.unit?' • '+esc(x.unit):'')+(x.barcode?' • EAN '+esc(x.barcode):' • code-barres non enregistré')+'</div></div>').join('');
+}
+function openNewProductFromMenu(){
+  setAppView('entries',false);
+  showPane('quickPane');
+  $('qProduct').value='__new__';
+  toggleQuickNewProduct();
+  $('qNewProduct').focus();
+  $('quickPane').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+const REORDER_RATIO=0.75;
+function reorderKey(name,unit){return String(name||'').trim().toLocaleLowerCase('fr-FR')+'|'+String(unit||'').trim().toLocaleLowerCase('fr-FR')}
+function stockByProduct(){
+  const map=new Map();
+  allLots().forEach(l=>{
+    const name=String(l.produit||'').trim(),unit=String(l.unite||'').trim();
+    if(!name||!unit)return;
+    const key=reorderKey(name,unit),qty=currentQtyForLot(l);
+    if(!Number.isFinite(qty)||qty<0)return;
+    const item=map.get(key)||{key,name,unit,category:String(l.categorie||'').trim(),qty:0};
+    item.qty+=qty;if(!item.category)item.category=String(l.categorie||'').trim();
+    map.set(key,item);
+  });
+  return map;
+}
+function initializeReorderBaseline(){
+  if(localStorage.getItem(LS.reorder)!==null)return;
+  const stock=stockByProduct(),items={};
+  for(const [key,x] of stock)if(x.qty>0)items[key]={name:x.name,unit:x.unit,category:x.category,reference:x.qty};
+  if(Object.keys(items).length)set(LS.reorder,{createdAt:new Date().toISOString(),items});
+}
+function reorderProposals(){
+  const baseline=get(LS.reorder,null);
+  if(!baseline||!baseline.items)return [];
+  const stock=stockByProduct();
+  return Object.entries(baseline.items).map(([key,b])=>{
+    const current=stock.get(key)?.qty||0,reference=Number(b.reference);
+    if(!Number.isFinite(reference)||reference<=0)return null;
+    const pending=orders().filter(o=>o.status==='Commandée'&&reorderKey(o.product,o.unit)===key)
+      .reduce((sum,o)=>sum+Math.max(0,Number(o.qty)||0),0);
+    const need=Math.max(0,Math.round((reference-current-pending)*1000)/1000);
+    return {key,name:b.name,unit:b.unit,category:b.category||stock.get(key)?.category||'',reference,current,pending,need,ratio:current/reference};
+  }).filter(x=>x&&x.ratio<=REORDER_RATIO&&x.need>0).sort((a,b)=>a.ratio-b.ratio);
+}
+function renderReorder(){
+  const baseline=get(LS.reorder,null),proposals=reorderProposals();
+  const el=$('reorderList'),status=$('reorderBaselineStatus');
+  if(status)status.textContent=baseline?.items?'Référence fixée le '+new Date(baseline.createdAt).toLocaleString('fr-FR')+' pour '+Object.keys(baseline.items).length+' produit(s)/unité(s).':'Référence non encore initialisée : charger ou synchroniser les lots.';
+  if($('reorderDash'))$('reorderDash').textContent=baseline?.items?proposals.length+' proposition(s) de réapprovisionnement à examiner.':'Stock de référence à initialiser.';
+  if(!el)return;
+  if(!baseline?.items){el.innerHTML='<div class="empty">Stock de référence non initialisé. Synchronisez les lots.</div>';return}
+  if(!proposals.length){el.innerHTML='<div class="notice">Aucun réapprovisionnement à proposer pour le moment.</div>';return}
+  el.innerHTML='<div class="section-title">Propositions automatiques ('+proposals.length+')</div>'+
+  proposals.map((x,i)=>'<div class="list-item"><div class="item-top"><div><div class="item-title">'+esc(x.name)+'</div><div class="item-meta">Stock '+esc(x.current)+' / '+esc(x.reference)+' '+esc(x.unit)+' ('+Math.round(100*x.ratio)+' %) • En commande : '+esc(x.pending)+' '+esc(x.unit)+'</div><div class="item-meta"><b>À commander : '+esc(x.need)+' '+esc(x.unit)+'</b></div></div><button class="btn primary" data-reorder="'+i+'">Valider</button></div></div>').join('');
+  el.querySelectorAll('[data-reorder]').forEach(b=>b.onclick=()=>approveReorder(proposals[Number(b.dataset.reorder)]?.key));
+}
+async function approveReorder(key){
+  if(guestModeEnabled())return;
+  // Recalculate immediately to prevent stale suggestions or duplicate clicks.
+  const x=reorderProposals().find(p=>p.key===key);
+  if(!x)return;
+  if(!x.category){alert('Catégorie manquante : compléter la fiche produit avant validation.');return}
+  if(!confirm('Créer une commande de '+x.need+' '+x.unit+' pour '+x.name+' ?'))return;
+  const check=reorderProposals().find(p=>p.key===key);if(!check)return;
+  const rec={id:nextOrder(),status:'Commandée',product:check.name,category:check.category,qty:check.need,unit:check.unit,price:null,supplier:'',reference:'',orderDate:today(),expected:'',notes:'Réapprovisionnement automatique : retour à 100 %',createdAt:new Date().toISOString()};
+  const os=orders();os.push(rec);set(LS.orders,os);
+  const sync=await sendToSheet('order',rec);
+  if(!sync.ok)alert('Commande enregistrée sur cet appareil, mais synchronisation Google Sheets non confirmée. Vérifiez avant de la ressaisir.');
+  updateStats();
+}
+function resetReorderBaseline(){
+  if(!confirm('Remplacer définitivement les références 100 % par les stocks disponibles actuels ?'))return;
+  const stock=stockByProduct(),items={};
+  for(const [key,x] of stock)if(x.qty>0)items[key]={name:x.name,unit:x.unit,category:x.category,reference:x.qty};
+  if(!Object.keys(items).length){alert('Aucun stock disponible pour fixer une référence.');return}
+  set(LS.reorder,{createdAt:new Date().toISOString(),items});updateStats();
+}
+
+function updateStats(){ $('catalogCount').textContent=allLots().length;$('nextLot').textContent=nextLot();const t=localStorage.getItem(LS.imported);$('importStatus').textContent=t?'Dernier import : '+new Date(t).toLocaleString('fr-FR')+' • '+catalog().length+' lot(s) chargé(s).':'Aucun tableau importé sur cet appareil.';renderOrders();populateOrderProducts();populateQuickProducts();populateQuickLocations();populateCategorySearch();populateInventoryLocations();populateExitLocations();populateExitControls();populateMoveControls();populateFifoProducts();populateLocationView();updateExpiryStats();updateMobileDashboard();renderProductReference();renderReorder() }
+function parseNumber(v){if(typeof v==='number')return v;const s=String(v??'').replace(/\s/g,'').replace(',','.').replace(/[^0-9.-]/g,'');return s?Number(s):null}
+function excelDate(v){if(!v)return'';if(v instanceof Date)return v.toLocaleDateString('fr-FR');return String(v)}
+async function importWorkbook(){
+  const file=$('stockFile').files[0];if(!file){$('importStatus').textContent='Choisissez votre fichier Gestion_stock_alimentaire_autonomie.xlsm.';return}
+  if(typeof XLSX==='undefined'){$('importStatus').textContent='Le module Excel n\'est pas chargé. Vérifiez la connexion Internet et rechargez la page.';return}
+  try{
+    const data=await file.arrayBuffer();const wb=XLSX.read(data,{type:'array',cellDates:true,bookVBA:true});
+    const ws=wb.Sheets['Réception & lots'];if(!ws)throw new Error('Onglet « Réception & lots » introuvable');
+    const rows=XLSX.utils.sheet_to_json(ws,{range:3,defval:'',raw:true});
+    const used=rows.filter(r=>normalizeLot(r['N° lot interne']) && (r['Produit']||r['Quantité reçue']||r['Date réception']));
+    const lots=used.map(r=>({lot:normalizeLot(r['N° lot interne']),dateReception:excelDate(r['Date réception']),produit:String(r['Produit']||''),categorie:String(r['Catégorie']||''),quantite:parseNumber(r['Quantité reçue']),unite:String(r['Unité']||''),ddm:excelDate(r['DDM / DLC']),typeDate:String(r['Type date']||''),fournisseur:String(r['Fournisseur']||''),reference:String(r['Référence / commande']||''),zone:String(r['Zone actuelle']||''),emplacement:String(r['Emplacement']||''),statut:String(r['Statut']||''),conditionnement:String(r['Conditionnement']||''),lotFabricant:String(r['Lot fabricant']||''),notes:String(r['Notes']||'')}));
+    set(LS.catalog,lots);localStorage.setItem(LS.imported,new Date().toISOString());initializeReorderBaseline();
+    let a=assignments();const byId=new Map(a.map(x=>[x.id,x]));lots.filter(x=>VALID.test(x.emplacement||'')).forEach(x=>{byId.set(x.lot+'@'+x.emplacement,{id:x.lot+'@'+x.emplacement,lot:x.lot,location:x.emplacement,assignedAt:new Date().toISOString()})});set(LS.assign,[...byId.values()]);
+    $('importStatus').textContent='Import réussi : '+lots.length+' lot(s) utilisés détectés. Prochain lot : '+nextLot()+'.';updateStats();if(activeLocation)renderLocationStock();
+  }catch(e){console.error(e);$('importStatus').textContent='Import impossible : '+e.message}
+}
+function clearCatalog(){if(!confirm('Effacer uniquement le catalogue importé de ce téléphone ? Les commandes et nouveaux lots saisis dans l’application seront conservés.'))return;localStorage.removeItem(LS.catalog);localStorage.removeItem(LS.imported);updateStats()}
+function rememberProductReference(data){
+  const name=String(data.name||'').trim();if(!name)return;
+  const list=get(LS.products,[]);
+  const i=list.findIndex(x=>String(x.name||'').trim()===name);
+  const current=i>=0?list[i]:{name,barcode:'',brand:'',category:'',pack:'',unit:''};
+  const next={...current,name,barcode:data.barcode||current.barcode||'',brand:data.brand||current.brand||'',category:data.category||current.category||'',pack:data.pack||current.pack||'',unit:data.unit||current.unit||''};
+  if(i>=0)list[i]=next;else list.push(next);
+  set(LS.products,list);
+}
+async function saveOrder(){
+  const selected=$('oProduct').value;
+  const product=(selected==='__new__'?$('oNewProduct').value:selected).trim();
+  const qty=parseNumber($('oQty').value);
+  if(!product||qty===null){$('orderStatus').textContent='Produit et quantité sont obligatoires.';return}
+  const category=$('oCategory').value.trim();
+  if(!category){$('orderStatus').textContent='Choisissez une catégorie.';return}
+  const a=orders();const rec={id:nextOrder(),status:'Commandée',product,category,qty,unit:$('oUnit').value,price:parseNumber($('oPrice').value),supplier:$('oSupplier').value.trim(),reference:$('oReference').value.trim(),orderDate:$('oDate').value||today(),expected:$('oExpected').value,notes:$('oNotes').value.trim(),createdAt:new Date().toISOString()};
+  a.push(rec);set(LS.orders,a);rememberProductReference({name:product,category,unit:rec.unit});const sync=await sendToSheet('order',rec);$('orderStatus').innerHTML='<span class="badge green">Commande '+esc(rec.id)+' enregistrée</span> '+(sync.ok?'• Google Sheets OK':'• enregistrée localement');['oProduct','oCategory','oQty','oPrice','oSupplier','oReference','oExpected','oNotes','oNewProduct'].forEach(id=>$(id).value='');$('oUnit').value='';$('oDate').value=today();updateStats()
+}
+async function saveQuickEntry(){
+  const btn=$('quickSaveBtn'),status=$('quickStatus');
+  if(btn.disabled)return;
+  const selected=$('qProduct').value;
+  const product=(selected==='__new__'?$('qNewProduct').value:selected).trim();
+  const category=$('qCategory').value.trim();
+  const qty=parseNumber($('qQty').value);
+  const unit=$('qUnit').value;
+  if(!product||!category||qty===null||!unit){status.textContent='Produit, catégorie, quantité et unité sont obligatoires.';return}
+  const inputPack=$('qPack').value.trim();
+  if(['boîte','bocal','paquet'].includes(unit)&&!usableQuickPack(inputPack)){
+    status.textContent='Précisez le conditionnement (ex. 400 g par boîte) avant de créer le lot.';
+    $('qPack').focus();return;
+  }
+  const normalizedPack=quickPackForQuantity(inputPack,qty,unit);
+  const orderId=nextOrder(),lot=nextLot(),location=$('qLocation').value;
+  const order={id:orderId,status:'Commandée',product,category,qty,unit,price:null,supplier:$('qSupplier').value.trim(),reference:'',orderDate:today(),expected:today(),notes:'Entrée rapide',createdAt:new Date().toISOString()};
+  const rec={lot,dateReception:today(),produit:product,categorie:category,quantite:qty,unite:unit,ddm:$('qExpiry').value.trim(),typeDate:$('qDateType').value,fournisseur:order.supplier,reference:orderId,zone:'',emplacement:'',statut:'En stock',conditionnement:normalizedPack,lotFabricant:'',notes:'Entrée rapide',sourceOrder:orderId,createdAt:new Date().toISOString()};
+  btn.disabled=true;btn.textContent='✓ Enregistrement en cours…';status.textContent='Création de la commande…';
+  const orderSync=await sendToSheet('order',order);
+  if(!orderSync.ok){status.innerHTML='<div class="notice" style="border-color:#fde68a;background:#fffbeb;color:#92400e"><b>⚠ Entrée rapide interrompue</b><br>La création de la commande n’a pas été confirmée par Google Sheets.</div>';btn.disabled=false;btn.textContent='Créer et ranger le lot';return}
+  const os=orders();os.push(order);set(LS.orders,os);
+  status.textContent='Création du lot '+lot+'…';
+  const legacyRack=/^42-R[1-3]-N[1-5]-[ABC]$/i.test(location);
+  const receiveLocation=location&&!legacyRack?location:'';
+  const receiveSync=await sendToSheet('receive',{...rec,location:receiveLocation,zone:receiveLocation?(receiveLocation.startsWith('38-')?'Site 38':'Site 42'):rec.zone,statut:receiveLocation?'Rangé':rec.statut,orderId});
+  if(!receiveSync.ok){
+    status.innerHTML='<div class="notice" style="border-color:#fde68a;background:#fffbeb;color:#92400e"><b>⚠ Commande '+esc(orderId)+' créée, mais réception non confirmée.</b><br>Vous pouvez la terminer depuis « Commandes en cours ».</div>';
+    updateStats();btn.disabled=false;btn.textContent='Créer et ranger le lot';return;
+  }
+  const lots=localLots();lots.push(rec);set(LS.lots,lots);
+  rememberProductReference({name:product,barcode:quickScannedBarcode,brand:quickScannedBrand,category,unit,pack:rec.conditionnement});
+  const updated=orders();const oi=updated.findIndex(x=>x.id===orderId);if(oi>=0)updated[oi]={...updated[oi],status:'Reçue',receivedAt:new Date().toISOString(),lot};set(LS.orders,updated);
+  const mv=get(LS.moves,[]);mv.push({date:today(),lot,produit:product,type:'Entrée',quantite:qty,unite:unit,source:'',destination:'',commentaire:'Réception '+orderId+' • Entrée rapide',reference:orderId,createdAt:new Date().toISOString()});set(LS.moves,mv);
+  let assignOk=true;
+  if(location){
+    if(!legacyRack){
+      let a=assignments().filter(x=>x.lot!==lot);a.push({id:lot+'@'+location,lot,location,assignedAt:new Date().toISOString()});set(LS.assign,a);
+      const ll=localLots(),li=ll.findIndex(x=>x.lot===lot);if(li>=0){ll[li]={...ll[li],emplacement:location,zone:location.startsWith('38-')?'Site 38':'Site 42',statut:'Rangé'};set(LS.lots,ll)}
+      const mm=get(LS.moves,[]);mm.push({date:today(),lot,produit:product,type:'Transfert',quantite:0,unite:unit,source:'',destination:location,commentaire:'Affectation entrée rapide',createdAt:new Date().toISOString()});set(LS.moves,mm);
+    }else{
+      status.textContent='Affectation de '+lot+' à '+location+'…';
+      const assignSync=await sendToSheet('assign',{lot,location});
+      assignOk=!!assignSync.ok;
+      if(assignOk){
+      let a=assignments().filter(x=>x.lot!==lot);a.push({id:lot+'@'+location,lot,location,assignedAt:new Date().toISOString()});set(LS.assign,a);
+      const ll=localLots(),li=ll.findIndex(x=>x.lot===lot);if(li>=0){ll[li]={...ll[li],emplacement:location,zone:location.split('-').slice(1,3).join('-')};set(LS.lots,ll)}
+      const mm=get(LS.moves,[]);mm.push({date:today(),lot,produit:product,type:'Transfert',quantite:0,unite:unit,source:'',destination:location,commentaire:'Affectation entrée rapide',createdAt:new Date().toISOString()});set(LS.moves,mm);
+      }
+    }
+  }
+  updateStats();
+  status.innerHTML=location&&assignOk
+    ? '<div class="notice" style="border-color:#86efac;background:#ecfdf5;color:#166534"><b>✓ '+esc(lot)+' créé et rangé</b><br>'+esc(product)+' • '+esc(qty)+' '+esc(unit)+' • '+esc(location)+'</div>'
+    : location&&!assignOk
+      ? '<div class="notice" style="border-color:#fde68a;background:#fffbeb;color:#92400e"><b>✓ '+esc(lot)+' créé</b><br>Le lot existe, mais l’affectation à '+esc(location)+' n’a pas été confirmée.</div>'
+      : '<div class="notice" style="border-color:#86efac;background:#ecfdf5;color:#166534"><b>✓ '+esc(lot)+' créé</b><br>Lot à affecter ultérieurement.</div>';
+  ['qProduct','qCategory','qQty','qExpiry','qSupplier','qPack','qNewProduct','qLocation'].forEach(id=>$(id).value='');
+  quickScannedBarcode='';quickScannedBrand='';$('qBarcodeInfo').textContent='';
+  $('qUnit').value='';$('qDateType').value='DDM';populateQuickProducts();populateQuickLocations();
+  btn.disabled=false;btn.textContent='Créer et ranger le lot';
+}
+function renderOrders(){
+  const el=$('ordersList'),pending=orders().filter(x=>x.status==='Commandée');if(!pending.length){el.innerHTML='<div class="empty">Aucune commande en cours.</div>';return}
+  el.innerHTML=pending.map(x=>'<div class="list-item"><div class="item-top"><div><div class="item-title">'+esc(x.id)+' — '+esc(x.product)+'</div><div class="item-meta">'+esc(x.qty)+' '+esc(x.unit)+' • '+esc(x.supplier||'Fournisseur non renseigné')+(x.expected?' • prévue '+esc(x.expected):'')+'</div></div><button class="btn success" data-receive="'+esc(x.id)+'" style="padding:8px 10px">Réceptionner</button></div></div>').join('');
+  el.querySelectorAll('[data-receive]').forEach(b=>b.onclick=()=>openReceive(b.dataset.receive))
+}
+function openReceive(id){
+  const o=orders().find(x=>x.id===id);if(!o)return;receiveOrderId=id;$('receiveEmpty').classList.add('hidden');$('receiveForm').classList.remove('hidden');$('rOrderId').value=id;$('rLot').value=nextLot();$('rProduct').value=o.product;$('rQty').value=o.qty;$('rUnit').value=o.unit;$('rDate').value=today();$('rExpiry').value='';$('rDateType').value='DDM';$('rPack').value='';$('rMakerLot').value='';$('rNotes').value=o.notes||'';$('rAssignActive').checked=!!activeLocation;showPane('receivePane')
+}
+function cancelReceive(){receiveOrderId=null;$('receiveForm').classList.add('hidden');$('receiveEmpty').classList.remove('hidden');$('receiveStatus').textContent=''}
+async function confirmReceive(){
+  const btn=$('confirmReceiveBtn');if(btn.disabled)return;btn.disabled=true;
+  const o=orders().find(x=>x.id===receiveOrderId);if(!o){btn.disabled=false;return}const qty=parseNumber($('rQty').value);if(!$('rProduct').value.trim()||qty===null){$('receiveStatus').textContent='Produit et quantité reçue sont obligatoires.';btn.disabled=false;return}
+  const lot=nextLot(),rec={lot,dateReception:$('rDate').value||today(),produit:$('rProduct').value.trim(),categorie:o.category||'',quantite:qty,unite:$('rUnit').value,ddm:$('rExpiry').value.trim(),typeDate:$('rDateType').value,fournisseur:o.supplier||'',reference:o.reference||o.id,zone:'',emplacement:'',statut:'En stock',conditionnement:$('rPack').value.trim(),lotFabricant:$('rMakerLot').value.trim(),notes:$('rNotes').value.trim(),sourceOrder:o.id,createdAt:new Date().toISOString()};
+  const lots=localLots();lots.push(rec);set(LS.lots,lots);
+  const os=orders();const ix=os.findIndex(x=>x.id===o.id);os[ix]={...os[ix],status:'Reçue',receivedAt:new Date().toISOString(),lot};set(LS.orders,os);
+  const mv=get(LS.moves,[]);mv.push({date:$('rDate').value||today(),lot,produit:rec.produit,type:'Entrée',quantite:qty,unite:rec.unite,source:'',destination:activeLocation&&$('rAssignActive').checked?activeLocation:'',commentaire:'Réception '+o.id,reference:o.reference||o.id,createdAt:new Date().toISOString()});set(LS.moves,mv);
+  if(activeLocation&&$('rAssignActive').checked)assignLotTo(lot,activeLocation,false);
+  const sync=await sendToSheet('receive',{...rec,location:(activeLocation&&$('rAssignActive').checked)?activeLocation:'',orderId:o.id});
+  $('receiveStatus').innerHTML='<span class="badge green">'+esc(lot)+' créé</span> Réception enregistrée. '+(sync.ok?'• Google Sheets OK':'• enregistrée localement');receiveOrderId=null;updateStats();renderOrders();if(activeLocation)renderLocationStock();$('rLot').value=nextLot();btn.disabled=false;
+}
+function showPane(id){document.querySelectorAll('[id$="Pane"]').forEach(x=>x.classList.add('hidden'));$(id).classList.remove('hidden');document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.pane===id))}
+function showResult(raw){
+  if(quickProductScanMode){
+    const barcode=normalizeBarcode(raw);
+    if(barcode.length<8||barcode.length>14){$('status').textContent='Code produit non reconnu. Visez le code EAN/UPC.';return}
+    quickProductScanMode=false;
+    handleQuickProductBarcode(barcode);
+    return;
+  }
+  const p=parseCode(raw);
+  if(exitScanMode){
+    if(!p.valid){$('status').textContent='QR non reconnu. Scannez un emplacement officiel.';return}
+    exitScanMode=false;setExitLocation(p.code);
+    $('exitStatus').innerHTML='<div class="notice"><b>✓ Emplacement scanné : '+esc(p.code)+'</b><br>Choisissez maintenant le lot à sortir.</div>';
+    if(navigator.vibrate)navigator.vibrate(70);
+    stopScanner().then(()=>$('exitCard').scrollIntoView({behavior:'smooth',block:'start'}));
+    return;
+  }
+  if(moveScanMode){
+    if(!p.valid){$('status').textContent='QR non reconnu. Scannez un emplacement 42-Rx-Nx-X.';return}
+    moveScanMode=false;
+    $('moveDestinationSelect').value=p.code;
+    $('moveStatus').innerHTML='<div class="notice"><b>✓ Nouvel emplacement scanné : '+esc(p.code)+'</b><br>Vérifiez puis appuyez sur « Confirmer le déplacement ».</div>';
+    if(navigator.vibrate)navigator.vibrate(70);
+    stopScanner().then(()=>$('moveCard').scrollIntoView({behavior:'smooth',block:'center'}));
+    return;
+  }
+  if(quickScanMode){
+    if(!p.valid){$('status').textContent='QR non reconnu. Scannez un emplacement 42-Rx-Nx-X.';return}
+    quickScanMode=false;
+    $('qLocation').value=p.code;
+    $('quickStatus').innerHTML='<div class="notice"><b>✓ Emplacement scanné : '+esc(p.code)+'</b><br>Vous pouvez terminer la saisie puis créer le lot.</div>';
+    if(navigator.vibrate)navigator.vibrate(70);
+    stopScanner().then(()=>{showPane('quickPane');$('quickPane').scrollIntoView({behavior:'smooth',block:'start'})});
+    return;
+  }
+  const box=$('result');box.style.display='block';box.classList.remove('ok','bad');$('resultCode').textContent=p.code||'Code vide';
+  if(p.valid){box.classList.add('ok');$('resultMsg').textContent='Emplacement reconnu.';
+  let detail='<div class="kv"><div class="k">Site</div><div class="v">'+esc(p.site)+'</div></div>';
+  if(p.kind==='rack')detail+='<div class="kv"><div class="k">Rayonnage</div><div class="v">R'+p.rack+'</div></div><div class="kv"><div class="k">Niveau</div><div class="v">N'+p.level+'</div></div><div class="kv"><div class="k">Sous-zone</div><div class="v">'+p.zoneLetter+' — '+p.zone+'</div></div>';
+  else if(p.kind==='etage')detail+='<div class="kv"><div class="k">Zone</div><div class="v">Étage</div></div><div class="kv"><div class="k">Emplacement</div><div class="v">'+p.slot+'</div></div>';
+  else if(p.kind==='congelateur')detail+='<div class="kv"><div class="k">Zone</div><div class="v">Congélateur</div></div><div class="kv"><div class="k">Emplacement</div><div class="v">'+p.slot+'</div></div>';
+  else if(p.kind==='garage')detail+='<div class="kv"><div class="k">Zone</div><div class="v">Garage</div></div><div class="kv"><div class="k">Emplacement</div><div class="v">'+p.slot+'</div></div>';
+  $('details').innerHTML=detail;activeLocation=p.code;$('activeLocation').textContent=p.code;$('locationTitle').textContent=p.code;$('assignCard').classList.remove('hidden');$('locationStockCard').classList.remove('hidden');addHistory(p.code);renderLocationStock();if(navigator.vibrate)navigator.vibrate(70)}else{box.classList.add('bad');$('resultMsg').textContent='Code d’emplacement non reconnu.';$('details').innerHTML=''}
+  box.scrollIntoView({behavior:'smooth',block:'center'})
+}
+function addHistory(code){let h=get(LS.history,[]);h=h.filter(x=>x.code!==code);h.unshift({code,time:new Date().toISOString()});set(LS.history,h.slice(0,12))}
+function previewLot(raw,target='lotPreview'){const lot=normalizeLot(raw),x=lotById(lot),el=$(target);if(!LOT.test(lot)){el.innerHTML='<div class="empty">Numéro de lot invalide.</div>';if(target==='lotPreview')$('assignLotBtn').disabled=true;return null}if(!x){el.innerHTML='<div class="empty">'+esc(lot)+' n’est pas encore connu.</div>';if(target==='lotPreview')$('assignLotBtn').disabled=true;return null}el.innerHTML='<div class="notice"><b>'+esc(lot)+'</b> — '+esc(x.produit||'Produit non renseigné')+'<br>'+esc(displayQtyForLot(x))+(x.ddm?' • DDM/DLC '+esc(x.ddm):'')+'</div>';if(target==='lotPreview'){$('lotInput').value=lot;$('assignLotBtn').disabled=false}return x}
+async function assignLotTo(lot,location,notify=true){lot=normalizeLot(lot);if(!lotById(lot)||!VALID.test(location))return;const oldLocation=currentLocationForLot(lot);let a=assignments().filter(x=>x.lot!==lot);a.push({id:lot+'@'+location,lot,location,assignedAt:new Date().toISOString()});set(LS.assign,a);const ll=localLots();const i=ll.findIndex(x=>x.lot===lot);if(i>=0){ll[i]={...ll[i],emplacement:location,zone:location.split('-').slice(1,3).join('-')};set(LS.lots,ll)}const mv=get(LS.moves,[]);const prod=lotById(lot);mv.push({date:today(),lot,produit:prod?.produit||'',type:'Transfert',quantite:0,unite:prod?.unite||'',source:oldLocation,destination:location,commentaire:oldLocation?'Déplacement emplacement':'Affectation emplacement',createdAt:new Date().toISOString()});set(LS.moves,mv);
+const btn=$('assignLotBtn');
+if(btn){btn.disabled=true;btn.dataset.oldText=btn.textContent;btn.textContent='✓ Affectation en cours…'}
+const sync=await sendToSheet('assign',{lot,location});
+if(notify){
+  $('assignStatus').innerHTML=sync.ok
+    ? '<div class="notice" style="border-color:#86efac;background:#ecfdf5;color:#166534"><b>✓ '+esc(lot)+' affecté à '+esc(location)+'</b><br>Synchronisé avec Google Sheets.</div>'
+    : '<div class="notice" style="border-color:#fde68a;background:#fffbeb;color:#92400e"><b>⚠ '+esc(lot)+' affecté localement à '+esc(location)+'</b><br>Synchronisation Google Sheets non confirmée.</div>';
+}
+renderLocationStock();
+if(btn){
+  btn.textContent=sync.ok?'✓ Lot affecté':'⚠ Affecté localement';
+  setTimeout(()=>{btn.disabled=false;btn.textContent=btn.dataset.oldText||'Affecter ce lot'},1800);
+}}
+function renderLocationStock(){if(!activeLocation)return;const rows=assignments().filter(x=>x.location===activeLocation).map(a=>({...a,lotData:lotById(a.lot)})).filter(x=>x.lotData&&String(x.lotData.produit||'').trim());const el=$('locationStock');if(!rows.length){el.innerHTML='<div class="empty">Aucun lot affecté.</div>';return}rows.sort((a,b)=>String(a.lotData?.ddm||'9999').localeCompare(String(b.lotData?.ddm||'9999')));el.innerHTML=rows.map((x,i)=>'<div class="list-item"><div class="item-title">'+esc(x.lot)+(currentQtyForLot(x.lotData)<=0?' <span class="badge">ÉPUISÉ</span>':'')+(i===0? ' <span class="badge blue">FIFO</span>':'')+'</div><div>'+esc(x.lotData?.produit||'Produit non renseigné')+'</div><div class="item-meta">'+esc(displayQtyForLot(x.lotData))+(x.lotData?.ddm?' • '+esc(x.lotData.ddm):'')+'</div></div>').join('')}
+function normalizeSearchText(v){
+  return String(v||'')
+    .toLocaleLowerCase('fr-FR')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-z0-9]+/g,' ')
+    .trim();
+}
+function levenshtein(a,b){
+  a=normalizeSearchText(a);b=normalizeSearchText(b);
+  const m=a.length,n=b.length;
+  if(!m)return n;if(!n)return m;
+  const prev=Array.from({length:n+1},(_,i)=>i),cur=new Array(n+1);
+  for(let i=1;i<=m;i++){
+    cur[0]=i;
+    for(let j=1;j<=n;j++)cur[j]=Math.min(cur[j-1]+1,prev[j]+1,prev[j-1]+(a[i-1]===b[j-1]?0:1));
+    for(let j=0;j<=n;j++)prev[j]=cur[j];
+  }
+  return prev[n];
+}
+function tolerantProductScore(query,product){
+  const q=normalizeSearchText(query),p=normalizeSearchText(product);
+  if(!q||!p)return 999;
+  if(p===q)return 0;
+  if(p.startsWith(q))return 1;
+  if(p.includes(q))return 2;
+  const qWords=q.split(' ').filter(Boolean),pWords=p.split(' ').filter(Boolean);
+  if(qWords.every(w=>pWords.some(pw=>pw===w||pw.startsWith(w)||w.startsWith(pw))))return 3;
+  // Tolérance aux fautes uniquement pour les mots assez longs.
+  // Évite les faux positifs courts comme "pates" -> "dattes".
+  let best=999;
+  for(const qw of qWords){
+    if(qw.length<6)continue;
+    for(const pw of pWords){
+      if(pw.length<6)continue;
+      const d=levenshtein(qw,pw);
+      const limit=qw.length<=7?1:2;
+      if(d<=limit)best=Math.min(best,4+d);
+    }
+  }
+  return best;
+}
+function containerLabel(x){
+  const pack=String(x?.conditionnement||'');
+  const m=pack.match(/\bSeau\s+([AB]\s*0?\d{1,2})\b/i);
+  if(!m)return '';
+  return 'Seau '+m[1].replace(/\s+/g,'').toUpperCase();
+}
+function displayQtyForLot(x, quantityOverride){
+  // Format unique pour tous les écrans. Aucune modification des quantités ni des mouvements.
+  const qty=quantityOverride===undefined?currentQtyForLot(x):Number(quantityOverride);
+  const unit=String(x?.unite||'').trim();
+  const num=n=>Number(n).toLocaleString('fr-FR',{maximumFractionDigits:3});
+  const base=num(qty)+' '+unit;
+  const pack=String(x?.conditionnement||'').trim();
+  if(!pack||/^(Emballage d'origine|Bouteille \/ brique)$/i.test(pack))return base;
+  const unitLow=unit.toLowerCase();
+  const unitIsMass=unitLow==='kg'||unitLow==='g';
+  const unitIsVolume=unitLow==='l'||unitLow==='ml';
+  const asCount=(size,sizeUnit)=>{
+    let count=qty;
+    const u=sizeUnit.toLowerCase();
+    if(unitIsMass&&(u==='kg'||u==='kgs'||u==='g'))
+      count=qty/(unitLow==='kg'?(u==='g'?size/1000:size):(u==='g'?size:size*1000));
+    else if(unitIsVolume&&(u==='l'||u==='litre'||u==='litres'||u==='ml'))
+      count=qty/(unitLow==='l'?(u==='ml'?size/1000:size):(u==='ml'?size:size*1000));
+    else if(unitIsMass||unitIsVolume)return null;
+    return Number.isFinite(count)&&count>=0&&Math.abs(count-Math.round(count))<0.000001?Math.round(count):null;
+  };
+  // Les seaux Mylar: afficher d'abord le nombre de sacs, puis le détail traçable du seau.
+  const mylar=pack.match(/(\d+)\s+sacs?\s+Mylar\s+de\s+(\d+(?:[,.]\d+)?)\s*(kg|kgs|g)\b/i);
+  if(mylar){
+    const size=Number(mylar[2].replace(',','.'));
+    const n=asCount(size,mylar[3]);
+    if(n!==null)return n+' sac'+(n===1?'':'s')+' Mylar de '+num(size)+' '+(mylar[3].toLowerCase()==='kgs'?'kg':mylar[3])+' ('+base+') • '+pack;
+    return base+' • Conditionnement initial : '+pack;
+  }
+  // Paquets, bocaux, boîtes, bouteilles et sachets conditionnés avec poids/volume.
+  const m=pack.match(/^(?:(\d+)\s+)?(paquets?|boîtes?|bocaux|bocal|pots?|bouteilles?|briques?|unités?|sachets?)\s+(?:Poinette\s+)?de\s+(\d+(?:[,.]\d+)?)\s*(kg|g|ml|l)\b/i);
+  if(m){
+    const size=Number(m[3].replace(',','.'));
+    const count=asCount(size,m[4]);
+    if(count!==null){
+      const word=m[2].toLowerCase();
+      const singular=word.startsWith('boît')?'boîte':word.startsWith('boca')?'bocal':word.startsWith('bouteill')?'bouteille':word.startsWith('briqu')?'brique':word.startsWith('paquet')?'paquet':word.startsWith('pot')?'pot':word.startsWith('sachet')?'sachet':'unité';
+      const plurals={boîte:'boîtes',bocal:'bocaux',bouteille:'bouteilles',brique:'briques',paquet:'paquets',pot:'pots',sachet:'sachets',unité:'unités'};
+      const brand=/\bPoinette\b/i.test(pack)?' Poinette':'';
+      const extra=pack.slice(m[0].length).trim();
+      return count+' '+(count===1?singular:plurals[singular])+brand+' de '+num(size)+' '+(m[4].toLowerCase()==='l'?'L':m[4])+' ('+base+')'+(extra?' • '+extra:'');
+    }
+    return base+' • Conditionnement initial : '+pack;
+  }
+  // Cas des paquets de rouleaux ou conditionnements multipacks.
+  const rolls=pack.match(/^Paquet de (\d+) rouleaux$/i);
+  if(rolls&&unitLow==='paquet')return num(qty)+' paquets de '+rolls[1]+' rouleaux';
+  const multi=pack.match(/^(\d+) fois (\d+(?:[,.]\d+)?) litres?$/i);
+  if(multi&&unitLow==='paquet')return num(qty)+' paquets de '+multi[1]+' × '+multi[2]+' L';
+  return base+' • '+pack;
+}
+function searchLot(){
+  const raw=$('searchLot').value.trim(),el=$('lotSearchResult');
+  if(!raw){el.innerHTML='<div class="empty">Saisissez un produit ou un numéro de lot.</div>';return}
+  const looksLikeLot=/^(L?\d{1,4})$/i.test(raw.replace(/\s+/g,''));
+  if(looksLikeLot){
+    const lot=normalizeLot(raw);$('searchLot').value=lot;const x=lotById(lot);
+    if(!x){el.innerHTML='<div class="empty">Lot introuvable.</div>';return}
+    const places=assignments().filter(a=>a.lot===lot).map(a=>a.location);
+    const container=containerLabel(x);
+    el.innerHTML='<div class="notice"><b>'+esc(lot)+'</b> — '+esc(x.produit||'')+'<br>'+esc(displayQtyForLot(x))+(x.ddm?' • DDM/DLC '+esc(x.ddm):'')+(container?'<br>Contenant : <b>'+esc(container)+'</b>':'')+'<br>Emplacement : <b>'+esc(places.join(', ')||x.emplacement||'non affecté')+'</b></div>';
+    return;
+  }
+  const scored=allLots().map(x=>({x,score:tolerantProductScore(raw,x.produit||'')})).filter(r=>r.score<999);
+  if(!scored.length){el.innerHTML='<div class="empty">Aucun produit trouvé pour « '+esc(raw)+' ».</div>';return}
+  scored.sort((a,b)=>a.score-b.score||String(a.x.produit||'').localeCompare(String(b.x.produit||''),'fr')||String(a.x.ddm||'9999').localeCompare(String(b.x.ddm||'9999')));
+  const results=scored.map(r=>r.x);
+  el.innerHTML=results.map(x=>{
+    const places=assignments().filter(a=>a.lot===x.lot).map(a=>a.location);
+    const loc=places.join(', ')||x.emplacement||'non affecté';
+    const container=containerLabel(x);
+    return '<div class="list-item"><div class="item-title">'+esc(x.produit||'Produit')+' <span class="badge blue">'+esc(x.lot)+'</span></div><div class="item-meta">'+esc(displayQtyForLot(x))+(x.ddm?' • DDM/DLC '+esc(x.ddm):'')+'</div>'+(container?'<div style="margin-top:6px">Contenant : <b>'+esc(container)+'</b></div>':'')+'<div style="margin-top:6px">Emplacement : <b>'+esc(loc)+'</b></div></div>';
+  }).join('');
+}
+function populateCategorySearch(){
+  const sel=$('categorySearch');if(!sel)return;
+  const current=sel.value;
+  const cats=[...new Set(allLots().map(x=>String(x.categorie||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'fr'));
+  sel.innerHTML='<option value="">— Choisir une catégorie —</option>'+cats.map(c=>'<option value="'+esc(c)+'">'+esc(c)+'</option>').join('');
+  if(cats.includes(current))sel.value=current;
+}
+function searchCategory(){
+  const cat=$('categorySearch').value,el=$('categorySearchResult');
+  if(!cat){el.innerHTML='<div class="empty">Choisissez une catégorie.</div>';return}
+  const results=allLots().filter(x=>String(x.categorie||'')===cat);
+  if(!results.length){el.innerHTML='<div class="empty">Aucun lot dans cette catégorie.</div>';return}
+  results.sort((a,b)=>String(a.produit||'').localeCompare(String(b.produit||''),'fr')||String(a.ddm||'9999').localeCompare(String(b.ddm||'9999')));
+  el.innerHTML=results.map(x=>{
+    const places=assignments().filter(a=>a.lot===x.lot).map(a=>a.location);
+    const loc=places.join(', ')||x.emplacement||'non affecté';
+    return '<div class="list-item"><div class="item-title">'+esc(x.produit||'Produit')+' <span class="badge blue">'+esc(x.lot)+'</span></div><div class="item-meta">'+esc(displayQtyForLot(x))+(x.ddm?' • DDM/DLC '+esc(x.ddm):'')+'</div><div style="margin-top:6px">Emplacement : <b>'+esc(loc)+'</b></div></div>';
+  }).join('');
+}
+function populateInventoryLocations(){
+  const sel=$('inventoryLocationSelect');if(!sel)return;
+  const current=sel.value;
+  sel.innerHTML='<option value="">— Choisir un emplacement —</option>'+allOfficialLocations().map(loc=>'<option value="'+loc+'">'+loc+'</option>').join('');
+  if(allOfficialLocations().includes(current))sel.value=current;
+}
+function inventoryRowsForLocation(loc){
+  return assignments().filter(a=>a.location===loc).map(a=>({a,lotData:lotById(a.lot)})).filter(x=>x.lotData&&String(x.lotData.produit||'').trim()).sort((x,y)=>String(x.lotData?.produit||'').localeCompare(String(y.lotData?.produit||''),'fr'));
+}
+function loadInventoryLocation(){
+  const loc=$('inventoryLocationSelect').value,el=$('inventoryList'),btn=$('inventoryConfirmBtn');
+  $('inventoryStatus').textContent='';
+  if(!loc){el.innerHTML='<div class="empty">Choisissez un emplacement.</div>';btn.style.display='none';return}
+  const rows=inventoryRowsForLocation(loc);
+  if(!rows.length){
+    el.innerHTML='<div class="notice"><b>'+esc(loc)+'</b><br>Emplacement actuellement enregistré comme vide.</div>';
+    btn.style.display='inline-block';
+    return;
+  }
+  el.innerHTML='<div class="notice"><b>'+esc(loc)+'</b> • '+rows.length+' lot(s) attendu(s)</div>'+
+    rows.map(x=>'<label class="list-item" style="display:block;cursor:pointer"><div class="item-title"><input class="inventoryCheck" type="checkbox" data-lot="'+esc(x.a.lot)+'" checked style="width:auto;margin-right:8px"> '+esc(x.lotData?.produit||'Produit')+' <span class="badge blue">'+esc(x.a.lot)+'</span></div><div class="item-meta">'+esc(displayQtyForLot(x.lotData))+(x.lotData?.ddm?' • '+esc(x.lotData?.typeDate||'DDM')+' '+esc(x.lotData.ddm):'')+'</div></label>').join('');
+  btn.style.display='inline-block';
+}
+function useActiveInventoryLocation(){
+  const el=$('inventoryStatus');
+  if(!activeLocation){el.innerHTML='<div class="empty">Aucun emplacement actif. Scannez d’abord un QR ou choisissez un emplacement.</div>';return}
+  $('inventoryLocationSelect').value=activeLocation;
+  loadInventoryLocation();
+}
+async function confirmQuickInventory(){
+  const loc=$('inventoryLocationSelect').value,el=$('inventoryStatus'),btn=$('inventoryConfirmBtn');
+  if(!loc){el.innerHTML='<div class="empty">Choisissez un emplacement.</div>';return}
+  const rows=inventoryRowsForLocation(loc);
+  const states=[...document.querySelectorAll('.inventoryCheck')].map(c=>({lot:c.dataset.lot,present:c.checked}));
+  btn.disabled=true;btn.textContent='✓ Enregistrement…';
+  let ok=0,fail=0,missing=0;
+  if(!rows.length){
+    const r=await sendToSheet('movement',{date:today(),lot:'',produit:'',type:'Contrôle inventaire',quantite:0,unite:'',source:loc,destination:loc,commentaire:'Inventaire rapide : emplacement vide confirmé',reference:''});
+    r.ok?ok++:fail++;
+  }else{
+    for(const row of rows){
+      const state=states.find(s=>s.lot===row.a.lot);
+      const present=state?state.present:true;
+      if(!present)missing++;
+      const r=await sendToSheet('movement',{
+        date:today(),
+        lot:row.a.lot,
+        produit:row.lotData?.produit||'',
+        type:'Contrôle inventaire',
+        quantite:0,
+        unite:row.lotData?.unite||'',
+        source:loc,
+        destination:loc,
+        commentaire:present?'Inventaire rapide : conforme':'Inventaire rapide : lot non retrouvé - à vérifier',
+        reference:''
+      });
+      r.ok?ok++:fail++;
+    }
+  }
+  if(fail===0){
+    el.innerHTML=missing
+      ? '<div class="notice" style="border-color:#fde68a;background:#fffbeb;color:#92400e"><b>⚠ Inventaire enregistré</b><br>'+missing+' lot(s) signalé(s) comme non retrouvé(s). Aucun stock n’a été supprimé automatiquement.</div>'
+      : '<div class="notice" style="border-color:#86efac;background:#ecfdf5;color:#166534"><b>✓ Inventaire conforme</b><br>'+esc(loc)+' contrôlé et synchronisé avec Google Sheets.</div>';
+  }else{
+    el.innerHTML='<div class="notice" style="border-color:#fde68a;background:#fffbeb;color:#92400e"><b>⚠ Synchronisation partielle</b><br>'+ok+' contrôle(s) enregistrés, '+fail+' non confirmé(s).</div>';
+  }
+  btn.disabled=false;btn.textContent='Enregistrer l\'inventaire';
+}
+function currentLocationForLot(lot){
+  const a=assignments().filter(x=>x.lot===lot);
+  return a.length?a[a.length-1].location:'';
+}
+function exitMovementsForLot(lot){
+  return get(LS.moves,[]).filter(m=>normalizeLot(m.lot)===normalizeLot(lot)&&String(m.type||'')==='Sortie consommation');
+}
+function currentQtyForLot(lotData){
+  if(!lotData)return 0;
+  const base=parseNumber(lotData.quantite);
+  if(base===null||!Number.isFinite(base)||base<0)return 0;
+  const exited=exitMovementsForLot(lotData.lot).reduce((sum,m)=>{
+    const quantity=parseNumber(m.quantite);
+    return sum+(quantity===null||!Number.isFinite(quantity)?0:Math.abs(quantity));
+  },0);
+  return Math.max(0,base-exited);
+}
+function populateExitLocations(){
+  const sel=$('exitLocationSelect');if(!sel)return;
+  const current=exitLocation||sel.value;
+  sel.innerHTML='<option value="">— Choisir un emplacement —</option>'+allOfficialLocations().map(loc=>'<option value="'+loc+'">'+loc+'</option>').join('');
+  if(allOfficialLocations().includes(current))sel.value=current;
+}
+function setExitLocation(loc){
+  exitLocation=VALID.test(loc||'')?loc:'';
+  if($('exitLocationSelect'))$('exitLocationSelect').value=exitLocation;
+  const info=$('exitLocationInfo');
+  if(info)info.innerHTML=exitLocation?'<b>Emplacement sélectionné : '+esc(exitLocation)+'</b>':'';
+  populateExitControls();
+}
+function populateExitControls(){
+  const sel=$('exitLotSelect');if(!sel)return;
+  const current=sel.value;
+  if(!exitLocation){
+    sel.innerHTML='<option value="">— Scannez ou choisissez d’abord un emplacement —</option>';
+    showExitLotInfo();return;
+  }
+  const rows=allLots().map(x=>({...x,available:currentQtyForLot(x),loc:currentLocationForLot(x.lot)||x.emplacement||''}))
+    .filter(x=>x.available>0&&x.loc===exitLocation)
+    .sort((a,b)=>{
+      const da=parseFrenchDate(a.ddm),db=parseFrenchDate(b.ddm);
+      if(da&&db&&da.getTime()!==db.getTime())return da-db;
+      if(da&&!db)return -1;
+      if(!da&&db)return 1;
+      return String(a.produit||'').localeCompare(String(b.produit||''),'fr')||String(a.lot||'').localeCompare(String(b.lot||''));
+    });
+  sel.innerHTML='<option value="">— Choisir un lot (DDM/DLC croissante) —</option>'+rows.map(x=>'<option value="'+esc(x.lot)+'">'+esc(x.produit||'Produit')+' — '+esc(x.lot)+' — '+esc(x.ddm?(x.typeDate||'DDM')+' '+x.ddm:'date absente')+' — '+esc(displayQtyForLot(x))+'</option>').join('');
+  if(rows.some(x=>x.lot===current))sel.value=current;
+  $('exitLocationInfo').innerHTML='<b>Emplacement sélectionné : '+esc(exitLocation)+'</b><br>'+(rows.length?rows.length+' lot(s) disponible(s).':'Aucun lot disponible à cet emplacement.');
+  showExitLotInfo();
+}
+async function startExitScanner(){
+  const el=$('exitStatus');
+  exitScanMode=true;moveScanMode=false;quickProductScanMode=false;quickScanMode=false;
+  setScannerUi('exit');
+  el.innerHTML='<div class="notice">Scanner prêt : visez le QR de l’emplacement où vous prenez le produit.</div>';
+  document.body.classList.add('scanner-active');
+  $('reader').scrollIntoView({behavior:'smooth',block:'center'});
+  await startScanner();
+  if(!running){exitScanMode=false;el.innerHTML='<div class="notice">Caméra indisponible. Choisissez l’emplacement manuellement.</div>'}
+}
+function showExitLotInfo(){
+  const lot=$('exitLotSelect')?.value||'',info=$('exitLotInfo');
+  if(!info)return;
+  if(!lot){info.textContent='';if($('exitUnit'))$('exitUnit').value='';return}
+  const x=lotById(lot),available=currentQtyForLot(x),loc=currentLocationForLot(lot)||x?.emplacement||'';
+  if($('exitUnit'))$('exitUnit').value=x?.unite||'';
+  info.innerHTML='<b>'+esc(x?.produit||'Produit')+' — '+esc(lot)+'</b><br>Disponible : <b>'+esc(displayQtyForLot(x))+'</b>'+(loc?'<br>Emplacement : <b>'+esc(loc)+'</b>':'');
+}
+async function confirmStockExit(){
+  const lot=$('exitLotSelect')?.value||'',qty=Number(String($('exitQty')?.value||'').replace(',','.')),reason=$('exitReason')?.value||'Consommation',comment=$('exitComment')?.value||'',el=$('exitStatus'),btn=$('exitConfirmBtn');
+  const x=lotById(lot);
+  if(!x){el.innerHTML='<div class="notice">Choisissez d’abord un lot.</div>';return}
+  const available=currentQtyForLot(x);
+  if(!Number.isFinite(qty)||qty<=0){el.innerHTML='<div class="notice">Saisissez une quantité de sortie valide.</div>';return}
+  if(qty>available){el.innerHTML='<div class="notice" style="border-color:#fecaca;background:#fff1f2;color:#9f1239">Impossible : la quantité demandée dépasse le stock disponible ('+esc(displayQtyForLot(x))+').</div>';return}
+  btn.disabled=true;btn.textContent='Enregistrement…';
+  const loc=currentLocationForLot(lot)||x.emplacement||'';
+  const movement={date:today(),lot:x.lot,produit:x.produit||'',type:'Sortie consommation',quantite:qty,unite:x.unite||'',source:loc,destination:'',commentaire:reason+(comment?' — '+comment:''),reference:''};
+  const r=await sendToSheet('movement',movement);
+  if(!r.ok){
+    el.innerHTML='<div class="notice" style="border-color:#fecaca;background:#fff1f2;color:#9f1239"><b>Sortie non enregistrée.</b><br>La synchronisation Google Sheets n’a pas été confirmée.</div>';
+    btn.disabled=false;btn.textContent='Enregistrer la sortie';return;
+  }
+  const moves=get(LS.moves,[]);moves.push({...movement,id:'EXIT-'+Date.now(),createdAt:new Date().toISOString()});set(LS.moves,moves);
+  const remaining=Math.max(0,available-qty);
+  el.innerHTML='<div class="notice" style="border-color:#c4b5fd;background:#f5f3ff;color:#6d28d9"><b>✓ Sortie enregistrée</b><br>'+esc(String(qty))+' '+esc(x.unite||'')+' sorti(s) de '+esc(x.produit||'')+'. Reste : <b>'+esc(displayQtyForLot(x,remaining))+'</b>.</div>';
+  $('exitQty').value='';$('exitComment').value='';
+  const refreshedLocation=exitLocation;
+  updateStats();
+  setExitLocation(refreshedLocation);
+  showExitLotInfo();
+  if(activeLocation===refreshedLocation)renderLocationStock();
+  if($('locationViewSelect')?.value===refreshedLocation)showLocationView();
+  $('exitCard').scrollIntoView({behavior:'smooth',block:'start'});
+  btn.disabled=false;btn.textContent='Enregistrer la sortie';
+}
+function populateMoveControls(){
+  const lotSel=$('moveLotSelect'),destSel=$('moveDestinationSelect');
+  if(!lotSel||!destSel)return;
+  const currentLot=lotSel.value,currentDest=destSel.value;
+  const assigned=allLots().filter(x=>currentLocationForLot(x.lot)).sort((a,b)=>String(a.produit||'').localeCompare(String(b.produit||''),'fr')||a.lot.localeCompare(b.lot));
+  lotSel.innerHTML='<option value="">— Choisir un lot —</option>'+assigned.map(x=>'<option value="'+esc(x.lot)+'">'+esc(x.produit||'Produit')+' — '+esc(x.lot)+' — '+esc(displayQtyForLot(x))+'</option>').join('');
+  destSel.innerHTML='<option value="">— Nouvel emplacement —</option>'+allOfficialLocations().map(loc=>'<option value="'+loc+'">'+loc+'</option>').join('');
+  if(assigned.some(x=>x.lot===currentLot))lotSel.value=currentLot;
+  if(allOfficialLocations().includes(currentDest))destSel.value=currentDest;
+  showMoveCurrentLocation();
+}
+function showMoveCurrentLocation(){
+  const lot=$('moveLotSelect')?.value||'',el=$('moveCurrentLocation');
+  if(!el)return;
+  if(!lot){el.textContent='';return}
+  const x=lotById(lot),loc=currentLocationForLot(lot);
+  el.innerHTML='<b>'+esc(x?.produit||'Produit')+' — '+esc(lot)+'</b><br>Emplacement actuel : <b>'+esc(loc||'non affecté')+'</b><br>Stock : <b>'+esc(displayQtyForLot(x))+'</b>';
+}
+function normalizeBarcode(raw){return String(raw||'').replace(/\D/g,'')}
+function categoryFromOpenFoodFacts(product){
+  const raw=[product?.categories, ...(Array.isArray(product?.categories_tags)?product.categories_tags:[])].join(' ').toLocaleLowerCase('fr-FR').normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  if(/lait|milk|dairy/.test(raw))return 'Produits laitiers';
+  if(/huile|oil/.test(raw))return 'Huiles';
+  if(/lentille|lentil|haricot|bean|pois chiche|chickpea|pois casse|pulse|legume sec/.test(raw))return 'Légumineuses';
+  if(/moutarde|mustard|vinaigre|vinegar|cornichon|pickle|condiment/.test(raw))return 'Condiments';
+  if(/riz|rice|pate|pasta|couscous|cereal|avoine|oat|semoule|farine|flour/.test(raw))return 'Céréales / féculents';
+  if(/boisson|beverage|jus|juice|cafe|coffee|the|tea/.test(raw))return 'Boissons';
+  if(/conserve|canned|sardine|thon|tuna|maquereau|mackerel|legume en conserve|fruit au sirop/.test(raw))return 'Conserves';
+  return 'Épicerie';
+}
+function findExistingProductForName(name){
+  const n=normalizeSearchText(name);
+  if(!n)return null;
+  const refs=productReferences();
+  const exact=refs.find(x=>normalizeSearchText(x.name)===n);if(exact)return exact;
+  const candidates=refs.filter(x=>{
+    const rn=normalizeSearchText(x.name);
+    return rn.length>=4&&(n.includes(rn)||rn.includes(n));
+  }).sort((a,b)=>b.name.length-a.name.length);
+  return candidates[0]||null;
+}
+async function handleQuickProductBarcode(raw){
+  const barcode=normalizeBarcode(raw),el=$('quickStatus');
+  if(barcode.length<8||barcode.length>14){el.innerHTML='<div class="notice" style="border-color:#fde68a;background:#fffbeb;color:#92400e">Code-barres non reconnu. Réessayez ou choisissez le produit manuellement.</div>';return}
+  quickScannedBarcode=barcode;quickScannedBrand='';
+  if(navigator.vibrate)navigator.vibrate(70);
+  await stopProductScanner();running=false;$('startBtn').disabled=false;$('stopBtn').disabled=true;
+  showPane('quickPane');
+  $('quickPane').scrollIntoView({behavior:'smooth',block:'start'});
+  const local=productReferences().find(x=>String(x.barcode||'')===barcode);
+  if(local){
+    $('qProduct').value=local.name;toggleQuickNewProduct();
+    quickScannedBrand=local.brand||'';
+    $('qBarcodeInfo').innerHTML='Code-barres <b>'+esc(barcode)+'</b>'+(local.brand?' • '+esc(local.brand):'')+' • produit déjà connu';
+    el.innerHTML='<div class="notice" style="border-color:#86efac;background:#ecfdf5;color:#166534"><b>✓ Produit reconnu dans Stock 42</b><br>'+esc(local.name)+'</div>';
+    return;
+  }
+  el.innerHTML='<div class="notice">Code-barres '+esc(barcode)+' lu. Recherche du produit…</div>';
+  try{
+    const fields='code,product_name,product_name_fr,brands,quantity,categories,categories_tags';
+    const r=await fetch('https://world.openfoodfacts.org/api/v2/product/'+encodeURIComponent(barcode)+'.json?fields='+encodeURIComponent(fields),{cache:'no-store'});
+    const data=await r.json();
+    if(Number(data.status)!==1||!data.product)throw new Error('not_found');
+    const p=data.product;
+    const name=String(p.product_name_fr||p.product_name||'').trim();
+    if(!name)throw new Error('no_name');
+    quickScannedBrand=String(p.brands||'').trim();
+    const existing=findExistingProductForName(name);
+    if(existing){
+      $('qProduct').value=existing.name;toggleQuickNewProduct();
+    }else{
+      $('qProduct').value='__new__';toggleQuickNewProduct();$('qNewProduct').value=name;
+      const cat=categoryFromOpenFoodFacts(p);if([...$('qCategory').options].some(o=>o.value===cat))$('qCategory').value=cat;
+      if(p.quantity)$('qPack').value=String(p.quantity);
+    }
+    $('qBarcodeInfo').innerHTML='Code-barres <b>'+esc(barcode)+'</b>'+(quickScannedBrand?' • '+esc(quickScannedBrand):'')+' • Open Food Facts';
+    el.innerHTML='<div class="notice" style="border-color:#86efac;background:#ecfdf5;color:#166534"><b>✓ Produit identifié</b><br>'+esc(existing?existing.name:name)+(existing?'<br>Correspondance avec le référentiel Stock 42.':'<br>Vérifiez la catégorie et l’unité avant validation.')+'</div>';
+  }catch(e){
+    $('qProduct').value='__new__';toggleQuickNewProduct();
+    $('qBarcodeInfo').innerHTML='Code-barres <b>'+esc(barcode)+'</b> • produit non trouvé dans la base externe';
+    el.innerHTML='<div class="notice" style="border-color:#fde68a;background:#fffbeb;color:#92400e"><b>Produit inconnu</b><br>Saisissez son nom une fois : Stock 42 mémorisera ce code-barres pour les prochains achats.</div>';
+  }
+}
+async function startQuickProductScanner(){
+  const el=$('quickStatus');
+  quickProductScanMode=true;moveScanMode=false;quickScanMode=false;
+  setScannerUi('product');
+  el.innerHTML='<div class="notice">Scanner prêt : placez le code-barres du produit dans le cadre.</div>';
+  await stopScanner();
+  document.body.classList.add('scanner-active');
+  $('reader').classList.add('hidden');
+  $('productReader').classList.remove('hidden');
+  $('productReader').scrollIntoView({behavior:'smooth',block:'center'});
+  try{
+    if(!window.ZXingBrowser)throw new Error('Module ZXing non chargé');
+    productScanner=new ZXingBrowser.BrowserMultiFormatReader(undefined,{delayBetweenScanAttempts:120});
+    const devices=await ZXingBrowser.BrowserCodeReader.listVideoInputDevices();
+    const back=devices.find(d=>/back|rear|environment|arrière/i.test(d.label))||devices[devices.length-1];
+    productScannerControls=await productScanner.decodeFromVideoDevice(back?.deviceId||undefined,$('productReader'),(result,error,controls)=>{
+      if(!quickProductScanMode||!result)return;
+      const raw=typeof result.getText==='function'?result.getText():String(result.text||result);
+      const barcode=normalizeBarcode(raw);
+      if(barcode.length<8||barcode.length>14)return;
+      quickProductScanMode=false;
+      productScannerControls=controls||productScannerControls;
+      handleQuickProductBarcode(barcode);
+    });
+    running=true;
+    $('startBtn').disabled=true;$('stopBtn').disabled=false;
+    $('status').textContent='Mode CODE-BARRES actif — visez un EAN/UPC. Le cadre QR n’est pas utilisé.';
+  }catch(e){
+    quickProductScanMode=false;running=false;
+    $('productReader').classList.add('hidden');$('reader').classList.remove('hidden');
+    el.innerHTML='<div class="notice" style="border-color:#fde68a;background:#fffbeb;color:#92400e">Scanner code-barres indisponible. Choisissez le produit manuellement.</div>';
+    $('status').textContent='Scanner code-barres indisponible.';
+  }
+}
+async function startQuickScanner(){
+  const el=$('quickStatus');
+  quickScanMode=true;quickProductScanMode=false;moveScanMode=false;
+  setScannerUi('location');
+  el.innerHTML='<div class="notice">Scanner prêt : visez le QR de l’emplacement où le nouveau lot sera rangé.</div>';
+  document.body.classList.add('scanner-active');
+  $('reader').scrollIntoView({behavior:'smooth',block:'center'});
+  await startScanner();
+  if(!running){
+    quickScanMode=false;
+    el.innerHTML='<div class="notice" style="border-color:#fde68a;background:#fffbeb;color:#92400e">Caméra indisponible. Utilisez la liste déroulante en secours.</div>';
+  }
+}
+async function startMoveScanner(){
+  const lot=$('moveLotSelect').value,el=$('moveStatus');
+  if(!lot){el.innerHTML='<div class="empty">Choisissez d’abord le lot à déplacer.</div>';return}
+  moveScanMode=true;quickProductScanMode=false;quickScanMode=false;
+  setScannerUi('move');
+  el.innerHTML='<div class="notice">Scanner prêt : visez le QR du <b>nouvel emplacement</b>.</div>';
+  $('reader').scrollIntoView({behavior:'smooth',block:'center'});
+  await startScanner();
+  if(!running){moveScanMode=false;el.innerHTML='<div class="notice" style="border-color:#fde68a;background:#fffbeb;color:#92400e">Caméra indisponible. Utilisez la liste déroulante en secours.</div>'}
+}
+async function moveSelectedLot(){
+  const lot=$('moveLotSelect').value,dest=$('moveDestinationSelect').value,el=$('moveStatus'),btn=$('moveLotBtn');
+  if(!lot){el.innerHTML='<div class="empty">Choisissez un lot.</div>';return}
+  if(!dest){el.innerHTML='<div class="empty">Choisissez le nouvel emplacement.</div>';return}
+  const source=currentLocationForLot(lot);
+  if(source===dest){el.innerHTML='<div class="notice">Le lot est déjà rangé à <b>'+esc(dest)+'</b>.</div>';return}
+  const prod=lotById(lot);
+  btn.disabled=true;btn.textContent='✓ Déplacement en cours…';
+  const sync=await sendToSheet('assign',{lot,location:dest});
+  if(sync.ok){
+    let a=assignments().filter(x=>x.lot!==lot);
+    a.push({id:lot+'@'+dest,lot,location:dest,assignedAt:new Date().toISOString()});
+    set(LS.assign,a);
+    const ll=localLots(),i=ll.findIndex(x=>x.lot===lot);
+    if(i>=0){ll[i]={...ll[i],emplacement:dest,zone:dest.split('-').slice(1,3).join('-')};set(LS.lots,ll)}
+    const mv=get(LS.moves,[]);
+    mv.push({date:today(),lot,produit:prod?.produit||'',type:'Transfert',quantite:0,unite:prod?.unite||'',source:source,destination:dest,commentaire:'Déplacement simplifié',createdAt:new Date().toISOString()});
+    set(LS.moves,mv);
+    el.innerHTML='<div class="notice" style="border-color:#86efac;background:#ecfdf5;color:#166534"><b>✓ '+esc(lot)+' déplacé</b><br>'+esc(source||'non affecté')+' → <b>'+esc(dest)+'</b><br>Synchronisé avec Google Sheets.</div>';
+    updateStats();
+    if(activeLocation)renderLocationStock();
+    if($('locationViewSelect')?.value)showLocationView();
+  }else{
+    el.innerHTML='<div class="notice" style="border-color:#fde68a;background:#fffbeb;color:#92400e"><b>⚠ Déplacement non enregistré</b><br>La synchronisation Google Sheets n’a pas été confirmée.</div>';
+  }
+  btn.disabled=false;btn.textContent='Déplacer ce lot';
+}
+function populateFifoProducts(){
+  const sel=$('fifoProductSelect');if(!sel)return;
+  const current=sel.value;
+  const products=[...new Set(allLots().map(x=>String(x.produit||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'fr'));
+  sel.innerHTML='<option value="">— Choisir un produit —</option>'+products.map(p=>'<option value="'+esc(p)+'">'+esc(p)+'</option>').join('');
+  if(products.includes(current))sel.value=current;
+}
+function showFifoView(){
+  const raw=$('fifoProductSelect').value,el=$('fifoResult');
+  if(!raw){el.innerHTML='<div class="empty">Choisissez un produit.</div>';return}
+  const results=allLots().filter(x=>String(x.produit||'')===raw);
+  if(!results.length){el.innerHTML='<div class="empty">Aucun produit trouvé pour « '+esc(raw)+' ».</div>';return}
+  results.sort((a,b)=>{
+    const da=parseFrenchDate(a.ddm),db=parseFrenchDate(b.ddm);
+    if(da&&db)return da-db;
+    if(da&&!db)return -1;
+    if(!da&&db)return 1;
+    return String(a.lot||'').localeCompare(String(b.lot||''));
+  });
+  el.innerHTML='<div class="notice"><b>'+results.length+' lot(s) trouvé(s)</b> — à consommer dans cet ordre.</div>'+
+    results.map((x,i)=>{
+      const places=assignments().filter(a=>a.lot===x.lot).map(a=>a.location);
+      const loc=places.join(', ')||x.emplacement||'non affecté';
+      return '<div class="list-item"><div class="item-title">'+(i===0?'<span class="badge blue">À CONSOMMER EN PREMIER</span> ':'')+esc(x.produit||'Produit')+' <span class="badge blue">'+esc(x.lot)+'</span></div><div class="item-meta">'+esc(displayQtyForLot(x))+(x.ddm?' • '+esc(x.typeDate||'DDM')+' '+esc(x.ddm):' • date absente')+'</div><div style="margin-top:6px">Emplacement : <b>'+esc(loc)+'</b></div></div>';
+    }).join('');
+}
+function allOfficialLocations(){
+  const out=[];
+  for(let r=1;r<=3;r++)for(let n=1;n<=5;n++)for(const z of ['A','B','C'])out.push('42-R'+r+'-N'+n+'-'+z);
+  for(let i=1;i<=6;i++)out.push('42-CONGELATEUR-'+String(i).padStart(2,'0'));
+  for(let i=1;i<=5;i++)out.push('42-FRIGO-'+String(i).padStart(2,'0'));
+  for(let i=1;i<=4;i++)out.push('42-GARAGE-'+String(i).padStart(2,'0'));
+  for(let i=1;i<=18;i++)out.push('38-ETAGE-'+String(i).padStart(2,'0'));
+  return out;
+}
+function populateLocationView(){
+  const sel=$('locationViewSelect');if(!sel)return;
+  const current=sel.value;
+  sel.innerHTML='<option value="">— Choisir un emplacement —</option>'+allOfficialLocations().map(loc=>'<option value="'+loc+'">'+loc+'</option>').join('');
+  if(allOfficialLocations().includes(current))sel.value=current;
+}
+function showLocationView(){
+  const loc=$('locationViewSelect').value,el=$('locationViewResult');
+  if(!loc){el.innerHTML='<div class="empty">Choisissez un emplacement.</div>';return}
+  const rows=assignments().filter(a=>a.location===loc).map(a=>({a,lotData:lotById(a.lot)})).filter(x=>x.lotData&&String(x.lotData.produit||'').trim());
+  if(!rows.length){
+    el.innerHTML='<div class="notice"><b>'+esc(loc)+'</b><br>Emplacement vide.</div>';
+    return;
+  }
+  rows.sort((a,b)=>String(a.lotData?.ddm||'9999').localeCompare(String(b.lotData?.ddm||'9999')));
+  el.innerHTML='<div class="notice"><b>'+esc(loc)+'</b> • '+rows.length+' lot(s)</div>'+
+    rows.map((x,i)=>'<div class="list-item"><div class="item-title">'+esc(x.a.lot)+(i===0?' <span class="badge blue">FIFO</span>':'')+' — '+esc(x.lotData?.produit||'Produit non renseigné')+'</div><div class="item-meta">'+esc(displayQtyForLot(x.lotData))+(x.lotData?.ddm?' • '+esc(x.lotData?.typeDate||'DDM')+' '+esc(x.lotData.ddm):'')+'</div></div>').join('');
+}
+function parseFrenchDate(v){
+  const s=String(v||'').trim();
+  if(!s)return null;
+  let m=s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if(m)return new Date(Number(m[3]),Number(m[2])-1,Number(m[1]));
+  m=s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(m)return new Date(Number(m[1]),Number(m[2])-1,Number(m[3]));
+  return null;
+}
+function expiryState(x){
+  const d=parseFrenchDate(x.ddm);
+  if(!d)return {bucket:'missing',days:null};
+  const now=new Date();now.setHours(0,0,0,0);d.setHours(0,0,0,0);
+  const days=Math.ceil((d-now)/86400000);
+  if(days<0)return {bucket:'expired',days};
+  if(days<=90)return {bucket:'3m',days};
+  if(days<=180)return {bucket:'6m',days};
+  return {bucket:'ok',days};
+}
+function expiryLabel(st){
+  if(st.bucket==='expired')return 'DÉPASSÉE';
+  if(st.bucket==='3m')return '≤ 3 mois';
+  if(st.bucket==='6m')return '≤ 6 mois';
+  if(st.bucket==='missing')return 'Date absente';
+  return 'OK';
+}
+function updateExpiryStats(){
+  const counts={expired:0,'3m':0,'6m':0,missing:0};
+  allLots().forEach(x=>{const s=expiryState(x);if(counts[s.bucket]!=null)counts[s.bucket]++});
+  if($('expiryExpiredCount'))$('expiryExpiredCount').textContent=counts.expired;
+  if($('expiry3mCount'))$('expiry3mCount').textContent=counts['3m'];
+  if($('expiry6mCount'))$('expiry6mCount').textContent=counts['6m'];
+  if($('expiryMissingCount'))$('expiryMissingCount').textContent=counts.missing;
+}
+function showExpiryAlerts(){
+  const el=$('expiryResult');
+  const rows=allLots().map(x=>({x,st:expiryState(x)})).filter(r=>r.st.bucket!=='ok');
+  const order={expired:0,'3m':1,'6m':2,missing:3};
+  rows.sort((a,b)=>order[a.st.bucket]-order[b.st.bucket]||String(a.x.ddm||'9999').localeCompare(String(b.x.ddm||'9999')));
+  if(!rows.length){el.innerHTML='<div class="notice"><b>✓ Aucune alerte DDM/DLC.</b></div>';return}
+  el.innerHTML=rows.map(({x,st})=>{
+    const places=assignments().filter(a=>a.lot===x.lot).map(a=>a.location);
+    const loc=places.join(', ')||x.emplacement||'non affecté';
+    const cls=st.bucket==='expired'?'bad':(st.bucket==='3m'?'notice':'list-item');
+    return '<div class="'+cls+'" style="margin-bottom:8px"><div class="item-title">'+esc(x.produit||'Produit')+' <span class="badge blue">'+esc(x.lot)+'</span></div><div class="item-meta">'+esc(displayQtyForLot(x))+' • '+esc(x.typeDate||'DDM')+' '+esc(x.ddm||'non renseignée')+' • <b>'+esc(expiryLabel(st))+'</b></div><div style="margin-top:6px">Emplacement : <b>'+esc(loc)+'</b></div></div>';
+  }).join('');
+}
+function csvDownload(name,headers,rows){const data=[headers,...rows];const csv='\uFEFF'+data.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';')).join('\n');const blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();URL.revokeObjectURL(url)}
+function exportLots(){csvDownload('stock42V55Isolated_lots.csv',['N° lot interne','Date réception','Produit','Catégorie','Quantité reçue','Unité','DDM / DLC','Type date','Fournisseur','Référence / commande','Emplacement','Statut','Conditionnement','Lot fabricant','Notes'],allLots().map(x=>[x.lot,x.dateReception,x.produit,x.categorie,x.quantite,x.unite,x.ddm,x.typeDate,x.fournisseur,x.reference,assignments().find(a=>a.lot===x.lot)?.location||x.emplacement||'',x.statut,x.conditionnement,x.lotFabricant,x.notes]))}
+function exportOrders(){csvDownload('stock42V55Isolated_commandes.csv',['Commande','Statut','Produit','Catégorie','Quantité','Unité','Prix €','Fournisseur','Référence','Date commande','Livraison prévue','Lot reçu','Notes'],orders().map(x=>[x.id,x.status,x.product,x.category,x.qty,x.unit,x.price,x.supplier,x.reference,x.orderDate,x.expected,x.lot||'',x.notes]))}
+function backupPayload(){
+  return {
+    version:1,
+    createdAt:new Date().toISOString(),
+    catalog:catalog(),
+    lots:localLots(),
+    orders:orders(),
+    movements:get(LS.moves,[]),
+    assignments:assignments(),
+    history:get(LS.history,[]),
+    importedAt:localStorage.getItem(LS.imported)||'',
+    syncUrl:localStorage.getItem(LS.syncUrl)||'',
+    guestMode:localStorage.getItem(LS.guestMode)||'0',
+    products:get(LS.products,[]),
+    reorder:get(LS.reorder,null)
+  };
+}
+
+let cloudTimer=null,cloudBusy=false,cloudQueued=false;
+function cloudEnabled(){return localStorage.getItem(LS.cloudEnabled)==='1'}
+function cloudVerified(){return localStorage.getItem(LS.cloudVerified)==='1'}
+function cloudExportData(){
+  // Exclude connection URL and API key from Drive backups.
+  const data=completeExportData();delete data.syncUrl;
+  return data;
+}
+function updateCloudBackupStatus(message=''){
+  if($('cloudBackupMode'))$('cloudBackupMode').textContent=cloudEnabled()?'Activée':'Désactivée';
+  if($('cloudBackupLast')){
+    const when=localStorage.getItem(LS.cloudLast);
+    $('cloudBackupLast').textContent=when?new Date(when).toLocaleString('fr-FR'):'Jamais';
+  }
+  if($('toggleCloudBackupBtn')){
+    $('toggleCloudBackupBtn').disabled=!cloudVerified()&&!cloudEnabled();
+    $('toggleCloudBackupBtn').textContent=cloudEnabled()?'Désactiver les sauvegardes cloud':'Activer les sauvegardes cloud';
+  }
+  if(message&&$('cloudBackupStatus'))$('cloudBackupStatus').textContent=message;
+}
+async function uploadCloudBackup(manual=false){
+  if(cloudBusy){cloudQueued=true;return false}
+  if(!manual&&!cloudEnabled())return false;
+  if(!navigator.onLine){
+    localStorage.setItem(LS.cloudPending,'1');
+    updateCloudBackupStatus('Hors connexion : sauvegarde cloud en attente.');
+    return false;
+  }
+  if(!(localStorage.getItem(LS.cloudUrl)||'')||!(localStorage.getItem(LS.syncKey)||'')){
+    updateCloudBackupStatus('Adresse V55 ou clé API manquante sur cet appareil.');
+    return false;
+  }
+  cloudBusy=true;
+  if($('testCloudBackupBtn'))$('testCloudBackupBtn').disabled=true;
+  try{
+    const payload=cloudExportData();
+    const result=await sendCloudBackupWithReceipt({filename:backupFilename(),backup:payload});
+    // A generic {ok:true} is insufficient: backend must prove that Drive created a file.
+    if(result?.ok!==true||result?.backupSaved!==true||!result?.fileId)throw Error(result?.error||'Le serveur ne confirme pas la création dans Google Drive. Le reçu sécurisé n’est pas encore disponible.');
+    localStorage.setItem(LS.cloudLast,new Date().toISOString());
+    localStorage.removeItem(LS.cloudPending);
+    localStorage.setItem(LS.cloudVerified,'1');
+    updateCloudBackupStatus('Sauvegarde confirmée sur Google Drive (fichier : '+String(result.fileId).slice(0,60)+').');
+    return true;
+  }catch(e){
+    localStorage.setItem(LS.cloudPending,'1');
+    updateCloudBackupStatus('Sauvegarde cloud non confirmée : '+String(e?.message||e));
+    return false;
+  }finally{
+    cloudBusy=false;
+    if($('testCloudBackupBtn'))$('testCloudBackupBtn').disabled=false;
+    updateCloudBackupStatus();
+    if(cloudQueued){cloudQueued=false;if(cloudEnabled())scheduleCloudBackup()}
+  }
+}
+function scheduleCloudBackup(){
+  if(!cloudEnabled()||restoringBackup)return;
+  localStorage.setItem(LS.cloudPending,'1');
+  clearTimeout(cloudTimer);
+  cloudTimer=setTimeout(()=>uploadCloudBackup(false),8000);
+}
+function toggleCloudBackup(){
+  if(!cloudEnabled()){
+    if(!cloudVerified()){updateCloudBackupStatus('Test Drive obligatoire avant activation.');return}
+    if(!confirm('Activer les sauvegardes automatiques dans Google Drive lors des modifications de Stock 42 ?'))return;
+    localStorage.setItem(LS.cloudEnabled,'1');
+    scheduleCloudBackup();
+  }else{
+    localStorage.setItem(LS.cloudEnabled,'0');
+    clearTimeout(cloudTimer);
+  }
+  updateCloudBackupStatus();
+}
+
+function readAutoBackups(){
+  try{
+    const x=JSON.parse(localStorage.getItem(LS.autoBackups)||'[]');
+    return Array.isArray(x)?x:[];
+  }catch(e){return []}
+}
+function updateAutoBackupStatus(){
+  const list=readAutoBackups(),last=list[0];
+  if($('autoBackupCount'))$('autoBackupCount').textContent=list.length;
+  if($('autoBackupLast'))$('autoBackupLast').textContent=last?new Date(last.createdAt).toLocaleString('fr-FR'):'—';
+}
+function createAutomaticBackup(reason='Automatique'){
+  if(restoringBackup)return;
+  const payload=backupPayload();
+  const list=readAutoBackups();
+  const sig=JSON.stringify({...payload,createdAt:''});
+  const previous=list[0]?JSON.stringify({...list[0],createdAt:''}):'';
+  if(sig===previous){updateAutoBackupStatus();return}
+  list.unshift(payload);
+  localStorage.setItem(LS.autoBackups,JSON.stringify(list.slice(0,5)));
+  updateAutoBackupStatus();
+  if($('autoBackupStatus'))$('autoBackupStatus').textContent=reason+' : sauvegarde enregistrée.';
+}
+function scheduleAutoBackup(){
+  clearTimeout(autoBackupTimer);
+  autoBackupTimer=setTimeout(()=>createAutomaticBackup('Automatique'),700);
+}
+function restoreLatestBackup(){
+  const list=readAutoBackups(),b=list[0],el=$('autoBackupStatus');
+  if(!b){el.textContent='Aucune sauvegarde automatique disponible.';return}
+  restoringBackup=true;
+  try{
+    set(LS.catalog,b.catalog||[]);
+    set(LS.lots,b.lots||[]);
+    set(LS.orders,b.orders||[]);
+    set(LS.moves,b.movements||[]);
+    set(LS.assign,b.assignments||[]);
+    set(LS.history,b.history||[]);
+    set(LS.products,b.products||[]);
+    if(b.reorder)set(LS.reorder,b.reorder);else localStorage.removeItem(LS.reorder);
+    if(b.importedAt)localStorage.setItem(LS.imported,b.importedAt);else localStorage.removeItem(LS.imported);
+    if(b.syncUrl)localStorage.setItem(LS.syncUrl,b.syncUrl);
+    localStorage.setItem(LS.guestMode,b.guestMode||'0');
+  }finally{restoringBackup=false}
+  if($('syncUrl'))$('syncUrl').value=localStorage.getItem(LS.syncUrl)||'';
+  applyGuestMode();
+  updateStats();
+  el.innerHTML='<b>✓ Dernière sauvegarde restaurée.</b> La clé API actuelle a été conservée.';
+}
+
+function completeExportData(){return {...backupPayload(),format:'stock42V55Isolated-complete',version:54,exportedAt:new Date().toISOString()}}
+function backupFilename(){return 'Stock42_sauvegarde_complete_'+today()+'.json'}
+function backupFile(){return new File([JSON.stringify(completeExportData(),null,2)],backupFilename(),{type:'application/json'})}
+function downloadBackupFile(file){
+  const url=URL.createObjectURL(file),a=document.createElement('a');
+  a.href=url;a.download=file.name;document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),2000);
+}
+function updateExternalBackupStatus(){
+  if($('externalBackupLast')){const t=localStorage.getItem(LS.lastExternalBackup);$('externalBackupLast').textContent=t?new Date(t).toLocaleString('fr-FR'):'Jamais'}
+  if($('networkIndicator'))$('networkIndicator').textContent=navigator.onLine?'Connecté':'Hors connexion';
+}
+function markExternalBackupPrepared(message){
+  localStorage.setItem(LS.lastExternalBackup,new Date().toISOString());updateExternalBackupStatus();
+  $('externalBackupStatus').textContent=message;
+}
+async function shareExternalBackup(){
+  const file=backupFile();
+  try{
+    if(navigator.canShare&&navigator.canShare({files:[file]})&&navigator.share){
+      await navigator.share({files:[file],title:'Sauvegarde complète Stock 42'});
+      markExternalBackupPrepared('Fichier partagé. Vérifiez qu’il est bien enregistré dans Fichiers ou iCloud Drive.');
+    }else{
+      downloadBackupFile(file);
+      markExternalBackupPrepared('Fichier téléchargé. Déplacez-le vers Fichiers / iCloud Drive pour disposer d’une copie externe.');
+    }
+  }catch(e){if(e?.name!=='AbortError')$('externalBackupStatus').textContent='Partage impossible : '+String(e?.message||e)}
+}
+function exportJson(){
+  downloadBackupFile(backupFile());
+  markExternalBackupPrepared('Sauvegarde complète téléchargée. Conservez le fichier hors de cet iPhone.');
+}
+function validateExternalBackup(data){
+  if(!data||typeof data!=='object'||Array.isArray(data))throw Error('Le fichier n’est pas un objet JSON Stock 42.');
+  const fields=['catalog','lots','orders','movements','assignments','products','history'];
+  if(!fields.every(k=>Array.isArray(data[k])))throw Error('Sauvegarde incomplète : données obligatoires absentes.');
+  for(const [key,identifier] of [['catalog','lot'],['lots','lot']]){
+    if(data[key].some(x=>!x||typeof x!=='object'||!LOT.test(normalizeLot(x[identifier]))))throw Error('Numéro de lot invalide dans '+key);
+  }
+  if(data.orders.some(o=>!o||typeof o!=='object'||!String(o.id||'').trim()))throw Error('Commande invalide.');
+  if(data.reorder!==null&&data.reorder!==undefined&&(!data.reorder||typeof data.reorder!=='object'||!data.reorder.items||typeof data.reorder.items!=='object'))throw Error('Références de stock invalides.');
+  if(data.format!=='stock42V55Isolated-complete'&&data.version!==1)throw Error('Format non reconnu. Utilisez un export complet Stock 42.');
+  return {catalog:data.catalog.length,lots:data.lots.length,orders:data.orders.length,movements:data.movements.length,assignments:data.assignments.length};
+}
+async function previewExternalRestore(){
+  const file=$('restoreExternalFile')?.files?.[0],el=$('externalRestorePreview');
+  el.textContent='';if(!file){el.textContent='Choisissez un fichier JSON.';return}
+  if(file.size>25*1024*1024){el.textContent='Fichier trop volumineux (limite 25 Mo).';return}
+  try{
+    const parsed=JSON.parse(await file.text()),counts=validateExternalBackup(parsed);
+    el.innerHTML='<div class="notice">Sauvegarde vérifiée : '+counts.catalog+' lots importés, '+counts.lots+' lots locaux, '+counts.orders+' commandes, '+counts.movements+' mouvements. Les données actuelles seront remplacées seulement après une double confirmation.</div>';
+    const button=document.createElement('button');button.className='btn danger';button.type='button';button.textContent='Restaurer ce fichier vérifié';
+    button.onclick=()=>restoreExternalBackup(parsed,counts);el.appendChild(button);
+  }catch(e){el.textContent='Fichier refusé : '+String(e?.message||e)}
+}
+function restoreExternalBackup(data,counts){
+  if(!confirm('ATTENTION : remplacer les données locales actuelles par la sauvegarde choisie ? La synchronisation Google Sheets n’est pas modifiée.'))return;
+  if(!confirm('Seconde confirmation : vous avez conservé une copie externe récente et souhaitez restaurer '+counts.catalog+' lots importés et '+counts.lots+' lots locaux ?'))return;
+  // Snapshot local before changing anything; no write to Google Sheets during recovery.
+  createAutomaticBackup('Avant restauration externe');
+  restoringBackup=true;
+  try{
+    const kv=[[LS.catalog,data.catalog],[LS.lots,data.lots],[LS.orders,data.orders],[LS.moves,data.movements],[LS.assign,data.assignments],[LS.history,data.history],[LS.products,data.products]];
+    for(const [key,value] of kv)set(key,value);
+    if(data.reorder)set(LS.reorder,data.reorder);else localStorage.removeItem(LS.reorder);
+    if(data.importedAt)localStorage.setItem(LS.imported,data.importedAt);else localStorage.removeItem(LS.imported);
+    // The connection URL and API key intentionally remain unchanged.
+  }finally{restoringBackup=false}
+  updateStats();updateAutoBackupStatus();scheduleCloudBackup();
+  $('externalRestorePreview').innerHTML='<div class="notice"><b>Restauration locale terminée.</b> Vérifiez les stocks avant toute synchronisation Google Sheets.</div>';
+}
+
+function setScannerUi(mode='location'){
+  if(mode==='product'){
+    $('scannerTitle').textContent='Scanner le code-barres du produit';
+    $('status').textContent='Placez le code-barres EAN/UPC du produit dans le cadre.';
+    $('startBtn').textContent='Scanner le produit';
+  }else if(mode==='exit'){
+    $('scannerTitle').textContent='Scanner l’emplacement de sortie';
+    $('status').textContent='Scannez le QR 42-Rx-Nx-X de l’emplacement où vous prenez le produit.';
+    $('startBtn').textContent='Scanner l’emplacement';
+  }else if(mode==='move'){
+    $('scannerTitle').textContent='Scanner le nouvel emplacement';
+    $('status').textContent='Scannez le QR 42-Rx-Nx-X du nouvel emplacement.';
+    $('startBtn').textContent='Scanner l’emplacement';
+  }else{
+    $('scannerTitle').textContent='4. Scanner un emplacement';
+    $('status').textContent='Scannez un QR 42-Rx-Nx-X.';
+    $('startBtn').textContent='Démarrer le scanner';
+  }
+}
+async function startScanner(){
+  if(running)return;
+  await stopProductScanner();
+  const productMode=quickProductScanMode;
+  $('status').textContent=productMode?'Initialisation du scanner code-barres…':'Initialisation caméra…';
+  try{
+    const scannerConfig=productMode?{
+      formatsToSupport:[
+        Html5QrcodeSupportedFormats.EAN_13,
+        Html5QrcodeSupportedFormats.EAN_8,
+        Html5QrcodeSupportedFormats.UPC_A,
+        Html5QrcodeSupportedFormats.UPC_E,
+        Html5QrcodeSupportedFormats.CODE_128
+      ],
+      useBarCodeDetectorIfSupported:true
+    }:{
+      formatsToSupport:[Html5QrcodeSupportedFormats.QR_CODE],
+      useBarCodeDetectorIfSupported:true
+    };
+    scanner=new Html5Qrcode('reader',scannerConfig);
+    const cams=await Html5Qrcode.getCameras();
+    if(!cams?.length)throw new Error('Aucune caméra');
+    const back=cams.find(c=>/back|rear|environment|arrière/i.test(c.label))||cams[cams.length-1];
+    await scanner.start(back.id,{fps:10,qrbox:productMode?{width:300,height:140}:{width:220,height:220},aspectRatio:1},txt=>showResult(txt));
+    running=true;$('startBtn').disabled=true;$('stopBtn').disabled=false;
+    $('status').textContent=productMode?'Mode CODE-BARRES actif — EAN/UPC uniquement. Visez les barres et les chiffres.':'Mode QR emplacement actif.';
+  }catch(e){
+    $('status').textContent=productMode?'Scanner code-barres indisponible. Choisissez le produit manuellement.':'Caméra indisponible. Utilisez la saisie manuelle.';
+  }
+}
+async function stopProductScanner(){
+  try{if(productScannerControls)productScannerControls.stop()}catch(e){}
+  productScannerControls=null;productScanner=null;
+  if($('productReader')){
+    try{$('productReader').pause();$('productReader').srcObject=null}catch(e){}
+    $('productReader').classList.add('hidden');
+  }
+  if($('reader'))$('reader').classList.remove('hidden');
+}
+async function stopScanner(){
+  if(productScannerControls||quickProductScanMode)await stopProductScanner();
+  if(scanner&&running){try{await scanner.stop();await scanner.clear()}catch(e){}}
+  running=false;$('startBtn').disabled=false;$('stopBtn').disabled=true;$('status').textContent='Scanner arrêté.';
+}
+
+document.querySelectorAll('#mainNav button[data-view]').forEach(b=>b.onclick=async()=>{if(running||productScannerControls){quickProductScanMode=false;quickScanMode=false;moveScanMode=false;exitScanMode=false;await stopScanner()}document.body.classList.remove('scanner-active');setAppView(b.dataset.view)});
+if($('dashReorderOpen'))$('dashReorderOpen').onclick=()=>{
+  if(guestModeEnabled())return;
+  setAppView('entries');
+  showPane('ordersPane');
+};
+if($('productRefSearch'))$('productRefSearch').addEventListener('input',renderProductReference);
+if($('productSyncBtn'))$('productSyncBtn').onclick=async()=>{const ok=await syncProductsFromSheet();$('productRefStatus').textContent=ok?'Référentiel synchronisé.':'Synchronisation indisponible pour le moment.'};
+if($('productNewBtn'))$('productNewBtn').onclick=openNewProductFromMenu;
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>showPane(b.dataset.pane));
+$('oDate').value=today();
+$('importStockBtn').onclick=importWorkbook;$('clearCatalogBtn').onclick=clearCatalog;$('saveOrderBtn').onclick=saveOrder;$('oProduct').addEventListener('change',toggleNewProductField);$('qProduct').addEventListener('change',toggleQuickNewProduct);$('quickProductScanBtn').onclick=startQuickProductScanner;$('quickScanBtn').onclick=startQuickScanner;$('quickSaveBtn').onclick=saveQuickEntry;$('cancelReceiveBtn').onclick=cancelReceive;$('confirmReceiveBtn').onclick=confirmReceive;
+$('startBtn').onclick=()=>{moveScanMode=false;exitScanMode=false;quickScanMode=false;quickProductScanMode=false;setScannerUi('location');startScanner()};$('stopBtn').onclick=async()=>{moveScanMode=false;exitScanMode=false;quickScanMode=false;quickProductScanMode=false;await stopScanner();document.body.classList.remove('scanner-active');setScannerUi('location')};$('manualBtn').onclick=()=>showResult($('manualCode').value);$('manualCode').addEventListener('keydown',e=>{if(e.key==='Enter')showResult(e.target.value)});
+$('findLotBtn').onclick=()=>previewLot($('lotInput').value);$('lotInput').addEventListener('keydown',e=>{if(e.key==='Enter')previewLot(e.target.value)});
+$('assignLotBtn').onclick=()=>{const lot=normalizeLot($('lotInput').value);if(activeLocation)assignLotTo(lot,activeLocation)};
+$('searchLotBtn').onclick=searchLot;$('searchLot').addEventListener('keydown',e=>{if(e.key==='Enter')searchLot()});$('categorySearchBtn').onclick=searchCategory;$('categorySearch').addEventListener('change',searchCategory);$('inventoryLoadBtn').onclick=loadInventoryLocation;$('inventoryLocationSelect').addEventListener('change',loadInventoryLocation);$('inventoryUseActiveBtn').onclick=useActiveInventoryLocation;$('inventoryConfirmBtn').onclick=confirmQuickInventory;$('exitScanBtn').onclick=startExitScanner;$('exitLocationSelect').addEventListener('change',e=>setExitLocation(e.target.value));$('exitLotSelect').addEventListener('change',showExitLotInfo);$('exitConfirmBtn').onclick=confirmStockExit;$('moveScanBtn').onclick=startMoveScanner;$('moveLotBtn').onclick=moveSelectedLot;$('moveLotSelect').addEventListener('change',showMoveCurrentLocation);$('fifoSearchBtn').onclick=showFifoView;$('fifoProductSelect').addEventListener('change',showFifoView);$('locationViewBtn').onclick=showLocationView;$('locationViewSelect').addEventListener('change',showLocationView);$('showExpiryBtn').onclick=showExpiryAlerts;$('guestModeBtn').onclick=toggleGuestMode;
+$('resetReorderBaselineBtn').onclick=resetReorderBaseline;
+$('cloudUrl').value=localStorage.getItem(LS.cloudUrl)||'';
+$('saveCloudUrlBtn').onclick=()=>{
+ const url=$('cloudUrl').value.trim();
+ if(!/^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec$/.test(url)){updateCloudBackupStatus('Adresse Apps Script V55 incorrecte.');return}
+ if(localStorage.getItem(LS.cloudUrl)!==url){
+  localStorage.setItem(LS.cloudUrl,url);
+  localStorage.setItem(LS.cloudVerified,'0');
+  localStorage.setItem(LS.cloudEnabled,'0');
+ }
+ updateCloudBackupStatus('Adresse Drive enregistrée. Tester la connexion avant activation.');
+};
+$('sandboxChangeBtn').onclick=()=>{
+ const now=Date.now();
+ const catalog=Array.isArray(get(LS.catalog,[]))?get(LS.catalog,[]):[];
+ const id='L'+String(9000+(catalog.length%999)).padStart(4,'0');
+ const next=catalog.filter(l=>l.lot!==id);
+ next.push({lot:id,produit:'TEST V55 — produit fictif',categorie:'TEST',quantite:'1',unite:'pièce',emplacement:'42-R1-N1-A',zone:'Site 42',statut:'Rangé',dateReception:new Date().toLocaleDateString('fr-FR')});
+ set(LS.catalog,next);updateStats();
+ updateCloudBackupStatus(cloudEnabled()?'Modification fictive enregistrée : sauvegarde Drive programmée automatiquement.':'Modification fictive enregistrée, mais sauvegarde Drive non activée.');
+};
+$('testCloudBackupBtn').onclick=()=>uploadCloudBackup(true);$('toggleCloudBackupBtn').onclick=toggleCloudBackup;
+window.addEventListener('online',()=>{if(cloudEnabled()&&localStorage.getItem(LS.cloudPending)==='1')scheduleCloudBackup()});updateCloudBackupStatus();
+$('externalBackupBtn').onclick=shareExternalBackup;$('previewRestoreBtn').onclick=previewExternalRestore;window.addEventListener('online',updateExternalBackupStatus);window.addEventListener('offline',updateExternalBackupStatus);updateExternalBackupStatus();
+$('backupNowBtn').onclick=()=>createAutomaticBackup('Manuelle');$('restoreBackupBtn').onclick=restoreLatestBackup;$('exportLotsCsvBtn').onclick=exportLots;$('exportOrdersCsvBtn').onclick=exportOrders;$('exportJsonBtn').onclick=exportJson;
+$('syncUrl').value=localStorage.getItem(LS.syncUrl)||'';
+$('syncKey').value=localStorage.getItem(LS.syncKey)||'';
+$('saveSync').onclick=async()=>{localStorage.setItem(LS.syncUrl,$('syncUrl').value.trim());localStorage.setItem(LS.syncKey,$('syncKey').value.trim());$('syncMsg').textContent='Connexion enregistrée sur cet appareil.';createAutomaticBackup('Configuration');await syncLotsFromSheet()};$('syncLotsBtn').onclick=syncLotsFromSheet;
+function cleanupTestDataOnce(){
+  const key='stock42V55IsolatedCleanup20261018';
+  if(localStorage.getItem(key))return;
+  const testOrders=new Set(['C0001','C0002','C0003']);
+  const testLots=new Set(['L0057','L0058']);
+  set(LS.orders,orders().filter(x=>!testOrders.has(String(x.id||''))));
+  set(LS.lots,localLots().filter(x=>!testLots.has(normalizeLot(x.lot))));
+  set(LS.moves,get(LS.moves,[]).filter(x=>!testLots.has(normalizeLot(x.lot))&&!testOrders.has(String(x.reference||''))&&!testOrders.has(String(x.sourceOrder||''))));
+  set(LS.assign,assignments().filter(x=>!testLots.has(normalizeLot(x.lot))));
+  const h=get(LS.history,[]);
+  if(Array.isArray(h))set(LS.history,h.filter(x=>!testLots.has(normalizeLot(x.lot))&&!testOrders.has(String(x.orderId||''))&&!testOrders.has(String(x.reference||''))));
+  localStorage.setItem(key,new Date().toISOString());
+}
+cleanupTestDataOnce();
+document.body.dataset.appView=localStorage.getItem('stock42V55IsolatedAppView')||'home';
+setAppView(document.body.dataset.appView,false);
+applyGuestMode();
+updateStats();
+updateAutoBackupStatus();
+if(!readAutoBackups().length)createAutomaticBackup('Initiale');
+if(localStorage.getItem(LS.syncUrl))syncLotsFromSheet();else {initializeReorderBaseline();updateStats();}
+if(cloudEnabled()&&localStorage.getItem(LS.cloudPending)==='1')scheduleCloudBackup();
+</script>
+</body></html>
