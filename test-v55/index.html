@@ -9,6 +9,8 @@
 <label for="url">URL Google Apps Script V55 TEST (se termine par /exec)</label><input type="url" id="url" autocomplete="off" spellcheck="false" placeholder="https://script.google.com/macros/s/.../exec">
 <label for="token">Clé API Stock 42 (reste uniquement dans cette page)</label><input type="password" id="token" autocomplete="off" placeholder="Clé API de la cellule Configuration!B2">
 <p><small>Ne partage pas la clé dans la conversation. Ne colle pas l'URL de production : utilise seulement celle du nouveau déploiement V55 TEST. Aucune donnée saisie n'est stockée par cette page.</small></p>
+<button id="diagnose" type="button" style="background:#4d647e">Vérifier la confirmation (sans sauvegarder)</button>
+<p><small>Ce contrôle ne crée aucun fichier et ne transmet pas la clé API.</small></p>
 <button id="run" type="button">Tester une sauvegarde fictive</button>
 <output id="status" role="status" aria-live="polite">Aucun test lancé.</output>
 <p><small>Le test confirme un succès uniquement après réception d’un reçu serveur attestant la création du fichier. Si le reçu est absent, aucun succès n’est annoncé.</small></p>
@@ -27,6 +29,34 @@ function receiptCheck(url,id){
   document.head.appendChild(tag);
  });
 }
+
+$('diagnose').addEventListener('click',async()=>{
+ const url=$('url').value.trim();
+ if(!/^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec(?:\?.*)?$/.test(url)){
+  $('status').textContent='Saisis d’abord l’URL V55 TEST correcte.';return;
+ }
+ $('diagnose').disabled=true;
+ $('status').textContent='Vérification du mécanisme de confirmation, sans envoi de sauvegarde…';
+ const id=newReceiptId(),cb='stock42Receipt_'+id,script=document.createElement('script');
+ let completed=false;
+ const finish=(message)=>{
+  if(completed)return;completed=true;
+  clearTimeout(timer);delete window[cb];script.remove();$('diagnose').disabled=false;
+  $('status').textContent=message;
+ };
+ const timer=setTimeout(()=>finish('ÉCHEC : aucune réponse exploitable du point de confirmation sous 9 secondes. Aucun fichier créé.'),9000);
+ window[cb]=result=>{
+  if(result?.ok===true&&result?.saved===false){
+   finish('OK : la route de confirmation répond correctement. Un identifiant fictif est signalé absent, ce qui est attendu. Aucun fichier créé.');
+  }else{
+   finish('Réponse inattendue du point de confirmation : '+JSON.stringify(result)+'. Aucun fichier créé.');
+  }
+ };
+ script.onerror=()=>finish('ÉCHEC : le navigateur bloque le chargement de la route de confirmation. Aucun fichier créé.');
+ script.src=url+(url.includes('?')?'&':'?')+'action=backupReceipt&receiptId='+id+'&prefix='+cb+'&t='+Date.now();
+ document.head.appendChild(script);
+});
+
 $('run').addEventListener('click',async()=>{
  const url=$('url').value.trim(),token=$('token').value.trim();
  if(!/^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec(?:\?.*)?$/.test(url)){ $('status').textContent='URL invalide : colle l’adresse /exec du déploiement V55 TEST.';return;}
