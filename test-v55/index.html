@@ -4,36 +4,53 @@
 <style>body{font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:#f6f4fc;color:#28213f;margin:0;padding:20px}main{max-width:650px;margin:25px auto;background:white;border-radius:18px;padding:24px;box-shadow:0 5px 25px #26164412}h1{font-size:1.4rem}h2{font-size:1.05rem}label{display:block;font-weight:600;margin:16px 0 5px}input{box-sizing:border-box;width:100%;padding:12px;border:1px solid #beb6d4;border-radius:8px;font-size:16px}button{border:0;border-radius:8px;padding:13px 18px;background:#6745c6;color:white;font-size:16px;font-weight:650;margin-top:20px;cursor:pointer}button:disabled{opacity:.5}output{white-space:pre-wrap;display:block;margin-top:18px;background:#f3f0fa;border-radius:8px;padding:16px;overflow-wrap:anywhere}small,p{line-height:1.55}aside{padding:14px;border-left:4px solid #6745c6;background:#f3f0fa;border-radius:4px}code{font-size:.9em}</style>
 </head><body><main><h1>Stock 42 — V55 TEST Google Drive</h1>
 <aside><strong>Page isolée.</strong> Cette page n'accède ni au stock réel, ni aux données du navigateur de Stock 42. Elle envoie uniquement 2 lots fictifs et ne modifie pas Google Sheets.</aside>
-<p>La requête crée un nouveau fichier JSON de test dans Google Drive <strong>si</strong> la connexion et les autorisations du déploiement le permettent. Le mode « Moi uniquement » peut bloquer les requêtes provenant d'un autre site web.</p>
+<p>Cette version contourne la lecture bloquée par CORS : le serveur reçoit une requête puis publie un reçu de confirmation sans révéler les données du fichier. Le mode « Moi uniquement » peut bloquer les requêtes provenant d'un autre site web.</p>
 <h2>1. Paramètres du déploiement de test</h2>
 <label for="url">URL Google Apps Script V55 TEST (se termine par /exec)</label><input type="url" id="url" autocomplete="off" spellcheck="false" placeholder="https://script.google.com/macros/s/.../exec">
 <label for="token">Clé API Stock 42 (reste uniquement dans cette page)</label><input type="password" id="token" autocomplete="off" placeholder="Clé API de la cellule Configuration!B2">
 <p><small>Ne partage pas la clé dans la conversation. Ne colle pas l'URL de production : utilise seulement celle du nouveau déploiement V55 TEST. Aucune donnée saisie n'est stockée par cette page.</small></p>
 <button id="run" type="button">Tester une sauvegarde fictive</button>
 <output id="status" role="status" aria-live="polite">Aucun test lancé.</output>
-<p><small>Le test confirme un succès seulement si Google Drive retourne <code>backupSaved:true</code> et un identifiant <code>fileId</code>. En cas de blocage réseau ou d'accès, aucune réussite n'est annoncée.</small></p>
+<p><small>Le test confirme un succès uniquement après réception d’un reçu serveur attestant la création du fichier. Si le reçu est absent, aucun succès n’est annoncé.</small></p>
 </main><script>
 const $=id=>document.getElementById(id);
+function newReceiptId(){const b=new Uint8Array(16);crypto.getRandomValues(b);return Array.from(b,x=>x.toString(16).padStart(2,'0')).join('')}
+function receiptCheck(url,id){
+ return new Promise(resolve=>{
+  const cb='stock42Receipt_'+id,tag=document.createElement('script');
+  let done=false;
+  const finish=value=>{if(done)return;done=true;clearTimeout(timer);delete window[cb];tag.remove();resolve(value)};
+  const timer=setTimeout(()=>finish(false),8000);
+  window[cb]=data=>finish(data?.ok===true&&data?.saved===true);
+  tag.onerror=()=>finish(false);
+  tag.src=url+(url.includes('?')?'&':'?')+'action=backupReceipt&receiptId='+id+'&prefix='+cb+'&t='+Date.now();
+  document.head.appendChild(tag);
+ });
+}
 $('run').addEventListener('click',async()=>{
  const url=$('url').value.trim(),token=$('token').value.trim();
  if(!/^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec(?:\?.*)?$/.test(url)){ $('status').textContent='URL invalide : colle l’adresse /exec du déploiement V55 TEST.';return;}
  if(!token){$('status').textContent='Saisis la clé API avant le test.';return;}
  $('run').disabled=true;$('status').textContent='Envoi de la sauvegarde fictive au serveur…';
- const stamp=new Date().toISOString();
+ const stamp=new Date().toISOString(),receiptId=newReceiptId();
  const backup={format:'stock42-complete',version:55,createdAt:stamp,exportedAt:stamp,catalog:[
   {lot:'L9001',produit:'Riz TEST V55',quantite:40,unite:'kg',statut:'En stock',emplacement:'42-TEST'},
   {lot:'L9002',produit:'Sel TEST V55',quantite:5,unite:'kg',statut:'En stock',emplacement:'42-TEST'}
  ],lots:[],orders:[],movements:[],assignments:[],products:[],history:[],reorder:{createdAt:stamp,items:{}}};
  try {
-  const response=await fetch(url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({token:token,action:'backup',data:{filename:'Stock42_TEST_V55.json',backup}}),redirect:'follow'});
-  const data=await response.json();
-  if(data.ok===true&&data.backupSaved===true&&typeof data.fileId==='string'&&data.fileId){
-    $('status').textContent='SUCCÈS — Google Drive confirme la création du fichier fictif.\nIdentifiant du fichier : '+data.fileId+'\nVérifie aussi sa présence dans le dossier Stock42_Sauvegardes_Automatiques.';
-  } else {
-    $('status').textContent='Sauvegarde NON confirmée.\n'+(data.error||'Réponse sans confirmation de création Drive.');
+  try {
+   await fetch(url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({token,action:'backup',data:{filename:'Stock42_TEST_V55.json',backup,receiptId}})});
+  } catch (e) { /* Network exception does not prove whether the server wrote the file. */ }
+  $('status').textContent='Demande envoyée. Recherche de la confirmation sécurisée…';
+  let saved=false;
+  for(let i=0;i<5;i++){await new Promise(resolve=>setTimeout(resolve,i===0?1200:3000));if(await receiptCheck(url,receiptId)){saved=true;break;}}
+  if(saved){
+   $('status').textContent='SUCCÈS — Google Drive confirme la création du fichier fictif.\nVérifie aussi sa présence dans le dossier Stock42_Sauvegardes_Automatiques.';
+  }else{
+   $('status').textContent='Sauvegarde NON confirmée. Le mode « Moi uniquement » peut empêcher la communication depuis GitHub Pages.\nLa requête a pu être reçue : vérifie le dossier Drive AVANT de refaire ce test.\nNe change pas les autorisations ni l’URL de production.';
   }
  }catch(e){
-  $('status').textContent='Test réseau non concluant : le déploiement « Moi uniquement » peut refuser une requête depuis GitHub Pages. Il peut également s’agir d’une restriction CORS / redirection Google.\nDétail : '+String(e?.message||e)+'\nNe change pas les autorisations et ne remplace pas l’URL de production.';
+  $('status').textContent='Test non concluant : '+String(e?.message||e);
  }finally{$('run').disabled=false;}
 });
 </script></body></html>
