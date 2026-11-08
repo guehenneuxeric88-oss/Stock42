@@ -498,7 +498,7 @@ function newCloudReceiptId(){
 }
 function checkCloudReceipt(url,id){
   return new Promise(resolve=>{
-    const cb='stock42V55IsolatedReceipt_'+id,script=document.createElement('script');
+    const cb='stock42Receipt_'+id,script=document.createElement('script');
     let finished=false;
     const stop=(value)=>{if(finished)return;finished=true;clearTimeout(timer);delete window[cb];script.remove();resolve(value)};
     const timer=setTimeout(()=>stop(false),9000);
@@ -1675,7 +1675,7 @@ function restoreLatestBackup(){
   el.innerHTML='<b>✓ Dernière sauvegarde restaurée.</b> La clé API actuelle a été conservée.';
 }
 
-function completeExportData(){return {...backupPayload(),format:'stock42V55Isolated-complete',version:54,exportedAt:new Date().toISOString()}}
+function completeExportData(){return {...backupPayload(),format:'stock42-complete',version:54,exportedAt:new Date().toISOString()}}
 function backupFilename(){return 'Stock42_sauvegarde_complete_'+today()+'.json'}
 function backupFile(){return new File([JSON.stringify(completeExportData(),null,2)],backupFilename(),{type:'application/json'})}
 function downloadBackupFile(file){
@@ -1716,7 +1716,7 @@ function validateExternalBackup(data){
   }
   if(data.orders.some(o=>!o||typeof o!=='object'||!String(o.id||'').trim()))throw Error('Commande invalide.');
   if(data.reorder!==null&&data.reorder!==undefined&&(!data.reorder||typeof data.reorder!=='object'||!data.reorder.items||typeof data.reorder.items!=='object'))throw Error('Références de stock invalides.');
-  if(data.format!=='stock42V55Isolated-complete'&&data.version!==1)throw Error('Format non reconnu. Utilisez un export complet Stock 42.');
+  if(data.format!=='stock42-complete'&&data.version!==1)throw Error('Format non reconnu. Utilisez un export complet Stock 42.');
   return {catalog:data.catalog.length,lots:data.lots.length,orders:data.orders.length,movements:data.movements.length,assignments:data.assignments.length};
 }
 async function previewExternalRestore(){
