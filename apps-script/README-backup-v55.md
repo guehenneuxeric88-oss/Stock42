@@ -51,3 +51,20 @@ return json_(data && data.receiptId
 - Un POST en mode no-cors peut être envoyé même quand le reçu est bloqué ; une réponse absente ne prouve pas que Drive n'a rien reçu.
 - On ne peut pas confirmer automatiquement la sauvegarde avec « Moi uniquement » si les requêtes interdomaines ne passent pas.
 - Il faudra tester avec deux lots fictifs et inspecter le dossier Drive avant toute mise en production.
+
+
+## Bilan de validation du 9 novembre 2026
+
+La clé Drive est désormais indépendante de la clé Google Sheets (commit fdc5fff). Le bac à sable a été aligné sur ce traitement (473c7f8, uniquement test-v55/app/index.html). Test Drive réel confirmé à 20:39:22, puis modification fictive L9007 sauvegardée automatiquement à 20:39:50. Fichier vérifié : Stock42_auto_20261109_203947_042.json, huit éléments fictifs, aucune clé API. Les champs de connexion Sheets du bac à sable étaient vides.
+
+Cinq tests déterministes de la logique extraite du candidat V55 ont réussi avec stockage et réseau simulés :
+
+- Hors connexion : attente persistante, aucun envoi.
+- Événement online : reprise programmée.
+- Confirmation serveur : attente effacée et date enregistrée.
+- Sauvegardes désactivées : aucune reprise automatique.
+- Modifications rapprochées : une seule programmation.
+
+Ces tests de logique ne remplacent pas un test navigateur complet pendant une coupure réelle : ce dernier reste partiellement vérifié. La restauration externe et la sauvegarde après restauration ont été validées le 8 novembre avec des données fictives. Drive conserve toutes les anciennes copies, sans purge automatique ; la limite de cinq concerne les copies locales.
+
+Aucune fusion de cette PR ni activation dans l’application principale n’a été effectuée. Les 142 lots réels et Google Sheets n’ont pas été modifiés pendant ces essais. Avant production : validation explicite de l’utilisateur, vérification de la configuration du serveur Drive dédié, sauvegarde de précaution et contrôle du déploiement.
