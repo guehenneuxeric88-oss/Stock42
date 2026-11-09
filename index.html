@@ -57,7 +57,7 @@ body.guest-mode .admin-only{display:none!important}body.guest-mode #guestModeBtn
   <button class="active" data-view="home"><span class="nav-icon">⌂</span>Accueil</button>
   <button data-view="entries"><span class="nav-icon">＋</span>Entrées</button>
   <button data-view="stock"><span class="nav-icon">▣</span>Stock</button>
-  <button data-view="products"><span class="nav-icon">▤</span>Produits</button>
+  <button data-view="stock" data-focus="exitCard" aria-label="Sorties de stock"><span class="nav-icon">↗</span>Sorties</button>
   <button data-view="config"><span class="nav-icon">⚙</span>Config.</button>
 </nav>
 
@@ -686,7 +686,7 @@ function setAppView(view,scroll=true){
   if(!allowed.includes(view))view='home';
   document.body.dataset.appView=view;
   localStorage.setItem('stock42AppView',view);
-  document.querySelectorAll('#mainNav button[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===view));
+  document.querySelectorAll('#mainNav button[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===view&&!b.dataset.focus));
   if(view==='products')renderProductReference();
   if(scroll)window.scrollTo({top:0,behavior:'smooth'});
 }
@@ -1812,7 +1812,7 @@ async function stopScanner(){
   running=false;$('startBtn').disabled=false;$('stopBtn').disabled=true;$('status').textContent='Scanner arrêté.';
 }
 
-document.querySelectorAll('#mainNav button[data-view]').forEach(b=>b.onclick=async()=>{if(running||productScannerControls){quickProductScanMode=false;quickScanMode=false;moveScanMode=false;exitScanMode=false;await stopScanner()}document.body.classList.remove('scanner-active');setAppView(b.dataset.view)});
+document.querySelectorAll('#mainNav button[data-view]').forEach(b=>b.onclick=async()=>{if(running||productScannerControls){quickProductScanMode=false;quickScanMode=false;moveScanMode=false;exitScanMode=false;await stopScanner()}document.body.classList.remove('scanner-active');setAppView(b.dataset.view);if(b.dataset.focus){document.querySelectorAll('#mainNav button[data-view]').forEach(x=>x.classList.toggle('active',x===b));const target=$(b.dataset.focus);if(target&&!guestModeEnabled())requestAnimationFrame(()=>target.scrollIntoView({behavior:'smooth',block:'start'}));}});
 if($('dashReorderOpen'))$('dashReorderOpen').onclick=()=>{
   if(guestModeEnabled())return;
   setAppView('entries');
