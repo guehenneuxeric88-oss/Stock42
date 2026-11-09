@@ -400,8 +400,8 @@ body.guest-mode .admin-only{display:none!important}body.guest-mode #guestModeBtn
   <div class="notice">Cette fonctionnalité nécessite l'installation du module de sauvegarde dans Google Apps Script. Elle est désactivée par défaut. Les données seront envoyées uniquement après un test confirmé par Google Drive et ton activation.</div>
   <label for="cloudUrl" class="label">URL Apps Script dédiée aux sauvegardes V55 (déploiement de test)</label>
   <input id="cloudUrl" type="url" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off" spellcheck="false">
-  <div class="row"><button id="saveCloudUrlBtn" type="button" class="btn secondary">Enregistrer l’adresse Drive</button></div>
-  <label for="cloudKey" class="label">Clé API du serveur V55 TEST (uniquement dans ce bac à sable)</label><input id="cloudKey" type="password" autocomplete="off" placeholder="Coller la clé API Stock 42"><div class="hint">Ne renseigne pas la connexion Google Sheets de ce bac à sable. La clé est stockée uniquement localement dans cet environnement isolé et n’est jamais incluse dans une sauvegarde.</div>
+  <div class="row"><button id="saveCloudUrlBtn" type="button" class="btn secondary">Enregistrer la configuration Drive</button></div>
+  <label for="cloudKey" class="label">Clé dédiée aux sauvegardes Drive (V55 TEST)</label><input id="cloudKey" type="password" autocomplete="off" placeholder="Coller la clé API Stock 42"><div class="hint">Ne renseigne pas la connexion Google Sheets de ce bac à sable. La clé est stockée uniquement localement dans cet environnement isolé et n’est jamais incluse dans une sauvegarde.</div>
   <div class="row"><button id="sandboxChangeBtn" class="btn secondary" type="button">Simuler une modification fictive (déclenchement V55)</button></div><div class="hint">À utiliser après activation des sauvegardes Drive. Cette action ajoute uniquement un produit fictif dans ce bac à sable.</div>
   <div class="row" style="margin-top:12px">
     <button id="testCloudBackupBtn" type="button" class="btn secondary">Tester la connexion Drive</button>
@@ -1831,17 +1831,17 @@ $('resetReorderBaselineBtn').onclick=resetReorderBaseline;
 $('cloudUrl').value=localStorage.getItem(LS.cloudUrl)||'';
 $('cloudKey').value=localStorage.getItem(LS.cloudKey)||'';
 $('saveCloudUrlBtn').onclick=()=>{
- const url=$('cloudUrl').value.trim();
+ const url=$('cloudUrl').value.trim(),key=$('cloudKey').value.trim();
+ if(!key){updateCloudBackupStatus('Clé dédiée Drive requise.');return}
  if(!/^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec$/.test(url)){updateCloudBackupStatus('Adresse Apps Script V55 incorrecte.');return}
- const key=$('cloudKey').value.trim();
- if(!key){updateCloudBackupStatus('Clé API requise pour ce test isolé.');return}
- if(localStorage.getItem(LS.cloudKey)!==key){localStorage.setItem(LS.cloudKey,key);localStorage.setItem(LS.cloudVerified,'0');localStorage.setItem(LS.cloudEnabled,'0')}
- if(localStorage.getItem(LS.cloudUrl)!==url){
+ if(localStorage.getItem(LS.cloudUrl)!==url||localStorage.getItem(LS.cloudKey)!==key){
+  clearTimeout(cloudTimer);
   localStorage.setItem(LS.cloudUrl,url);
+  localStorage.setItem(LS.cloudKey,key);
   localStorage.setItem(LS.cloudVerified,'0');
   localStorage.setItem(LS.cloudEnabled,'0');
  }
- updateCloudBackupStatus('Adresse Drive enregistrée. Tester la connexion avant activation.');
+ updateCloudBackupStatus('Configuration Drive enregistrée. Tester la connexion avant activation.');
 };
 $('sandboxChangeBtn').onclick=()=>{
  const now=Date.now();
