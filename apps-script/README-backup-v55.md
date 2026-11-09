@@ -68,3 +68,35 @@ Cinq tests déterministes de la logique extraite du candidat V55 ont réussi ave
 Ces tests de logique ne remplacent pas un test navigateur complet pendant une coupure réelle : ce dernier reste partiellement vérifié. La restauration externe et la sauvegarde après restauration ont été validées le 8 novembre avec des données fictives. Drive conserve toutes les anciennes copies, sans purge automatique ; la limite de cinq concerne les copies locales.
 
 Aucune fusion de cette PR ni activation dans l’application principale n’a été effectuée. Les 142 lots réels et Google Sheets n’ont pas été modifiés pendant ces essais. Avant production : validation explicite de l’utilisateur, vérification de la configuration du serveur Drive dédié, sauvegarde de précaution et contrôle du déploiement.
+
+
+## Plan de déploiement préparé le 9 novembre 2026 — validation requise
+
+État observé : PR #11 ouverte, sans conflit avec main ; aucun contrôle GitHub Actions attaché à la PR. Base main de référence : 473c7f85e75283250866174126a0df9d2351c8a2. Cette référence est un repère de comparaison, pas une instruction de réinitialisation. Revérifier main juste avant fusion.
+
+### Périmètre
+
+La PR modifie index.html, service-worker.js et les fichiers du dossier apps-script. Aucun changement de lots.json ni du module google-sync. Le stockage réel conserve ses noms existants ; les essais test-v55 utilisent leurs propres clés isolées. La nouvelle clé Drive n’est pas copiée depuis la clé Sheets et aucun secret n’est intégré au dépôt.
+
+### Étape A : publier le code, uniquement après accord explicite
+
+1. Vérifier que main n’a pas changé et examiner à nouveau les fichiers de la PR.
+2. Fusionner uniquement la PR #11 puis attendre la réussite du workflow GitHub Pages pour ce commit.
+3. Vérifier les fichiers publiés et la version du cache sans ouvrir l’application réelle tant que l’interdiction de toute interaction Sheets est maintenue.
+4. Ne pas modifier les lots, ne pas restaurer une sauvegarde fictive dans l’application principale et ne pas remplacer le serveur de synchronisation Sheets par Code-V55-TEST.gs. Ce dernier est un serveur de sauvegarde exclusivement.
+
+### Étape B : activer Drive sur les données réelles — accord distinct
+
+Cette étape enverra une copie des données réelles vers le serveur Drive dédié. Avant de la lancer, convenir explicitement de la levée ou du maintien de la contrainte Sheets : l’application existante peut synchroniser les lots à son ouverture si une connexion est déjà configurée. Préparer une copie de précaution des données réelles actuelles ; ne jamais utiliser les sauvegardes L9000–L9007 comme données réelles.
+
+Configurer uniquement les champs Drive avec une clé dédiée cohérente avec STOCK42_V55_TEST_TOKEN du serveur testé (ou une configuration de production dédiée vérifiée). Les propriétés Apps Script sont communes aux versions d’un même projet : ne pas changer la clé ou le dossier d’un projet partagé sans vérifier les déploiements qui en dépendent. Conserver la connexion Sheets existante. Tester Drive, vérifier le fichier créé et l’absence de secrets, puis activer volontairement. Les réglages du bac à sable ne sont pas transférés automatiquement vers l’application principale.
+
+### Retour arrière
+
+Avant activation Drive : si le code publié présente un problème, annuler le commit de fusion par un nouveau commit de revert, puis laisser Pages redéployer ; ne pas réinitialiser main et ne pas écraser les changements d’autrui. Après activation : désactiver d’abord les sauvegardes Drive, puis appliquer le même retour de code si nécessaire. Ne supprimer aucun fichier Drive ni aucune donnée locale. Les données et les paramètres restent distincts du retour de code.
+
+### Limites connues
+
+Les tests réels réussis couvrent les sauvegardes fictives, la restauration, la clé Drive dédiée et la persistance après rechargement. Cinq tests de logique réseau simulée ont réussi. Le scénario navigateur complet pendant une coupure reste partiellement vérifié ; aucune garantie d’exécution PWA fermée. Pas de purge automatique Drive.
+
+Ce plan n’autorise ni fusion, ni activation des sauvegardes sur les lots réels.
