@@ -351,6 +351,7 @@ body.guest-mode .admin-only{display:none!important}body.guest-mode #guestModeBtn
   <div class="section-title">Vue par emplacement</div>
   <div class="manual"><select id="locationViewSelect"><option value="">— Choisir un emplacement —</option></select><button id="locationViewBtn" class="btn secondary">Afficher</button></div>
   <div class="hint" style="margin-top:8px">Affiche tout le contenu d'un emplacement du site 42.</div>
+  <label class="hint" style="display:block;margin-top:10px"><input id="showEmptyLocationLots" type="checkbox" style="width:auto;margin-right:7px">Afficher les lots épuisés</label>
   <div id="locationViewResult" style="margin-top:10px"></div>
 </section>
 
@@ -962,7 +963,15 @@ if(btn){
   btn.textContent=sync.ok?'✓ Lot affecté':'⚠ Affecté localement';
   setTimeout(()=>{btn.disabled=false;btn.textContent=btn.dataset.oldText||'Affecter ce lot'},1800);
 }}
-function renderLocationStock(){if(!activeLocation)return;const rows=assignments().filter(x=>x.location===activeLocation).map(a=>({...a,lotData:lotById(a.lot)})).filter(x=>x.lotData&&String(x.lotData.produit||'').trim());const el=$('locationStock');if(!rows.length){el.innerHTML='<div class="empty">Aucun lot affecté.</div>';return}rows.sort((a,b)=>String(a.lotData?.ddm||'9999').localeCompare(String(b.lotData?.ddm||'9999')));el.innerHTML=rows.map((x,i)=>'<div class="list-item"><div class="item-title">'+esc(x.lot)+(currentQtyForLot(x.lotData)<=0?' <span class="badge">ÉPUISÉ</span>':'')+(i===0? ' <span class="badge blue">FIFO</span>':'')+'</div><div>'+esc(x.lotData?.produit||'Produit non renseigné')+'</div><div class="item-meta">'+esc(displayQtyForLot(x.lotData))+(x.lotData?.ddm?' • '+esc(x.lotData.ddm):'')+'</div></div>').join('')}
+function renderLocationStock(){
+  if(!activeLocation)return;
+  const allRows=assignments().filter(x=>x.location===activeLocation).map(a=>({...a,lotData:lotById(a.lot)})).filter(x=>x.lotData&&String(x.lotData.produit||'').trim());
+  const rows=allRows.filter(x=>currentQtyForLot(x.lotData)>0);
+  const el=$('locationStock');
+  if(!rows.length){el.innerHTML='<div class="empty">'+(allRows.length?'Aucun lot disponible (lots épuisés masqués).':'Aucun lot affecté.')+'</div>';return}
+  rows.sort((a,b)=>String(a.lotData?.ddm||'9999').localeCompare(String(b.lotData?.ddm||'9999')));
+  el.innerHTML=rows.map((x,i)=>'<div class="list-item"><div class="item-title">'+esc(x.lot)+(i===0?' <span class="badge blue">FIFO</span>':'')+'</div><div>'+esc(x.lotData?.produit||'Produit non renseigné')+'</div><div class="item-meta">'+esc(displayQtyForLot(x.lotData))+(x.lotData?.ddm?' • '+esc(x.lotData.ddm):'')+'</div></div>').join('');
+}
 function normalizeSearchText(v){
   return String(v||'')
     .toLocaleLowerCase('fr-FR')
@@ -1479,14 +1488,13 @@ function populateLocationView(){
 function showLocationView(){
   const loc=$('locationViewSelect').value,el=$('locationViewResult');
   if(!loc){el.innerHTML='<div class="empty">Choisissez un emplacement.</div>';return}
-  const rows=assignments().filter(a=>a.location===loc).map(a=>({a,lotData:lotById(a.lot)})).filter(x=>x.lotData&&String(x.lotData.produit||'').trim());
-  if(!rows.length){
-    el.innerHTML='<div class="notice"><b>'+esc(loc)+'</b><br>Emplacement vide.</div>';
-    return;
-  }
+  const allRows=assignments().filter(a=>a.location===loc).map(a=>({a,lotData:lotById(a.lot)})).filter(x=>x.lotData&&String(x.lotData.produit||'').trim());
+  const showEmpty=$('showEmptyLocationLots')?.checked===true;
+  const rows=allRows.filter(x=>showEmpty||currentQtyForLot(x.lotData)>0);
+  if(!rows.length){el.innerHTML='<div class="notice"><b>'+esc(loc)+'</b><br>'+(allRows.length?'Aucun lot disponible (lots épuisés masqués).':'Emplacement vide.')+'</div>';return}
   rows.sort((a,b)=>String(a.lotData?.ddm||'9999').localeCompare(String(b.lotData?.ddm||'9999')));
-  el.innerHTML='<div class="notice"><b>'+esc(loc)+'</b> • '+rows.length+' lot(s)</div>'+
-    rows.map((x,i)=>'<div class="list-item"><div class="item-title">'+esc(x.a.lot)+(i===0?' <span class="badge blue">FIFO</span>':'')+' — '+esc(x.lotData?.produit||'Produit non renseigné')+'</div><div class="item-meta">'+esc(displayQtyForLot(x.lotData))+(x.lotData?.ddm?' • '+esc(x.lotData?.typeDate||'DDM')+' '+esc(x.lotData.ddm):'')+'</div></div>').join('');
+  el.innerHTML='<div class="notice"><b>'+esc(loc)+'</b> • '+rows.length+' lot(s) affiché(s)'+(!showEmpty&&allRows.length>rows.length?' • '+(allRows.length-rows.length)+' épuisé(s) masqué(s)':'')+'</div>'+
+    rows.map((x,i)=>'<div class="list-item"><div class="item-title">'+esc(x.a.lot)+(currentQtyForLot(x.lotData)<=0?' <span class="badge">ÉPUISÉ</span>':i===0?' <span class="badge blue">FIFO</span>':'')+' — '+esc(x.lotData?.produit||'Produit non renseigné')+'</div><div class="item-meta">'+esc(displayQtyForLot(x.lotData))+(x.lotData?.ddm?' • '+esc(x.lotData?.typeDate||'DDM')+' '+esc(x.lotData.ddm):'')+'</div></div>').join('');
 }
 function parseFrenchDate(v){
   const s=String(v||'').trim();
@@ -1831,7 +1839,7 @@ $('importStockBtn').onclick=importWorkbook;$('clearCatalogBtn').onclick=clearCat
 $('startBtn').onclick=()=>{moveScanMode=false;exitScanMode=false;quickScanMode=false;quickProductScanMode=false;setScannerUi('location');startScanner()};$('stopBtn').onclick=async()=>{moveScanMode=false;exitScanMode=false;quickScanMode=false;quickProductScanMode=false;await stopScanner();document.body.classList.remove('scanner-active');setScannerUi('location')};$('manualBtn').onclick=()=>showResult($('manualCode').value);$('manualCode').addEventListener('keydown',e=>{if(e.key==='Enter')showResult(e.target.value)});
 $('findLotBtn').onclick=()=>previewLot($('lotInput').value);$('lotInput').addEventListener('keydown',e=>{if(e.key==='Enter')previewLot(e.target.value)});
 $('assignLotBtn').onclick=()=>{const lot=normalizeLot($('lotInput').value);if(activeLocation)assignLotTo(lot,activeLocation)};
-$('searchLotBtn').onclick=searchLot;$('searchLot').addEventListener('keydown',e=>{if(e.key==='Enter')searchLot()});$('categorySearchBtn').onclick=searchCategory;$('categorySearch').addEventListener('change',searchCategory);$('inventoryLoadBtn').onclick=loadInventoryLocation;$('inventoryLocationSelect').addEventListener('change',loadInventoryLocation);$('inventoryUseActiveBtn').onclick=useActiveInventoryLocation;$('inventoryConfirmBtn').onclick=confirmQuickInventory;$('exitScanBtn').onclick=startExitScanner;$('exitLocationSelect').addEventListener('change',e=>setExitLocation(e.target.value));$('exitLotSelect').addEventListener('change',showExitLotInfo);$('exitConfirmBtn').onclick=confirmStockExit;$('moveScanBtn').onclick=startMoveScanner;$('moveLotBtn').onclick=moveSelectedLot;$('moveLotSelect').addEventListener('change',showMoveCurrentLocation);$('fifoSearchBtn').onclick=showFifoView;$('fifoProductSelect').addEventListener('change',showFifoView);$('locationViewBtn').onclick=showLocationView;$('locationViewSelect').addEventListener('change',showLocationView);$('showExpiryBtn').onclick=showExpiryAlerts;$('guestModeBtn').onclick=toggleGuestMode;
+$('searchLotBtn').onclick=searchLot;$('searchLot').addEventListener('keydown',e=>{if(e.key==='Enter')searchLot()});$('categorySearchBtn').onclick=searchCategory;$('categorySearch').addEventListener('change',searchCategory);$('inventoryLoadBtn').onclick=loadInventoryLocation;$('inventoryLocationSelect').addEventListener('change',loadInventoryLocation);$('inventoryUseActiveBtn').onclick=useActiveInventoryLocation;$('inventoryConfirmBtn').onclick=confirmQuickInventory;$('exitScanBtn').onclick=startExitScanner;$('exitLocationSelect').addEventListener('change',e=>setExitLocation(e.target.value));$('exitLotSelect').addEventListener('change',showExitLotInfo);$('exitConfirmBtn').onclick=confirmStockExit;$('moveScanBtn').onclick=startMoveScanner;$('moveLotBtn').onclick=moveSelectedLot;$('moveLotSelect').addEventListener('change',showMoveCurrentLocation);$('fifoSearchBtn').onclick=showFifoView;$('fifoProductSelect').addEventListener('change',showFifoView);$('locationViewBtn').onclick=showLocationView;$('locationViewSelect').addEventListener('change',showLocationView);$('showEmptyLocationLots').addEventListener('change',showLocationView);$('showExpiryBtn').onclick=showExpiryAlerts;$('guestModeBtn').onclick=toggleGuestMode;
 $('resetReorderBaselineBtn').onclick=resetReorderBaseline;
 $('cloudUrl').value=localStorage.getItem(LS.cloudUrl)||'';
 $('cloudKey').value=localStorage.getItem(LS.cloudKey)||'';
