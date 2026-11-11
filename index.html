@@ -716,7 +716,14 @@ function openNewProductFromMenu(){
 }
 
 const REORDER_RATIO=0.75;
-function reorderKey(name,unit){return String(name||'').trim().toLocaleLowerCase('fr-FR')+'|'+String(unit||'').trim().toLocaleLowerCase('fr-FR')}
+function reorderKey(name,unit){
+  const product=String(name||'').trim().toLocaleLowerCase('fr-FR');
+  let measure=String(unit||'').trim().toLocaleLowerCase('fr-FR');
+  // These two mustard products are stocked by container, regardless of the
+  // historical labels "pot", "bocal" or "unité".
+  if((product==='moutarde à l’ancienne'||product==="moutarde à l'ancienne"||product==='moutarde originale')&&['pot','pots','bocal','bocaux','unité','unités'].includes(measure))measure='bocal';
+  return product+'|'+measure;
+}
 function stockByProduct(){
   const map=new Map();
   allLots().forEach(l=>{
@@ -741,9 +748,9 @@ function reorderProposals(){
   if(!baseline||!baseline.items)return [];
   const stock=stockByProduct();
   return Object.entries(baseline.items).map(([key,b])=>{
-    const current=stock.get(key)?.qty||0,reference=Number(b.reference);
+    const normalizedKey=reorderKey(b.name,b.unit),current=stock.get(normalizedKey)?.qty||0,reference=Number(b.reference);
     if(!Number.isFinite(reference)||reference<=0)return null;
-    const pending=orders().filter(o=>o.status==='Commandée'&&reorderKey(o.product,o.unit)===key)
+    const pending=orders().filter(o=>o.status==='Commandée'&&reorderKey(o.product,o.unit)===normalizedKey)
       .reduce((sum,o)=>sum+Math.max(0,Number(o.qty)||0),0);
     const need=Math.max(0,Math.round((reference-current-pending)*1000)/1000);
     return {key,name:b.name,unit:b.unit,category:b.category||stock.get(key)?.category||'',reference,current,pending,need,ratio:current/reference};
