@@ -48,3 +48,27 @@ Authentification ; récupération des 1 000 gants et des anciennes annulations V
 2. Référentiel générique et masques : type, unité, conditionnement, code-barres, lot fabricant facultatif, péremption ; réception et sortie de test dédiées.
 3. Sauvegarde indépendante datée, conservation et essai de restauration dans une copie Santé.
 4. Vérifier l'usage sur iPhone avec la clé puis simplifier l'accès quotidien sans divulguer cette clé.
+
+
+## Emplacements existants — V3.2 préparée le 13 novembre 2026
+
+Décision utilisateur : conserver les QR et emplacements existants du 42 et du 38. Aucun nouvel emplacement ni QR à imprimer n’est créé. La V55 alimentaire n’est pas modifiée.
+
+Le registre reprend exactement les 78 codes déjà reconnus par le code V55 : 45 cases de rayonnage 42-R1-N1-A à 42-R3-N5-C, 18 cases 38-ETAGE-01 à 18, 6 congélateur, 5 frigo et 4 garage. Cette liste ne préjuge pas de la disponibilité physique ni de l’adéquation de chaque lieu au produit.
+
+- Bouton Ranger / déplacer sur chaque lot, sélection d’un code existant ou lecture depuis une photo de QR. Aucune modification n’est envoyée avant la confirmation explicite du lot et de sa destination.
+- La photo est décodée sur l’appareil avec une copie embarquée de jsQR ; aucun service de lecture externe ne reçoit la photo, la clé ou le stock. Le fichier embarqué conserve sa licence Apache-2.0 et sa provenance.
+- Les QR ne sont jamais suivis comme des liens. Un texte inconnu ou une URL est refusé. La liste reste disponible lorsque l’image ne peut pas être décodée.
+- L’opération met à jour Site, Emplacement et Statut dans le seul classeur Santé. Le transfert est inscrit dans Mouvements avec source, destination et impact stock nul. La même référence ne peut pas ajouter deux transferts.
+- Les réceptions peuvent choisir directement un emplacement existant ; le site est déduit du code 42/38.
+- Protection contre les écrans périmés et reprise automatique d’un transfert interrompu, comme pour les autres écritures.
+
+### Installation à terminer
+
+Le contrôle du navigateur du PC est bloqué par sa configuration au moment de cette préparation. Le code V3.2 et les tests sont sauvegardés sur GitHub mais ne sont pas encore installés ni déployés. La version en service reste V3.1, avec les deux lots et les 1 000 gants validés.
+
+Dans le projet Apps Script Santé uniquement : créer le fichier HTML QrDecoder depuis apps-script/QrDecoder.html, puis remplacer Code.gs par apps-script/Stock42SanteTest.gs. Vérifier setupSante et mettre à jour le déploiement existant vers une nouvelle version en conservant l’URL, les autorisations et la clé. Vérifier le chargement des deux lots, la présence des choix 42/38 et du bouton de lecture photo. La caméra et la photo sur l’iPhone physique restent à tester.
+
+Les tests simulés couvrent : codes inconnus et URL refusés ; transfert 42 vers 38 puis retour au 42 ; statuts et sites ; conservation de la quantité ; double envoi ; interruption entre mise à jour de l’emplacement et journal ; refus d’une commande périmée ; réception directement au 38. Le décodeur a aussi reconnu deux images de test des formats 42-R1-N5-C et 38-ETAGE-01. Les images de test ne sont pas des livrables ni de nouvelles étiquettes.
+
+Les lots réels S0001 et S0002 restent À ranger : leur emplacement physique doit être choisi par l’utilisateur dans l’interface, sans affectation fictive.
