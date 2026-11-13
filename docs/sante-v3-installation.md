@@ -1,4 +1,4 @@
-# Stock 42 Santé V3.1 — inventaire partagé
+# Stock 42 Santé V3.3 — inventaire partagé
 
 Le module Santé utilise uniquement le classeur `1kcr4LWpIyWEKYYUXglsMdENVqnHpY_qwGC3s3UFawwo`. Aucun fichier ni déploiement du stock alimentaire V55 ne doit être modifié.
 
@@ -20,7 +20,7 @@ Deux imports identiques n'ont créé aucun doublon : deux réceptions, une annul
 3. Exécuter `setupSante`, terminer le consentement Google, vérifier le classeur cible et `configured:true`.
 4. Déployer > Gérer les déploiements > modifier le déploiement Santé existant > Nouvelle version > Déployer. Conserver le propriétaire, les droits et l'URL existants. Ne pas modifier les déploiements alimentaires.
 5. Ouvrir l'URL Santé /exec : https://script.google.com/macros/s/AKfycby7Z4gp1uORCRMLmAw2IHsjfBPWVl_jXZsUCUdQOgLVK3VwC5FQxLUmic4rYJ9N-zgY/exec
-6. Saisir la clé privée Santé dans l'interface. Vérifier 1 000 gants et les deux lots. La clé ne quitte pas les appels authentifiés Google, ne figure pas dans l'URL et reste uniquement en mémoire dans l'onglet.
+6. Saisir la clé privée Santé dans l'interface. Vérifier 1 000 gants et les deux lots. La clé est envoyée uniquement dans les appels authentifiés Google et ne figure pas dans l'URL. En V3.3, l'option « Rester connecté sur cet appareil personnel » mémorise la connexion dans le navigateur après validation de la clé.
 7. Tester une sortie fictive de 100 gants puis son annulation, contrôler les quantités et le journal dans Sheets, ainsi que l'affichage sur un deuxième appareil. Ne considérer cette étape comme réalisée qu'après contrôle réel.
 
 Mise à jour du 13 novembre 2026 : autorisation Google terminée ; version 3 du déploiement Santé publiée à 18 h 41 (Paris), contenant l’application V3.1. Lecture authentifiée réelle : 1 000 gants. Sortie fictive de 100 gants à 18 h 41 puis annulation à 18 h 42, relues dans Google Sheets : six mouvements au total, impact net nul, deux lots conservés. Deux onglets indépendants affichent successivement 900 puis 1 000 gants. La vérification sur l’iPhone physique reste à effectuer avec la clé Santé.
@@ -72,3 +72,18 @@ Dans le projet Apps Script Santé uniquement : créer le fichier HTML QrDecoder 
 Les tests simulés couvrent : codes inconnus et URL refusés ; transfert 42 vers 38 puis retour au 42 ; statuts et sites ; conservation de la quantité ; double envoi ; interruption entre mise à jour de l’emplacement et journal ; refus d’une commande périmée ; réception directement au 38. Le décodeur a aussi reconnu deux images de test des formats 42-R1-N5-C et 38-ETAGE-01. Les images de test ne sont pas des livrables ni de nouvelles étiquettes.
 
 Les lots réels S0001 et S0002 restent À ranger : leur emplacement physique doit être choisi par l’utilisateur dans l’interface, sans affectation fictive.
+
+
+## Connexion mémorisée — V3.3, 13 novembre 2026
+
+Priorité utilisateur : supprimer la ressaisie de la clé à chaque ouverture avant de reprendre le scan direct.
+
+- La case « Rester connecté sur cet appareil personnel » est cochée à la connexion. Après une lecture authentifiée réussie, la clé et la date d’enregistrement sont conservées dans le stockage local propre à l’application. Aucune clé de production n’est dans le code, GitHub, le classeur, les sauvegardes ou l’URL.
+- À l’ouverture, une connexion mémorisée datant de moins de 180 jours permet une nouvelle lecture authentifiée automatique. Le serveur contrôle toujours la clé ; il n’existe pas d’accès public au stock sans elle.
+- Décocher la case permet une connexion pour cet onglet uniquement. « Se déconnecter » efface la connexion mémorisée sur cet appareil. Une clé refusée par le serveur est retirée du navigateur.
+- En cas de coupure réseau, la connexion mémorisée reste disponible et le bouton Réessayer évite une nouvelle saisie. Si le navigateur refuse le stockage, un message l’indique au lieu de prétendre avoir enregistré la connexion.
+- La durée de 180 jours est un maximum : navigation privée, effacement des données de sites ou politique du navigateur peuvent supprimer le stockage plus tôt. Le comportement de l’icône iPhone doit être vérifié sur cet appareil après une première connexion.
+
+Déploiement Santé mis à jour vers la version 5 à 19 h 23 (Paris), contenant l’application V3.3. Tests réels sur Chrome : clé valide mémorisée ; rechargement sans saisie ; nouvel onglet automatiquement connecté ; déconnexion puis rechargement montrant à nouveau le formulaire ; reconnexion mémorisée rétablie après le test. Les 1 000 gants et les emplacements choisis par l’utilisateur sont conservés. Le test physique sur iPhone reste à effectuer.
+
+Tests reproductibles : node tests/sante-connection-v33.cjs et node tests/sante-shared-v31.cjs. La suite de connexion couvre mémorisation après authentification seulement, réouverture, effacement, clé invalide ou expirée, JSON corrompu, stockage bloqué et reprise réseau sans ressaisie.
