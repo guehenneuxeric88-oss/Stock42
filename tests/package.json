@@ -1,0 +1,11 @@
+{
+  "name": "stock42-sante-tests",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test:interface": "node sante-interface-v35.cjs"
+  },
+  "devDependencies": {
+    "linkedom": "0.18.15"
+  }
+}
