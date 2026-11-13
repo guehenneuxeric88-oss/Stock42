@@ -19,7 +19,7 @@ function db_() {
   if(!ss || !ss.getSheetByName(SANTE_SHEETS.lots) || !ss.getSheetByName(SANTE_SHEETS.moves)) throw Error('Ce script doit être installé dans le classeur Santé.');
   return ss;
 }
-function setupSante() { const ss=db_();return {ok:true,spreadsheetId:ss.getId(),service:'Stock42-Sante',configured:!!PropertiesService.getScriptProperties().getProperty('SANTE_API_TOKEN')}; }
+function initializeSanteToken() {\n  db_();\n  const props=PropertiesService.getScriptProperties();\n  if(props.getProperty('SANTE_API_TOKEN')) throw Error('Clé existante : ne pas la remplacer sans préparation.');\n  const token=(Utilities.getUuid()+Utilities.getUuid()).replace(/-/g,'');\n  props.setProperty('SANTE_API_TOKEN',token);\n  Logger.log('Clé Santé à reporter dans le navigateur : '+token);\n  return 'Clé créée. Consulter le journal d’exécution et conserver cette clé privée.';\n}\nfunction setupSante() { const ss=db_();return {ok:true,spreadsheetId:ss.getId(),service:'Stock42-Sante',configured:!!PropertiesService.getScriptProperties().getProperty('SANTE_API_TOKEN')}; }
 function doGet(e) {
   const p=e&&e.parameter||{};
   if(p.action!=='receipt') return out_({ok:false,error:'read_disabled'});
