@@ -1,128 +1,85 @@
-/**
- * Stock42 Santé — passerelle autonome, version d'essai.
- * Installer UNIQUEMENT dans le classeur Santé (Extensions > Apps Script).
- * Exécuter setupSante() une fois, puis configurer Script Properties:
- *   SANTE_API_TOKEN = secret privé aléatoire créé par le propriétaire.
- * Déployer le projet en application web "Exécuter en tant que moi".
- * Aucun identifiant/secret dans GitHub. Ne jamais installer dans le classeur alimentaire.
- * Un reçu de synchronisation est associé à chaque envoi pour éviter les doublons.
+/** Stock42 Santé V3.1 — inventaire partagé, classeur Santé uniquement.
+ * Clé privée dans SANTE_API_TOKEN, jamais dans le code ni dans les URL.
+ * Déployer en application Web, exécuter en tant que propriétaire.
  */
-const SANTE_SHEETS = Object.freeze({
-  lots:'Réception & lots Santé',
-  moves:'Mouvements Santé',
-  config:'Configuration Santé'
-});
-function out_(obj) { return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON); }
-function lock_() { const l=LockService.getScriptLock();l.waitLock(25000);return l; }
-function db_() {
-  const ss=SpreadsheetApp.openById('1kcr4LWpIyWEKYYUXglsMdENVqnHpY_qwGC3s3UFawwo');
-  if(!ss || ss.getId()!=='1kcr4LWpIyWEKYYUXglsMdENVqnHpY_qwGC3s3UFawwo') throw Error('Classeur interdit : Santé uniquement.');
-  if(!ss || !ss.getSheetByName(SANTE_SHEETS.lots) || !ss.getSheetByName(SANTE_SHEETS.moves)) throw Error('Ce script doit être installé dans le classeur Santé.');
-  return ss;
+const SANTE_SHEETS=Object.freeze({lots:'Réception & lots Santé',moves:'Mouvements Santé'});
+const SANTE_DB='1kcr4LWpIyWEKYYUXglsMdENVqnHpY_qwGC3s3UFawwo';
+function db_(){const ss=SpreadsheetApp.openById(SANTE_DB);if(ss.getId()!==SANTE_DB||!ss.getSheetByName(SANTE_SHEETS.lots)||!ss.getSheetByName(SANTE_SHEETS.moves))throw Error('Classeur Santé introuvable.');return ss;}
+function authorize_(token){const expected=PropertiesService.getScriptProperties().getProperty('SANTE_API_TOKEN');if(!expected||typeof token!=='string'||token!==expected)throw Error('Clé Santé incorrecte.');}
+function initializeSanteToken(){db_();const p=PropertiesService.getScriptProperties();if(p.getProperty('SANTE_API_TOKEN'))throw Error('Clé existante : ne pas la remplacer.');p.setProperty('SANTE_API_TOKEN',(Utilities.getUuid()+Utilities.getUuid()).replace(/-/g,''));return 'Clé créée dans les propriétés privées.';}
+function setupSante(){const r={ok:true,service:'Stock42-Sante',spreadsheetId:db_().getId(),configured:!!PropertiesService.getScriptProperties().getProperty('SANTE_API_TOKEN'),version:'3.1'};console.log(JSON.stringify(r));return r;}
+function doGet(){return HtmlService.createHtmlOutput(SANTE_SHARED_HTML).setTitle('Stock 42 — Santé partagée').addMetaTag('viewport','width=device-width,initial-scale=1');}
+// Le transfert de snapshots locaux V3 est désactivé : il ne peut plus écraser les données partagées.
+function doPost(){return ContentService.createTextOutput(JSON.stringify({ok:false,error:'Utiliser l’inventaire partagé Santé V3.1.'})).setMimeType(ContentService.MimeType.JSON);}
+function date_(v){if(!v)return '';const d=new Date(v);if(isNaN(d.getTime()))throw Error('Date invalide.');return d.toISOString();}
+function day_(v){return v?Utilities.formatDate(new Date(v),'Europe/Paris','yyyy-MM-dd'):'';}
+function clean_(v,max){const s=String(v||'').trim();if(s.length>max)throw Error('Texte trop long.');return /^[=+@-]/.test(s)?"'"+s:s;}
+function readRows_(sh){return sh.getDataRange().getValues().slice(1).filter(r=>r[0]!==''&&r[0]!==null);}
+function state_(){
+ const ss=db_(),rawLots=readRows_(ss.getSheetByName(SANTE_SHEETS.lots)),rawMoves=readRows_(ss.getSheetByName(SANTE_SHEETS.moves));
+ const ids=new Set(),uids=new Set();
+ const events=rawMoves.map(r=>{const uid=String(r[10]||'');if(!uid||uids.has(uid))throw Error('Journal à vérifier : référence manquante ou dupliquée.');uids.add(uid);let meta={};try{meta=JSON.parse(String(r[8]||''))}catch(e){}return {date:date_(r[0]),id:String(r[1]),type:String(r[3]),quantity:Number(r[4]),impact:Number(r[12]),uid,note:String(r[8]||''),reversesUid:meta.reversesUid||'',signature:meta.signature||''};});
+ const lots=rawLots.map(r=>{const id=String(r[0]);if(ids.has(id)||!/^S\d{4,}$/.test(id))throw Error('Lots à vérifier : identifiant invalide ou dupliqué.');ids.add(id);const received=Number(r[4]);if(!Number.isSafeInteger(received)||received<0)throw Error('Quantité reçue invalide.');const quantity=received+events.filter(e=>e.id===id).reduce((n,e)=>n+e.impact,0);if(!Number.isSafeInteger(quantity)||quantity<0||events.some(e=>!Number.isSafeInteger(e.impact)||!Number.isSafeInteger(e.quantity)))throw Error('Stock ou journal incohérent.');return {id,name:String(r[2]),size:String(r[2]).match(/—\s*([LM])\s*$/)?.[1]||'',received:date_(r[1]),receivedQuantity:received,quantity,unit:String(r[5]),expiry:day_(r[6]),manufacturer:String(r[14]||''),barcode:String(r[15]||''),location:String(r[11]||'À ranger')};});
+ if(events.some(e=>!ids.has(e.id)))throw Error('Mouvement sans lot : vérification nécessaire.');
+ // Les anciennes annulations V2 ont un mouvement reconstitué explicitement identifié.
+ events.filter(e=>e.type==='Retour / annulation de sortie'&&!e.reversesUid).forEach(e=>{if(uids.has('legacy_exit_'+e.uid))e.reversesUid='legacy_exit_'+e.uid;});
+ const serialized=JSON.stringify({lots,events});const revision=Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256,serialized).map(b=>(b&255).toString(16).padStart(2,'0')).join('');
+ return {ok:true,lots,events,revision,updatedAt:new Date().toISOString(),version:'3.1'};
 }
-function initializeSanteToken() {
-  db_();
-  const props=PropertiesService.getScriptProperties();
-  if(props.getProperty('SANTE_API_TOKEN')) throw Error('Clé existante : ne pas la remplacer sans préparation.');
-  const token=(Utilities.getUuid()+Utilities.getUuid()).replace(/-/g,'');
-  props.setProperty('SANTE_API_TOKEN',token);
-  // La clé reste dans les propriétés du projet ; aucun journal ne la contient.
-  return 'Clé créée dans les propriétés privées du projet.';
-}
-function setupSante() { const ss=db_();const result={ok:true,spreadsheetId:ss.getId(),service:'Stock42-Sante',configured:!!PropertiesService.getScriptProperties().getProperty('SANTE_API_TOKEN')};console.log(JSON.stringify(result));return result; }
-function doGet(e) {
-  const p=e&&e.parameter||{};
-  if(p.action!=='receipt') return out_({ok:false,error:'read_disabled'});
-  const cb=String(p.callback||'');
-  if(!/^santeReceipt_[a-zA-Z0-9_]{1,70}$/.test(cb)) return out_({ok:false,error:'callback'});
-  const id=String(p.id||'');
-  const result=/^[a-f0-9]{32}$/.test(id) && PropertiesService.getScriptProperties().getProperty('sante_receipt_'+id)==='saved';
-  return ContentService.createTextOutput(cb+'('+JSON.stringify({ok:true,saved:result})+');').setMimeType(ContentService.MimeType.JAVASCRIPT);
-}
-function doPost(e) {
-  let l;
-  try {
-    l=lock_();
-    const b=JSON.parse(e&&e.postData&&e.postData.contents||'{}');
-    const expected=PropertiesService.getScriptProperties().getProperty('SANTE_API_TOKEN');
-    if(!expected || String(b.token||'')!==expected) return out_({ok:false,error:'unauthorized'});
-    if(b.action!=='sync') return out_({ok:false,error:'unknown_action'});
-    const receipt=String(b.receiptId||'');
-    if(!/^[a-f0-9]{32}$/.test(receipt)) return out_({ok:false,error:'receipt_invalid'});
-    const payload=b.data||{};
-    const records=payload.lots;
-    let events=payload.events;
-    if(!Array.isArray(records)||!Array.isArray(events)||records.length>300||events.length>2000) throw Error('Format ou taille incorrects');
-    // V2 removed fictitious exits when undoing them. Restore their audit counterpart.
-    events=events.slice();
-    events.filter(x=>x.type==='Retour / annulation de sortie'&&!x.reversesUid).forEach(x=>{
-      events.push({id:x.id,type:'Sortie',boxes:x.boxes,date:x.date,uid:'legacy_exit_'+x.uid,legacy:true});
-    });
-    const ids=new Set(), eventIds=new Set();
-    records.forEach(x=>{
-      if(!/^S[0-9]{4,}$/.test(x.id)||ids.has(x.id)||!['L','M'].includes(x.size)||!Number.isSafeInteger(x.boxes)||x.boxes<0) throw Error('Lot invalide ou dupliqué');
-      ids.add(x.id);
-      if(!/^\d{4}-\d{2}-\d{2}$/.test(x.expiry)||Utilities.formatDate(isoDate_(x.expiry), 'Europe/Paris','yyyy-MM-dd')!==x.expiry) throw Error('Péremption invalide');
-    });
-    events.forEach(x=>{
-      if(!ids.has(x.id)||!['Entrée','Sortie','Retour / annulation de sortie'].includes(x.type)||!Number.isSafeInteger(x.boxes)||x.boxes<1||!/^[a-zA-Z0-9_-]{8,120}$/.test(x.uid)||eventIds.has(x.uid)||!isoDate_(x.date)) throw Error('Mouvement invalide ou dupliqué');
-      eventIds.add(x.uid);
-    });
-    records.forEach(x=>{
-      const net=events.filter(e=>e.id===x.id).reduce((n,e)=>n+(e.type==='Sortie'?-e.boxes:e.boxes),0);
-      if(net!==x.boxes) throw Error('Solde des mouvements incohérent : '+x.id);
-    });
-    const ss=db_(),sh=ss.getSheetByName(SANTE_SHEETS.lots),mh=ss.getSheetByName(SANTE_SHEETS.moves);
-    const knownLot=readIds_(sh,1),knownMove=readIds_(mh,11);
-    records.forEach(x=>{
-      const id=String(x.id||'').trim();
-      if(!/^S[0-9]{4,}$/.test(id)|| !['L','M'].includes(x.size)) throw Error('Lot invalide');
-      const count=events.filter(e=>e.id===id&&e.type==='Entrée').reduce((n,e)=>n+e.boxes,0);
-      if(!Number.isSafeInteger(count)||count<0||count>10000) throw Error('Quantité invalide');
-      const date=String(x.expiry||'');
-      if(date&&!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw Error('Date invalide');
-      const product=x.size==='L'?'Gants nitrile robemed+ Ultra Sensitive — L':'Gants nitrile robemedical+ Ultra Protect — M';
-      const row=[
-        id,isoDate_(x.received),product,'Protection / EPI',count*100,'gant',
-        date?isoDate_(date):'','Péremption','','','Site 42',
-        text_(x.location||'À ranger',100),'À ranger','Boîte de 100',
-        text_(x.manufacturer||'',80),text_(x.barcode||'',80),
-        'Santé V3 : quantité reçue initiale ; entrées du journal à impact nul, autres flux signés'
-      ];
-      const dest=knownLot[id]||Math.max(2,sh.getLastRow()+1);
-      sh.getRange(dest,1,1,row.length).setValues([row]);
-      sh.getRange(dest,2).setNumberFormat('dd/mm/yyyy');
-      sh.getRange(dest,7).setNumberFormat('dd/mm/yyyy');
-      knownLot[id]=dest;
-    });
-    events.forEach(x=>{
-      const id=String(x.id||''),type=String(x.type||''),qty=Number(x.boxes);
-      const uid=String(x.uid||'').trim();
-      if(!/^S[0-9]{4,}$/.test(id)||!Number.isSafeInteger(qty)||qty<0||qty>10000||!/^[a-zA-Z0-9_-]{8,120}$/.test(uid)) throw Error('Mouvement invalide');
-      if(knownMove[uid]) return;
-      const impact=type==='Entrée'?0:(type==='Sortie'?-qty*100:qty*100);
-      mh.appendRow([isoDate_(x.date),id,'Gants nitrile',type,qty*100,'gant','','',
-        x.legacy?'Reconstitution sortie fictive effacée par annulation V2 (date exacte inconnue)':'Test iPhone, unités en gants','Stock42 Santé',uid,new Date(),impact]);
-      knownMove[uid]=true;
-    });
-    SpreadsheetApp.flush();
-    const savedLots=readIds_(sh,1),savedMoves=readIds_(mh,11);
-    if(records.some(x=>!savedLots[x.id])||events.some(x=>!savedMoves[x.uid])) throw Error('Vérification des écritures impossible');
-    PropertiesService.getScriptProperties().setProperty('sante_receipt_'+receipt,'saved');
-    return out_({ok:true,saved:true,receiptId:receipt});
-  }catch(err){return out_({ok:false,error:String(err&&err.message||err)});}
-  finally{if(l)l.releaseLock();}
-}
-function readIds_(sheet,col) {
-  const end=sheet.getLastRow(),result=Object.create(null);
-  if(end<2)return result;
-  sheet.getRange(2,col,end-1,1).getDisplayValues().forEach((r,i)=>{if(r[0])result[String(r[0])]=i+2});
-  return result;
-}
-function isoDate_(s) {
-  if(!s)return '';
-  const d=new Date(s);
-  return isNaN(d.getTime())?'':d;
+function santeLire(token){authorize_(token);const lock=LockService.getScriptLock();lock.waitLock(25000);try{recoverSante_();return state_();}finally{lock.releaseLock();}}
+function santeAgir(token,command){
+ authorize_(token);const lock=LockService.getScriptLock();lock.waitLock(25000);
+ try{
+  if(!command||typeof command!=='object'||JSON.stringify(command).length>4000||!/^[a-f0-9]{32}$/.test(command.uid||''))throw Error('Commande invalide.');
+  const action=command.action;if(!['sortie','retour','entree'].includes(action))throw Error('Action invalide.');
+  const signature=JSON.stringify([action,command.id||'',command.quantity||0,command.reversesUid||'',command.size||'',command.expiry||'',command.manufacturer||'',command.location||'',command.barcode||'']);
+  recoverSante_();const before=state_(),existing=before.events.find(e=>e.uid===command.uid);
+  if(existing){if(existing.signature!==signature)throw Error('Référence déjà utilisée pour une autre opération.');return before;}
+  if(command.revision!==before.revision)throw Error('Le stock a changé sur un autre appareil. Actualise puis recommence.');
+  const ss=db_(),sh=ss.getSheetByName(SANTE_SHEETS.lots),mh=ss.getSheetByName(SANTE_SHEETS.moves),now=new Date();
+  let id=String(command.id||''),type,quantity,impact,reversesUid='',newRow=null;
+  if(action==='entree'){
+   quantity=Number(command.quantity);if(!['L','M'].includes(command.size)||!Number.isSafeInteger(quantity)||quantity<100||quantity>1000000||quantity%100!==0)throw Error('Réception : nombre entier de boîtes de 100 requis.');
+   const expiry=String(command.expiry||'');if(!/^\d{4}-\d{2}-\d{2}$/.test(expiry)||isNaN(new Date(expiry).getTime())||day_(expiry)!==expiry||expiry<day_(now))throw Error('Péremption invalide ou dépassée.');
+   id='S'+String(1+before.lots.reduce((n,l)=>Math.max(n,Number(l.id.slice(1))),0)).padStart(4,'0');
+   const name=command.size==='L'?'Gants nitrile robemed+ Ultra Sensitive — L':'Gants nitrile robemedical+ Ultra Protect — M';
+   newRow=[id,now,name,'Protection / EPI',quantity,'gant',new Date(expiry),'Péremption','','','Site 42',clean_(command.location||'À ranger',100),'À ranger','Boîte de 100',clean_(command.manufacturer,80),clean_(command.barcode,80),'Santé partagée V3.1 — réception '+command.uid];
+   type='Entrée';impact=0;
+  }else{
+   const lot=before.lots.find(l=>l.id===id);if(!lot)throw Error('Lot introuvable.');
+   if(action==='sortie'){
+    quantity=Number(command.quantity);if(!Number.isSafeInteger(quantity)||quantity<1||quantity>lot.quantity)throw Error('Quantité indisponible.');
+    if(lot.expiry&&lot.expiry<day_(now))throw Error('Lot périmé : sortie bloquée.');
+    type='Sortie';impact=-quantity;
+   }else{
+    const source=before.events.find(e=>e.uid===command.reversesUid&&e.id===id&&e.type==='Sortie');
+    if(!source||before.events.some(e=>e.reversesUid===source.uid))throw Error('Sortie introuvable ou déjà annulée.');
+    quantity=source.quantity;type='Retour / annulation de sortie';impact=quantity;reversesUid=source.uid;
+   }
+  }
+  const move=[now,id,'Gants nitrile',type,quantity,'gant','','',JSON.stringify({signature,reversesUid}),'Stock42 Santé partagée',command.uid,now,impact];
+  // Journal préalable : reprise idempotente si l'exécution est interrompue entre deux écritures.
+  PropertiesService.getScriptProperties().setProperty('SANTE_PENDING',JSON.stringify({uid:command.uid,signature,lotRow:newRow,lotIndex:sh.getLastRow()+1,move}));
+  recoverSante_();
+  SpreadsheetApp.flush();const after=state_();const saved=after.events.find(e=>e.uid===command.uid);if(!saved||saved.signature!==signature)throw Error('Confirmation indisponible : actualiser avant toute nouvelle opération.');return after;
+ }finally{lock.releaseLock();}
 }
 
-function text_(value,max) { const s=String(value).slice(0,max);return /^[=+@-]/.test(s)?"'"+s:s; }
+function recoverSante_(){
+ const props=PropertiesService.getScriptProperties(),raw=props.getProperty('SANTE_PENDING');if(!raw)return;
+ const p=JSON.parse(raw),ss=db_(),sh=ss.getSheetByName(SANTE_SHEETS.lots),mh=ss.getSheetByName(SANTE_SHEETS.moves);
+ if(p.lotRow){
+  const current=sh.getRange(p.lotIndex,1,1,17).getValues()[0];
+  if(current[0]&&!(current[0]===p.lotRow[0]&&String(current[16]).endsWith(p.uid)))throw Error('Réception en attente : vérifier la ligne avant reprise.');
+  p.lotRow[1]=new Date(p.lotRow[1]);p.lotRow[6]=new Date(p.lotRow[6]);
+  sh.getRange(p.lotIndex,1,1,17).setValues([p.lotRow]);sh.getRange(p.lotIndex,2).setNumberFormat('dd/mm/yyyy');sh.getRange(p.lotIndex,7).setNumberFormat('dd/mm/yyyy');
+ }
+ const matches=readRows_(mh).filter(r=>String(r[10])===p.uid);
+ if(matches.length>1)throw Error('Mouvement en attente dupliqué.');
+ if(matches.length===1&&String(matches[0][8])!==p.move[8])throw Error('Conflit de référence dans le journal.');
+ if(matches.length===0){p.move[0]=new Date(p.move[0]);p.move[11]=new Date(p.move[11]);mh.appendRow(p.move);}
+ SpreadsheetApp.flush();const saved=state_();if(!saved.events.some(e=>e.uid===p.uid&&e.signature===p.signature))throw Error('Écriture en attente non confirmée.');
+ props.deleteProperty('SANTE_PENDING');
+}
+
+const SANTE_SHARED_HTML = "<!doctype html><html lang=\"fr\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><style>\n:root{font-family:system-ui,sans-serif;color:#17323e;background:#f2f6f7}*{box-sizing:border-box}body{max-width:920px;margin:auto;padding:18px}h1{font-size:1.65rem}h2{font-size:1.15rem}section,article{background:white;border:1px solid #d8e4e8;border-radius:16px;padding:20px;margin:16px 0}label{display:block;font-weight:600;margin:12px 0 5px}input,select,button{font:inherit;padding:12px;border-radius:9px;border:1px solid #b4c9d0;width:100%}button{background:#12647c;color:white;font-weight:650;border:0;margin:12px 0;cursor:pointer}button.secondary{background:#e8f0f4;color:#17485a}button:disabled{opacity:.5;cursor:wait}.tag{font-size:.8rem;font-weight:650;color:#12647c}.muted,small{color:#54707d}#status{padding:12px;background:#e6f0f3;border-radius:10px}#status.error{background:#fff0e9;color:#8f321a}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.lot-top{display:flex;justify-content:space-between;gap:16px}.quantity{font-size:1.6rem;font-weight:700}.expired{border-color:#c26342}.pill{display:inline-block;background:#e4f3ec;border-radius:20px;padding:5px 9px;font-size:.8rem}dl{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}dt{color:#54707d}dd{text-align:right;margin:0;overflow-wrap:anywhere}nav{display:flex;gap:10px}nav button{width:auto}details{margin-top:15px}summary{cursor:pointer;font-weight:650}[hidden]{display:none!important}@media(max-width:600px){.grid{grid-template-columns:1fr}body{padding:12px}section,article{padding:16px}nav{flex-wrap:wrap}}\n</style></head><body><header><span class=\"tag\">SANTÉ • SITE 42 • TEST PARTAGÉ V3.1</span><h1>Stock 42 — Santé</h1><p class=\"muted\">Le même inventaire sur PC et iPhone.</p></header>\n<section id=\"login\"><h2>Ouvrir l’inventaire partagé</h2><label for=\"token\">Clé privée Santé</label><input id=\"token\" type=\"password\" autocomplete=\"off\" autocapitalize=\"off\" spellcheck=\"false\"><button id=\"connect\">Se connecter</button><small>Clé propre à la Santé, conservée uniquement dans cet onglet. Le stock alimentaire reste indépendant.</small></section>\n<p id=\"status\" role=\"status\" aria-live=\"polite\">Saisis la clé Santé pour consulter le stock.</p>\n<div id=\"workspace\" hidden><nav><button id=\"refresh\">Actualiser</button><button id=\"download\" class=\"secondary\">Exporter une sauvegarde</button><button id=\"logout\" class=\"secondary\">Se déconnecter</button></nav><p id=\"updated\" class=\"muted\"></p><section><h2>Inventaire partagé</h2><div id=\"total\" class=\"quantity\"></div><p class=\"muted\">Sorties proposées par péremption, au sein de chaque taille. Les lots épuisés restent dans le journal.</p><div id=\"lots\"></div></section>\n<section><details id=\"receipt\"><summary>Enregistrer une réception de gants</summary><div class=\"grid\"><div><label for=\"size\">Taille</label><select id=\"size\"><option value=\"L\">L — robemed+ Ultra Sensitive</option><option value=\"M\">M — robemedical+ Ultra Protect</option></select></div><div><label for=\"boxes\">Boîtes de 100 gants</label><input id=\"boxes\" type=\"number\" min=\"1\" max=\"10000\" step=\"1\" value=\"1\"></div><div><label for=\"expiry\">Péremption</label><input id=\"expiry\" type=\"date\"></div><div><label for=\"manufacturer\">Lot fabricant (facultatif)</label><input id=\"manufacturer\" maxlength=\"80\"></div><div><label for=\"location\">Emplacement</label><input id=\"location\" maxlength=\"100\" placeholder=\"À ranger\"></div><div><label for=\"barcode\">Code-barres (facultatif)</label><input id=\"barcode\" maxlength=\"80\"></div></div><button id=\"entry\">Confirmer la réception</button></details></section>\n<section><h2>Mouvements récents</h2><p class=\"muted\">Une annulation conserve la sortie d’origine. La sortie du premier test a été reconstituée ; son heure exacte est inconnue.</p><div id=\"events\"></div></section><p class=\"muted\">Version de test : gants L et M uniquement. Masques, QR et sauvegardes automatiques à venir.</p></div>\n<script>\n'use strict';const $=id=>document.getElementById(id);let token='',state=null,busy=false,online=false,pending=null;\nconst uid=()=>Array.from(crypto.getRandomValues(new Uint8Array(16)),x=>x.toString(16).padStart(2,'0')).join('');\nfunction status(text,error=false){$('status').textContent=text;$('status').className=error?'error':'';}\nfunction controls(){document.querySelectorAll('button').forEach(b=>b.disabled=b.dataset.blocked==='true'||busy||(!online&&!['connect','refresh','download','logout'].includes(b.id)));}\nfunction rpc(name,args){return new Promise((resolve,reject)=>google.script.run.withSuccessHandler(resolve).withFailureHandler(reject)[name](...args));}\nfunction show(result){if(!result||!result.ok||!Array.isArray(result.lots))throw Error('Réponse invalide.');state=result;online=true;$('login').hidden=true;$('workspace').hidden=false;render();status('Inventaire confirmé dans Google Sheets.');}\nasync function refresh(silent=false){if(busy||!token)return;busy=true;controls();if(!silent)status('Lecture de l’inventaire partagé…');try{show(await rpc('santeLire',[token]));}catch(e){online=false;status(e.message||'Connexion indisponible. Actualise avant toute opération.',true);}finally{busy=false;controls();}}\nasync function act(command){if(busy||!online||!state)return;busy=true;online=false;controls();command={...command,uid:uid(),revision:state.revision};pending=command;status('Enregistrement et vérification…');try{show(await rpc('santeAgir',[token,command]));pending=null;}catch(e){status((e.message||'Confirmation indisponible.')+' Actualise pour vérifier le stock avant de recommencer.',true);}finally{busy=false;controls();}}\n$('connect').onclick=()=>{token=$('token').value.trim();$('token').value='';if(!token){status('Clé Santé requise.',true);return;}refresh();};$('token').onkeydown=e=>{if(e.key==='Enter')$('connect').click();};$('refresh').onclick=()=>refresh();\n$('logout').onclick=()=>{token='';state=null;pending=null;online=false;$('workspace').hidden=true;$('login').hidden=false;$('lots').replaceChildren();$('events').replaceChildren();status('Déconnecté.');};\n$('download').onclick=()=>{if(!state)return;const blob=new Blob([JSON.stringify({...state,exportedAt:new Date().toISOString()},null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='stock42-sante-'+new Date().toISOString().replace(/[:.]/g,'-')+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),2000);};\n$('entry').onclick=()=>{const n=Number($('boxes').value);if(!Number.isSafeInteger(n)||n<1||n>10000||!$('expiry').value){status('Renseigne un nombre entier de boîtes et la péremption.',true);return;}if(confirm('Enregistrer '+n+' boîte(s) de taille '+$('size').value+' dans le stock partagé ?'))act({action:'entree',size:$('size').value,quantity:n*100,expiry:$('expiry').value,manufacturer:$('manufacturer').value.trim(),location:$('location').value.trim()||'À ranger',barcode:$('barcode').value.trim()});};\nfunction text(parent,tag,value,cls=''){const e=document.createElement(tag);e.textContent=value;if(cls)e.className=cls;parent.appendChild(e);return e;}\nfunction render(){\n $('total').textContent=state.lots.reduce((n,l)=>n+l.quantity,0)+' gants';$('updated').textContent='Dernière lecture : '+new Date().toLocaleString('fr-FR')+' · actualisation automatique toutes les 30 secondes';$('lots').replaceChildren();$('events').replaceChildren();\n const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Paris',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());\n const sorted=state.lots.slice().sort((a,b)=>a.size.localeCompare(b.size)||a.expiry.localeCompare(b.expiry)||a.id.localeCompare(b.id));const first={};sorted.filter(l=>l.quantity>0&&l.expiry>=today).forEach(l=>{if(!first[l.size])first[l.size]=l.id;});\n sorted.filter(l=>l.quantity>0).forEach(l=>{const expired=l.expiry&&l.expiry<today,a=text($('lots'),'article','',''+(expired?'expired':''));text(a,'h3',l.id+' · Taille '+l.size);text(a,'p',l.name,'muted');text(a,'div',l.quantity+' gants','quantity');if(first[l.size]===l.id)text(a,'p','À utiliser en premier pour cette taille','pill');if(expired)text(a,'p','Périmé — sortie bloquée');const dl=document.createElement('dl');a.appendChild(dl);for(const [k,v]of [['Lot fabricant',l.manufacturer||'Non renseigné'],['Péremption',l.expiry.split('-').reverse().join('/')],['Emplacement',l.location],['Conditionnement','Boîte de 100']]){text(dl,'dt',k);text(dl,'dd',v);}const q=document.createElement('input');q.type='number';q.min='1';q.step='1';q.max=String(l.quantity);q.value=String(Math.min(100,l.quantity));q.setAttribute('aria-label','Quantité de gants à sortir de '+l.id);a.appendChild(q);const b=text(a,'button','Sortir des gants');b.disabled=expired;b.dataset.blocked=expired?'true':'false';b.onclick=()=>{const n=Number(q.value);if(!Number.isSafeInteger(n)||n<1||n>l.quantity){status('Quantité invalide.',true);return;}if(confirm('Sortir '+n+' gant(s) du lot '+l.id+' ?'))act({action:'sortie',id:l.id,quantity:n});};});\n state.events.slice().sort((a,b)=>b.date.localeCompare(a.date)).slice(0,30).forEach(e=>{const row=text($('events'),'article','');text(row,'p',new Date(e.date).toLocaleString('fr-FR')+' · '+e.id+' · '+e.type+' · '+e.quantity+' gants');if(e.uid.startsWith('legacy_exit_'))text(row,'small','Sortie reconstituée du test initial : heure exacte inconnue.');if(e.type==='Sortie'&&!state.events.some(r=>r.reversesUid===e.uid)){const b=text(row,'button','Annuler cette sortie','secondary');b.onclick=()=>{if(confirm('Rétablir '+e.quantity+' gant(s) sur '+e.id+' ?'))act({action:'retour',id:e.id,reversesUid:e.uid});};}});\n controls();document.querySelectorAll('[data-blocked=\"true\"]').forEach(b=>b.disabled=true);\n}\nsetInterval(()=>{if(online&&!busy&&!document.hidden)refresh(true);},30000);\n</script></body></html>\n";
