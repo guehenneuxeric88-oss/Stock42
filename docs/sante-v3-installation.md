@@ -70,3 +70,22 @@ Commandes : node tests/sante-google-connection-v34.cjs et node tests/sante-share
 ## Suite autorisée
 
 Après confirmation de l’accès sans clé depuis l’icône iPhone : simplifier le scan direct des codes-barres produits et des QR existants, puis ajouter le référentiel générique et les masques. Préparer les sauvegardes automatiques et un essai de restauration dans une copie Santé. La clé est la priorité actuelle ; ne pas considérer le test Chrome comme une validation sur iPhone.
+
+
+## Interface simplifiée — V3.5 préparée, non déployée
+
+Décision utilisateur : commencer par l’interface ; scanner direct en pause. Aucun élargissement aux médicaments n’est activé à ce stade.
+
+Navigation : Accueil, Entrée, Sortie, Stock, Configuration (Config. sur la barre compacte).
+
+- Accueil : trois grandes actions (ajouter, sortir, consulter), nombre de produits/lots disponibles et alertes utiles.
+- Entrée : produit, nombre de boîtes, péremption et emplacement ; lot fabricant et code-barres dans une section facultative repliée.
+- Sortie : produit puis lot proposé par péremption non dépassée, quantité et confirmation. Aucun lot périmé n’est proposé. La confirmation reste nécessaire.
+- Stock : une ligne/carte par produit avec quantité totale. Les lots et leurs emplacements se déplient à la demande ; recherche par nom/taille. Historique replié.
+- Configuration : actualisation, export de sauvegarde, fermeture de l’inventaire, informations de connexion et version.
+
+Les opérations, la connexion Google propriétaire, le classeur Santé, les 1 000 gants et leurs emplacements ne sont pas modifiés par cette refonte. La liste d’entrée reste limitée aux deux produits gants L/M ; le référentiel générique pour médicaments et masques vient après validation de l’interface.
+
+Tests passés : navigation des cinq vues, regroupement de plusieurs lots d’un produit, repli initial des détails, recherche, lot FEFO non périmé, absence d’écriture lors de la navigation. Suites stock et connexion Google également passantes. Exécuter npm install --ignore-scripts dans tests, puis npm run test:interface ; les autres tests restent exécutables directement avec Node.
+
+Le code V3.5 et les tests sont sauvegardés sur GitHub. L’installation dans Apps Script et le déploiement attendent le rétablissement de l’accès au navigateur d’origine sur le PC. La V3.4 reste en service. Après installation, vérifier le rendu iPhone et desktop, les cinq vues, le stock inchangé et la connexion sans clé avant de déclarer cette interface active.
