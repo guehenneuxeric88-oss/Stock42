@@ -1,8 +1,8 @@
-# Stock 42 Santé V3.4 — accès par compte Google
+# Stock 42 Santé V3.5 — interface simplifiée et accès Google
 
 ## Version en service
 
-Déploiement Santé version 6 publié le 13 novembre 2026 à 19 h 40 (Paris). Application V3.4.
+Déploiement Santé version 7 publié le 13 novembre 2026 à 20 h 01 (Paris). Application V3.5 ; accès Google propriétaire conservé.
 
 - Projet Apps Script Santé : 1pmiPm2x7R29gZuONH4RNWJ8eqgTOfYGgduV5yQSt4F1_uHlcwzzn8Wd2.
 - Classeur Santé unique : https://docs.google.com/spreadsheets/d/1kcr4LWpIyWEKYYUXglsMdENVqnHpY_qwGC3s3UFawwo/edit
@@ -72,7 +72,7 @@ Commandes : node tests/sante-google-connection-v34.cjs et node tests/sante-share
 Après confirmation de l’accès sans clé depuis l’icône iPhone : simplifier le scan direct des codes-barres produits et des QR existants, puis ajouter le référentiel générique et les masques. Préparer les sauvegardes automatiques et un essai de restauration dans une copie Santé. La clé est la priorité actuelle ; ne pas considérer le test Chrome comme une validation sur iPhone.
 
 
-## Interface simplifiée — V3.5 préparée, non déployée
+## Interface simplifiée — V3.5 déployée
 
 Décision utilisateur : commencer par l’interface ; scanner direct en pause. Aucun élargissement aux médicaments n’est activé à ce stade.
 
@@ -88,4 +88,4 @@ Les opérations, la connexion Google propriétaire, le classeur Santé, les 1 00
 
 Tests passés : navigation des cinq vues, regroupement de plusieurs lots d’un produit, repli initial des détails, recherche, lot FEFO non périmé, absence d’écriture lors de la navigation. Suites stock et connexion Google également passantes. Exécuter npm install --ignore-scripts dans tests, puis npm run test:interface ; les autres tests restent exécutables directement avec Node.
 
-Le code V3.5 et les tests sont sauvegardés sur GitHub. L’installation dans Apps Script et le déploiement attendent le rétablissement de l’accès au navigateur d’origine sur le PC. La V3.4 reste en service. Après installation, vérifier le rendu iPhone et desktop, les cinq vues, le stock inchangé et la connexion sans clé avant de déclarer cette interface active.
+Le code V3.5 est installé et le déploiement Santé est en version 7. Contrôles réels : connexion Google sans clé, cinq vues accessibles, stock regroupé en deux produits / 1 000 gants, formulaire de sortie avec lot et emplacement, contrôle visuel à 390 × 844 pixels pour Accueil et Stock, puis remise de la taille normale. Aucune entrée ou sortie réelle n’a été enregistrée pendant ces contrôles. Les deux emplacements 42-R3-N2-A restent conservés. La vérification sur l’iPhone physique est l’étape utilisateur suivante.
