@@ -1,5 +1,6 @@
 const fs=require('fs'),vm=require('vm'),assert=require('assert/strict');
-const html=JSON.parse(fs.readFileSync(require('path').join(__dirname,'../apps-script/Stock42SanteTest.gs'),'utf8').split('\nconst SANTE_SHARED_HTML = ')[1].trim().replace(/;$/,''));\nconst code=html.split('<script>')[1].split('</script>')[0],KEY='stock42_sante_remember_v1',secret='test-secret-only-not-a-production-key';
+const html=JSON.parse(fs.readFileSync(require('path').join(__dirname,'../apps-script/Stock42SanteTest.gs'),'utf8').split('\nconst SANTE_SHARED_HTML = ')[1].trim().replace(/;$/,''));
+const code=html.split('<script>')[1].split('</script>')[0],KEY='stock42_sante_remember_v1',secret='test-secret-only-not-a-production-key';
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 function page(storage=new Map(),options={}){
  const elements=new Map(),calls=[];
