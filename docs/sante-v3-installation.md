@@ -23,7 +23,7 @@ Deux imports identiques n'ont créé aucun doublon : deux réceptions, une annul
 6. Saisir la clé privée Santé dans l'interface. Vérifier 1 000 gants et les deux lots. La clé ne quitte pas les appels authentifiés Google, ne figure pas dans l'URL et reste uniquement en mémoire dans l'onglet.
 7. Tester une sortie fictive de 100 gants puis son annulation, contrôler les quantités et le journal dans Sheets, ainsi que l'affichage sur un deuxième appareil. Ne considérer cette étape comme réalisée qu'après contrôle réel.
 
-Au moment de cette préparation, le code V3.1 est installé et testé en simulation, mais l'autorisation supplémentaire et le nouveau déploiement restent à terminer. Le déploiement existant reste en V3 tant que l'étape 4 n'est pas effectuée.
+Mise à jour du 13 novembre 2026 : autorisation Google terminée ; version 3 du déploiement Santé publiée à 18 h 41 (Paris), contenant l’application V3.1. Lecture authentifiée réelle : 1 000 gants. Sortie fictive de 100 gants à 18 h 41 puis annulation à 18 h 42, relues dans Google Sheets : six mouvements au total, impact net nul, deux lots conservés. Deux onglets indépendants affichent successivement 900 puis 1 000 gants. La vérification sur l’iPhone physique reste à effectuer avec la clé Santé.
 
 ## Comportement V3.1
 
