@@ -1,42 +1,50 @@
-# Stock 42 Santé V3 — installation de la passerelle test
+# Stock 42 Santé V3.1 — inventaire partagé
 
-## Important
-Ce module est indépendant de Stock 42 alimentaire V55. Il doit être installé depuis le **classeur Santé**, pas dans le classeur alimentaire. Les 1 000 gants existent pour l'instant uniquement dans le navigateur de test sur iPhone.
+Le module Santé utilise uniquement le classeur `1kcr4LWpIyWEKYYUXglsMdENVqnHpY_qwGC3s3UFawwo`. Aucun fichier ni déploiement du stock alimentaire V55 ne doit être modifié.
 
-Classeur Santé : https://docs.google.com/spreadsheets/d/1kcr4LWpIyWEKYYUXglsMdENVqnHpY_qwGC3s3UFawwo/edit
-Application V3 : https://guehenneuxeric88-oss.github.io/Stock42/test-sante-v3/
-Code de la passerelle : https://github.com/guehenneuxeric88-oss/Stock42/blob/main/apps-script/Stock42SanteTest.gs
+## État vérifié le 13 novembre 2026
 
-## Procédure PC
+Les données de l'export iPhone ont été importées et relues dans Google Sheets :
 
-1. Dans le classeur Santé, ouvrir **Extensions > Apps Script**.
-2. Créer/remplacer le contenu de `Code.gs` dans **ce projet uniquement** par le contenu du fichier GitHub `apps-script/Stock42SanteTest.gs`.
-3. Enregistrer le projet.
-4. Dans la liste déroulante des fonctions, sélectionner `setupSante`, exécuter et vérifier que l'identifiant retourné correspond au classeur Santé.
-5. Exécuter `initializeSanteToken` **une seule fois**. Autoriser les permissions demandées. La clé est créée dans les propriétés privées du projet (`SANTE_API_TOKEN`), jamais dans les journaux. Le propriétaire la reporte lui-même dans l'application et dans son gestionnaire de mots de passe ; ne jamais la partager dans ChatGPT, GitHub ni Google Sheet.
-6. Déployer > Nouveau déploiement > Application Web. Exécuter en tant que : moi. Accès : toute personne (les écritures POST exigent la clé privée). Copier l'URL /exec. Attention : avec ce paramétrage le point GET de reçu est publiquement accessible, mais il ne fournit ni stock ni clé.
-7. Dans la V3 (même navigateur que le test initial), saisir l'URL /exec et la clé Santé. Vérifier d'abord que les deux lots sont présents et totalisent 1 000 gants. Cliquer sur **Envoyer et vérifier la synchronisation** une seule fois.
-8. Vérifier que l'application confirme le reçu, puis consulter le classeur Santé : 2 lots en Réception et les événements dans Mouvements. Si la confirmation échoue, vérifier le classeur avant de réessayer.
-9. Ne pas modifier/activer une autre passerelle Apps Script du stock alimentaire.
+| Lot | Taille | Quantité | Lot fabricant | Péremption |
+|---|---|---:|---|---|
+| S0001 | L | 500 gants | 26000278 | 31/03/2031 |
+| S0002 | M | 500 gants | ZFROM2603 | 30/03/2031 |
 
-## Limitations du prototype
-- Le mécanisme reste expérimental. Ne pas considérer ce transfert comme une sauvegarde durable avant contrôle des valeurs dans Sheets.
-- La V3 conserve des données dans le stockage local du navigateur ; la synchronisation n'est pas bidirectionnelle et ne reconstruit pas encore l'état local depuis Google Drive.
-- Le script d'essai gère les deux tailles de gants seulement. Les masques, codes-barres scannés par caméra, emplacements QR et produits additionnels sont à développer et tester séparément.
-- La colonne Quantité reçue conserve les réceptions initiales. Stock restant = quantité reçue + somme des impacts des mouvements ; les lignes Entrée du journal ont un impact nul pour ne pas compter deux fois la réception. Les autres impacts sont signés. Les annulations V3 conservent la sortie et la référencent. Pour les anciennes annulations V2, la sortie effacée est reconstituée explicitement avec une date historique inconnue, signalée dans le motif.
-- Ne jamais saisir la clé dans une capture d'écran publique ni l'envoyer en discussion.
+Deux imports identiques n'ont créé aucun doublon : deux réceptions, une annulation et la sortie V2 reconstituée, soit quatre mouvements. L'heure exacte de cette ancienne sortie est inconnue et signalée dans le motif. Les entrées du journal ont un impact nul : stock = quantité reçue + impacts signés.
 
-## Contrôles de reprise du 13 novembre 2026
+## Installation V3.1
 
-- Conteneur du projet Apps Script vérifié dans Présentation : classeur Santé ci-dessus.
-- Syntaxe corrigée ; classeur cible fixé dans le code, aucun accès au classeur alimentaire.
-- Tests simulés : deux lots / 1 000 gants, ancien retour V2 équilibré, double envoi sans ajout de lignes, refus de clé incorrecte et de flux incohérents.
-- Aucun test simulé ne constitue une confirmation d'écriture réelle dans Google Sheets.
-- Autorisation Google, création de la clé privée, déploiement et transfert depuis le navigateur iPhone restent à effectuer.
+1. Le code autonome `apps-script/Stock42SanteTest.gs` contient l'interface partagée et le serveur. Il est installé dans le projet Santé `1pmiPm2x7R29gZuONH4RNWJ8eqgTOfYGgduV5yQSt4F1_uHlcwzzn8Wd2`.
+2. Conserver la propriété privée existante `SANTE_API_TOKEN`. Ne pas relancer sa création ni la mettre dans le code, les URL, le classeur, les captures ou les conversations.
+3. Exécuter `setupSante`, terminer le consentement Google, vérifier le classeur cible et `configured:true`.
+4. Déployer > Gérer les déploiements > modifier le déploiement Santé existant > Nouvelle version > Déployer. Conserver le propriétaire, les droits et l'URL existants. Ne pas modifier les déploiements alimentaires.
+5. Ouvrir l'URL Santé /exec : https://script.google.com/macros/s/AKfycby7Z4gp1uORCRMLmAw2IHsjfBPWVl_jXZsUCUdQOgLVK3VwC5FQxLUmic4rYJ9N-zgY/exec
+6. Saisir la clé privée Santé dans l'interface. Vérifier 1 000 gants et les deux lots. La clé ne quitte pas les appels authentifiés Google, ne figure pas dans l'URL et reste uniquement en mémoire dans l'onglet.
+7. Tester une sortie fictive de 100 gants puis son annulation, contrôler les quantités et le journal dans Sheets, ainsi que l'affichage sur un deuxième appareil. Ne considérer cette étape comme réalisée qu'après contrôle réel.
 
-## Étapes suivantes après validation de la synchronisation
+Au moment de cette préparation, le code V3.1 est installé et testé en simulation, mais l'autorisation supplémentaire et le nouveau déploiement restent à terminer. Le déploiement existant reste en V3 tant que l'étape 4 n'est pas effectuée.
 
-1. Attribuer les emplacements physiques Santé, définir des identifiants stables et tester un QR sur iPhone avant impression.
-2. FEFO : calculer les quantités restantes, exclure les lots épuisés, isoler les périmés et proposer les dates les plus proches (M avant L seulement pour un produit/usage compatible).
-3. Sauvegardes : export indépendant daté des lots et mouvements, politique de conservation, puis test de restauration dans une copie Santé.
-4. Masques : ajouter un référentiel générique (type, unité, conditionnement, code-barres, lot facultatif, péremption), puis une réception et une sortie de test avant extension du prototype.
+## Comportement V3.1
+
+- Le même serveur Google fournit l'interface et les opérations : lecture authentifiée sans clé dans les URL, confirmation des écritures dans Sheets.
+- Lecture à l'ouverture et actualisation toutes les 30 secondes pendant que l'onglet est visible ; bouton Actualiser disponible.
+- Une empreinte de version détecte les changements entre appareils et refuse les commandes périmées.
+- Chaque commande dispose d'une référence unique ; le journal ne répète pas une commande déjà enregistrée.
+- Verrou côté serveur et journal préalable privé `SANTE_PENDING` : une opération interrompue est reprise avant la prochaine lecture ou écriture. Ne jamais effacer cette propriété pour débloquer un incident sans examiner les données.
+- Le POST de snapshots locaux est désactivé dans la nouvelle version pour empêcher l'écrasement par l'ancien prototype.
+- Stock en gants ; réceptions en boîtes de 100 ; sorties à l'unité. Annulation complète d'une sortie, une seule fois, sans effacer la trace.
+- Lots périmés bloqués en sortie. FEFO proposé par taille, sans substitution automatique L/M. Les lots épuisés restent dans l'historique.
+- Export JSON daté, manuel, avec lots, mouvements et version. Ceci n'est pas encore une sauvegarde automatique indépendante ni une restauration testée.
+- La page GitHub conserve uniquement l'export des anciens stocks locaux et le lien vers l'interface partagée. Elle n'efface pas le stockage local.
+
+## Vérifications simulées
+
+Authentification ; récupération des 1 000 gants et des anciennes annulations V2 ; sortie et retour ; double envoi ; collision de référence ; commande périmée ; quantité excessive ; dates invalides ; reprise d'une réception interrompue ; perte d'accusé après écriture ; refus des sorties de lots périmés. Les contrôles réels de la version partagée restent distincts.
+
+## Suite prévue
+
+1. Emplacements Santé : valider les lieux physiques, identifiants stables et un premier QR sur iPhone avant impression.
+2. Référentiel générique et masques : type, unité, conditionnement, code-barres, lot fabricant facultatif, péremption ; réception et sortie de test dédiées.
+3. Sauvegarde indépendante datée, conservation et essai de restauration dans une copie Santé.
+4. Vérifier l'usage sur iPhone avec la clé puis simplifier l'accès quotidien sans divulguer cette clé.
