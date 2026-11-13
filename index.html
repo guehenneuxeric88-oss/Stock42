@@ -1071,6 +1071,16 @@ function displayQtyForLot(x, quantityOverride){
     }
     return base+' • Conditionnement initial : '+pack;
   }
+  // Conditionnements comptés par unités : ex. "5 paquets de 3 éponges".
+  // Le nombre initial de paquets est informatif ; l'affichage est recalculé à partir du stock restant.
+  const countPack=pack.match(/^(\d+)\s+paquets?\s+de\s+(\d+)\s+(.+)$/i);
+  if(countPack&&(unitLow==='unité'||unitLow==='unite'||unitLow==='unités'||unitLow==='unites')){
+    const perPack=Number(countPack[2]);
+    if(Number.isFinite(perPack)&&perPack>0&&Math.abs(qty/perPack-Math.round(qty/perPack))<0.000001){
+      const packs=Math.round(qty/perPack);
+      return base+' • '+packs+' paquet'+(packs===1?'':'s')+' de '+perPack+' '+countPack[3];
+    }
+  }
   // Cas des paquets de rouleaux ou conditionnements multipacks.
   const rolls=pack.match(/^Paquet de (\d+) rouleaux$/i);
   if(rolls&&unitLow==='paquet')return num(qty)+' paquets de '+rolls[1]+' rouleaux';
