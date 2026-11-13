@@ -63,9 +63,9 @@ Le registre reprend exactement les 78 codes déjà reconnus par le code V55 : 45
 - Les réceptions peuvent choisir directement un emplacement existant ; le site est déduit du code 42/38.
 - Protection contre les écrans périmés et reprise automatique d’un transfert interrompu, comme pour les autres écritures.
 
-### Installation à terminer
+### Installation V3.2 et contrôle
 
-Le contrôle du navigateur du PC est bloqué par sa configuration au moment de cette préparation. Le code V3.2 et les tests sont sauvegardés sur GitHub mais ne sont pas encore installés ni déployés. La version en service reste V3.1, avec les deux lots et les 1 000 gants validés.
+Mise à jour le 13 novembre 2026 à 19 h 06 (Paris) : connexion navigateur rétablie, QrDecoder.html et Code.gs installés dans le projet Santé ; setupSante confirme configured:true et version:3.2 ; déploiement existant mis à jour vers la version 4. L’interface publiée charge les 1 000 gants, propose les emplacements 42/38 et le bouton Ranger / déplacer. Le choix 38-ETAGE-01 a été sélectionné puis annulé dans l’interface, sans aucune affectation réelle. Aucun message d’erreur JavaScript observé au chargement. La lecture de QR depuis une photo prise sur l’iPhone reste à vérifier sur l’appareil.
 
 Dans le projet Apps Script Santé uniquement : créer le fichier HTML QrDecoder depuis apps-script/QrDecoder.html, puis remplacer Code.gs par apps-script/Stock42SanteTest.gs. Vérifier setupSante et mettre à jour le déploiement existant vers une nouvelle version en conservant l’URL, les autorisations et la clé. Vérifier le chargement des deux lots, la présence des choix 42/38 et du bouton de lecture photo. La caméra et la photo sur l’iPhone physique restent à tester.
 
