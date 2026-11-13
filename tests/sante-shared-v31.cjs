@@ -26,3 +26,17 @@ const cmd2={action:'sortie',id:'S0002',quantity:10,uid:uid(),revision:s.revision
 // Un lot périmé est consultable mais non consommable.
 lots.rows[1][6]=new Date('2020-01-01');s=read();assert.throws(()=>act({action:'sortie',id:'S0001',quantity:1,uid:uid(),revision:s.revision}),/périmé/);
 console.log('PASS: authentification, reprise 1000 gants/V2, sorties et annulations, double envoi, conflit entre appareils, surconsommation, dates, réception et reprise après deux types de panne, blocage périmés.');
+// Emplacements V3.2 : mêmes codes que V55, sans aucun accès au classeur alimentaire.
+s=read();assert.equal(s.locations.length,78);assert.ok(s.locations.includes('42-R1-N5-C'));assert.ok(s.locations.includes('38-ETAGE-18'));
+const firstQuantity=s.lots[0].quantity;
+const transfer={action:'rangement',uid:uid(),id:'S0001',location:'38 etage 01',revision:s.revision};s=act(transfer);assert.equal(s.lots[0].site,'Site 38');assert.equal(s.lots[0].location,'38-ETAGE-01');assert.equal(s.lots[0].status,'Rangé');assert.equal(s.lots[0].quantity,firstQuantity);const transferRows=moves.rows.length;
+assert.equal(s.events.find(e=>e.uid===transfer.uid).impact,0);assert.equal(s.events.find(e=>e.uid===transfer.uid).source,'À ranger');assert.equal(s.events.find(e=>e.uid===transfer.uid).destination,'38-ETAGE-01');
+act(transfer);assert.equal(moves.rows.length,transferRows);
+assert.throws(()=>act({...transfer,uid:uid(),revision:s.revision}),/déjà à cet emplacement/);
+assert.throws(()=>act({...transfer,uid:uid(),location:'38-ETAGE-19',revision:s.revision}),/Emplacement inconnu/);
+assert.throws(()=>act({...transfer,uid:uid(),location:'https://example.com/42-R1-N1-A',revision:s.revision}),/Emplacement inconnu/);
+moves.failNextAppend=true;const moveBack={action:'rangement',uid:uid(),id:'S0001',location:'42-R1-N5-C',revision:s.revision};assert.throws(()=>act(moveBack),/simulated outage/);assert.equal(lots.rows[1][10],'Site 42');s=read();assert.equal(s.lots[0].location,'42-R1-N5-C');assert.equal(s.lots[0].site,'Site 42');assert.equal(s.lots[0].quantity,firstQuantity);assert.equal(s.events.filter(e=>e.uid===moveBack.uid).length,1);assert.equal(act(moveBack).lots[0].quantity,firstQuantity);
+assert.throws(()=>act({...transfer,uid:uid(),location:'38-ETAGE-02'}),/stock a changé/);
+s=act({action:'rangement',uid:uid(),id:'S0001',location:'À ranger',revision:s.revision});assert.equal(s.lots[0].status,'À ranger');assert.equal(s.lots[0].site,'Site 42');
+s=act({action:'entree',uid:uid(),size:'M',quantity:100,expiry:'2032-10-01',location:'38-ETAGE-02',revision:s.revision});assert.equal(s.lots.at(-1).site,'Site 38');assert.equal(s.lots.at(-1).status,'Rangé');
+console.log('PASS: 78 codes réutilisés, transferts 42/38, sites et statuts, impact nul, QR invalide/URL refusés, reprise après interruption, idempotence, conflit, réception directe au 38.');
