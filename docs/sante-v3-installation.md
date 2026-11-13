@@ -87,3 +87,24 @@ Priorité utilisateur : supprimer la ressaisie de la clé à chaque ouverture av
 Déploiement Santé mis à jour vers la version 5 à 19 h 23 (Paris), contenant l’application V3.3. Tests réels sur Chrome : clé valide mémorisée ; rechargement sans saisie ; nouvel onglet automatiquement connecté ; déconnexion puis rechargement montrant à nouveau le formulaire ; reconnexion mémorisée rétablie après le test. Les 1 000 gants et les emplacements choisis par l’utilisateur sont conservés. Le test physique sur iPhone reste à effectuer.
 
 Tests reproductibles : node tests/sante-connection-v33.cjs et node tests/sante-shared-v31.cjs. La suite de connexion couvre mémorisation après authentification seulement, réouverture, effacement, clé invalide ou expirée, JSON corrompu, stockage bloqué et reprise réseau sans ressaisie.
+
+
+## Connexion par compte Google — V3.4 préparée le 13 novembre 2026
+
+Retour utilisateur : la connexion mémorisée V3.3 ne survit pas à la réouverture depuis l’icône iPhone. Ne pas considérer le succès Chrome comme une validation iPhone. La V3.4 retire la dépendance au stockage local et la saisie de clé dans l’interface.
+
+### Autorisation et déploiement à terminer
+
+Le code V3.4 est installé dans l’éditeur Santé et sauvegardé sur GitHub. L’exécution de setupSante attend un nouveau consentement Google pour userinfo.email. Après consentement, setupSante doit confirmer version:3.4, auth:compte-google-proprietaire et configured:true. Il conserve uniquement l’empreinte SHA-256 du compte propriétaire dans SANTE_GOOGLE_OWNER_HASH ; il ne publie pas son adresse.
+
+Mettre ensuite à jour le déploiement Santé existant vers une nouvelle version, en conservant l’URL et en réglant impérativement « Qui a accès » sur « Moi uniquement ». Garder « Exécuter en tant que : Moi ». Ne pas modifier les déploiements alimentaires. Jusqu’à cette mise à jour, l’application en service reste V3.3.
+
+### Comportement attendu
+
+- Chaque lecture et écriture vérifie l’identité Google active contre l’empreinte du propriétaire. Une identité absente, un compte tiers ou une ancienne clé ne suffisent pas à accéder aux données. getEffectiveUser n’est jamais utilisé comme identité du visiteur.
+- Le formulaire de clé et la mémorisation locale sont retirés. L’ancienne entrée locale de clé est supprimée lorsqu’elle est accessible. Un navigateur refusant localStorage n’empêche plus l’ouverture.
+- Le chargement tente automatiquement la lecture authentifiée Google. En cas d’échec, un bouton Choisir mon compte Google et Réessayer restent disponibles, sans clé à recopier.
+- Le bouton Fermer l’inventaire masque les données sur l’écran sans déconnecter le compte Google des autres services.
+- Google peut demander une connexion à son compte ou un consentement initial ; le fonctionnement depuis l’icône iPhone reste à valider après le déploiement. Les comptes de la famille ne sont pas encore autorisés par cette configuration personnelle.
+
+Tests simulés passés : compte propriétaire autorisé sans clé, anonyme et compte tiers refusés même avec l’ancienne clé, écritures également contrôlées, chargement sans lecture ni enregistrement de clé locale, stockage bloqué, masquage/réouverture et reprise réseau. Les autres tests de stock et transferts restent passants. Commandes : node tests/sante-google-connection-v34.cjs et node tests/sante-shared-v31.cjs.
