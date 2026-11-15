@@ -57,7 +57,7 @@ body.guest-mode .admin-only{display:none!important}body.guest-mode #guestModeBtn
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 </head>
 <body><main class="app">
-<section class="notice" role="status" style="margin-bottom:14px"><b>Copie Santé en préparation.</b> La connexion au stock Santé sera configurée à l’étape suivante. Les données alimentaires ne sont pas chargées dans cette copie.</section>
+<section class="notice" role="status" style="margin-bottom:14px"><b>Copie Santé en préparation.</b> Connexion au fichier Santé vierge. Lecture seule pendant la vérification du raccordement ; les entrées et sorties seront activées ensuite.</section>
 <header class="head"><img class="logo" src="icon-180.png" alt="" width="52" height="52"><div><div class="title">Stock 42 Santé</div><div class="sub">Commandes • réceptions • lots • emplacements • FIFO • Version 55</div></div></header>
 <div class="guest-banner">Mode famille / invité — consultation uniquement</div>
 <nav id="mainNav" class="main-nav" aria-label="Navigation principale">
@@ -432,8 +432,9 @@ body.guest-mode .admin-only{display:none!important}body.guest-mode #guestModeBtn
 const VALID=/^(?:42-R[1-3]-N[1-5]-[ABC]|38-ETAGE-(?:0[1-9]|1[0-8])|42-CONGELATEUR-0[1-6]|42-FRIGO-0[1-5]|42-GARAGE-0[1-4])$/i, LOT=/^L\d{4}$/;
 let scanner=null,running=false,productScanner=null,productScannerControls=null,activeLocation=null,receiveOrderId=null,moveScanMode=false,exitScanMode=false,exitLocation='',quickScanMode=false,quickProductScanMode=false,quickScannedBarcode='',quickScannedBrand='';
 const $=id=>document.getElementById(id);
-const SANTE_CONNECTION_READY=false; // Étape 3 : raccordement Santé à réaliser.
-const SANTE_CONNECTION_MESSAGE='Copie Santé en préparation : connexion au stock Santé à l’étape suivante.';
+const SANTE_CONNECTION_READY=true;
+const SANTE_READ_ONLY=true; // Étape 3 : contrôle du raccordement avant activation des écritures.
+const SANTE_CONNECTION_MESSAGE='Connexion au fichier Santé vierge. Lecture seule pendant la vérification du raccordement.';
 const LS={catalog:'stock42SanteCloneCatalog',lots:'stock42SanteCloneLots',orders:'stock42SanteCloneOrders',moves:'stock42SanteCloneMovements',assign:'stock42SanteCloneAssignments',history:'stock42SanteCloneHistory',imported:'stock42SanteCloneImportedAt',syncUrl:'stock42SanteCloneSyncUrl',syncKey:'stock42SanteCloneSyncKey',guestMode:'stock42SanteCloneGuestMode',autoBackups:'stock42SanteCloneAutoBackups',products:'stock42SanteCloneProducts',reorder:'stock42SanteCloneReorderBaselineV1',lastExternalBackup:'stock42SanteCloneLastExternalBackup',cloudEnabled:'stock42SanteCloneCloudBackupEnabled',cloudUrl:'stock42SanteCloneCloudBackupUrl',cloudKey:'stock42SanteCloneCloudBackupKey',cloudVerified:'stock42SanteCloneCloudBackupVerified',cloudLast:'stock42SanteCloneCloudBackupLast',cloudPending:'stock42SanteCloneCloudBackupPending'};
 const get=(k,d=[])=>{try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}};
 let autoBackupTimer=null,restoringBackup=false;
@@ -463,48 +464,60 @@ function catalog(){return get(LS.catalog,[])} function localLots(){return get(LS
 function allLots(){const map=new Map();[...localLots(),...catalog()].forEach(x=>{const l=normalizeLot(x.lot);if(l&&LOT.test(l))map.set(l,{...x,lot:l})});return [...map.values()].sort((a,b)=>a.lot.localeCompare(b.lot))}
 function nextLot(){let max=0;allLots().forEach(x=>{const n=parseInt(x.lot.slice(1),10);if(n>max)max=n});return 'L'+String(max+1).padStart(4,'0')}
 function nextOrder(){let max=0;orders().forEach(x=>{const m=String(x.id||'').match(/^C(\d+)$/);if(m)max=Math.max(max,+m[1])});return 'C'+String(max+1).padStart(4,'0')}
-async function syncLotsFromSheet(){
-  if(!SANTE_CONNECTION_READY){$('syncMsg').textContent=SANTE_CONNECTION_MESSAGE;return false}
-  const u=localStorage.getItem(LS.syncUrl)||'';
-  if(!u){$('syncMsg').textContent='Renseignez d’abord l’URL Apps Script.';return false}
-  $('syncMsg').textContent='Synchronisation des lots…';
-  try{
-    const sep=u.includes('?')?'&':'?';
-    const r=await fetch(u+sep+'action=lots&t='+Date.now(),{cache:'no-store'});
-    const data=await r.json();
-    if(!data.ok||!Array.isArray(data.lots))throw new Error(data.error||'Réponse invalide');
-    set(LS.catalog,data.lots);
-    localStorage.setItem(LS.imported,new Date().toISOString());
-    const byId=new Map(assignments().map(x=>[x.id,x]));
-    data.lots.filter(x=>VALID.test(x.emplacement||'')).forEach(x=>{
-      const id=x.lot+'@'+x.emplacement;
-      byId.set(id,{id,lot:x.lot,location:x.emplacement,assignedAt:new Date().toISOString()});
-    });
-    set(LS.assign,[...byId.values()]);
-    initializeReorderBaseline();
-    updateStats();
-    if(activeLocation)renderLocationStock();
-    const productsOk=await syncProductsFromSheet();
-    $('syncMsg').textContent='Google Sheets synchronisé : '+data.lots.length+' lot(s). Prochain lot : '+(data.nextLot||nextLot())+'.'+(productsOk?' Référentiel produits synchronisé.':'');
-    return true;
-  }catch(e){
-    $('syncMsg').textContent='Synchronisation impossible : '+String(e&&e.message?e.message:e);
-    return false;
-  }
+
+function santeReadRequest(action){
+  const url=localStorage.getItem(LS.syncUrl)||'',token=localStorage.getItem(LS.syncKey)||'';
+  if(!/^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec$/.test(url)||!token)return Promise.reject(Error('Renseignez l’URL Apps Script et la clé Santé dans Config.'));
+  const id=newCloudReceiptId(),callback='stock42SanteCloneRead_'+id;
+  return new Promise((resolve,reject)=>{
+    let done=false,attempt=0,timer=null,pollTimer=null,tag=null;
+    const finish=(error,data)=>{if(done)return;done=true;clearTimeout(timer);clearTimeout(pollTimer);tag?.remove();delete window[callback];error?reject(error):resolve(data);};
+    const poll=()=>{
+      if(done)return;
+      if(attempt++>=12){finish(Error('Le serveur Santé ne confirme pas la réponse. Vérifiez l’URL et les autorisations.'));return;}
+      tag?.remove();tag=document.createElement('script');
+      tag.referrerPolicy='no-referrer';
+      tag.src=url+'?action=receipt&requestId='+id+'&callback='+callback+'&t='+Date.now();
+      tag.onerror=()=>{pollTimer=setTimeout(poll,1500);};
+      document.head.appendChild(tag);
+    };
+    window[callback]=data=>{
+      if(data?.pending===true){pollTimer=setTimeout(poll,1500);return;}
+      if(data?.ok!==true){finish(Error(data?.error==='unauthorized'?'Clé Santé incorrecte.':data?.error||'Réponse Santé invalide.'));return;}
+      if(data.service!=='Stock42SanteClone'){finish(Error('Cette URL ne correspond pas à la passerelle Santé.'));return;}
+      finish(null,data);
+    };
+    timer=setTimeout(()=>finish(Error('Délai de connexion Santé dépassé.')),45000);
+    fetch(url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({token,action,requestId:id})})
+      .then(()=>{pollTimer=setTimeout(poll,900);})
+      .catch(()=>{pollTimer=setTimeout(poll,900);});
+  });
 }
-async function syncProductsFromSheet(){
-  if(!SANTE_CONNECTION_READY)return false;
-  const u=localStorage.getItem(LS.syncUrl)||'';
-  if(!u)return false;
+async function syncLotsFromSheet(){
+  const el=$('syncMsg');
+  el.textContent='Connexion au fichier Santé…';
   try{
-    const sep=u.includes('?')?'&':'?';
-    const r=await fetch(u+sep+'action=products&t='+Date.now(),{cache:'no-store'});
-    const data=await r.json();
-    if(!data.ok||!Array.isArray(data.products))return false;
-    set(LS.products,data.products);
-    updateStats();
+    const data=await santeReadRequest('snapshot');
+    if(!Array.isArray(data.lots)||!Array.isArray(data.products)||!Array.isArray(data.orders)||!Array.isArray(data.movements))throw Error('Réponse Santé incomplète.');
+    if(data.lots.some(x=>!LOT.test(String(x.lot||''))||!Number.isFinite(x.quantite)||x.quantite<0))throw Error('Lot Santé invalide.');
+    restoringBackup=true;
+    try{
+      set(LS.catalog,data.lots);set(LS.lots,[]);set(LS.orders,data.orders);
+      set(LS.products,data.products);set(LS.moves,data.movements);
+      set(LS.assign,data.lots.filter(x=>VALID.test(x.emplacement||'')).map(x=>({id:x.lot+'@'+x.emplacement,lot:x.lot,location:x.emplacement,assignedAt:data.readAt})));
+      localStorage.setItem(LS.imported,data.readAt||new Date().toISOString());
+    }finally{restoringBackup=false;}
+    initializeReorderBaseline();updateStats();
+    if(activeLocation)renderLocationStock();
+    el.textContent='Connexion Santé confirmée : '+data.lots.length+' lot(s), '+data.products.length+' produit(s). Lecture seule ; prochain lot : '+data.nextLot+'.';
     return true;
-  }catch(e){return false}
+  }catch(e){el.textContent='Connexion Santé non confirmée : '+String(e?.message||e);return false;}
+}
+async function syncProductsFromSheet(){return syncLotsFromSheet();}
+function applySanteReadOnlyControls(){
+  if(!SANTE_READ_ONLY)return;
+  document.querySelectorAll('[data-app-view="entries"] button:not(.tab),[data-app-view="exits"] button,[data-reorder]').forEach(b=>b.disabled=true);
+  for(const id of ['importStockBtn','clearCatalogBtn','restoreBackupBtn','previewRestoreBtn','resetReorderBaselineBtn','saveInventoryBtn','confirmExitBtn','confirmMoveBtn','moveConfirmBtn','exitSaveBtn','inventorySaveBtn','assignBtn','assignLotBtn','inventoryConfirmBtn','exitConfirmBtn','moveLotBtn','productNewBtn','cloudUrl','cloudKey','saveCloudUrlBtn','testCloudBackupBtn','toggleCloudBackupBtn'])if($(id))$(id).disabled=true;
 }
 
 function newCloudReceiptId(){
@@ -523,30 +536,9 @@ function checkCloudReceipt(url,id){
     document.head.appendChild(script);
   });
 }
-async function sendCloudBackupWithReceipt(data){
-  if(!SANTE_CONNECTION_READY)return {ok:false,error:SANTE_CONNECTION_MESSAGE};
-  const url=localStorage.getItem(LS.cloudUrl)||'',token=localStorage.getItem(LS.cloudKey)||'';
-  if(!url||!token)return {ok:false,error:'Adresse de sauvegarde V55 ou clé API manquante'};
-  const receiptId=newCloudReceiptId();
-  const payload={...data,receiptId};
-  // Opaque reply is NOT proof of a successful backup. Poll a separate read-only receipt.
-  try{
-    await fetch(url,{
-      method:'POST',mode:'no-cors',
-      headers:{'Content-Type':'text/plain;charset=utf-8'},
-      body:JSON.stringify({token,action:'backup',data:payload})
-    });
-  }catch(e){
-    // A network exception does not prove that Drive did not receive the POST.
-  }
-  for(let i=0;i<5;i++){
-    await new Promise(resolve=>setTimeout(resolve,i===0?1200:3000));
-    if(await checkCloudReceipt(url,receiptId))return {ok:true,backupSaved:true,receiptConfirmed:true,fileId:'confirmé-par-reçu'};
-  }
-  return {ok:false,error:'Aucune confirmation Drive. Le déploiement doit être accessible depuis cette page (accès « Moi uniquement » non compatible). Vérifier le dossier Drive avant toute nouvelle tentative.'};
-}
+async function sendCloudBackupWithReceipt(data){return {ok:false,error:'Sauvegarde Drive à configurer après le raccordement.'};}
+async function sendToSheet(action,data){return {ok:false,error:'Lecture seule pendant la vérification du raccordement Santé.'};}
 
-async function sendToSheet(action,data){if(!SANTE_CONNECTION_READY)return {ok:false,localOnly:true,error:SANTE_CONNECTION_MESSAGE};const u=localStorage.getItem(LS.syncUrl)||'';const k=localStorage.getItem(LS.syncKey)||'';if(!u||!k)return {ok:false,localOnly:true};try{const r=await fetch(u,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({token:k,action:action,data:data})});return JSON.parse(await r.text())}catch(e){return {ok:false,error:String(e&&e.message?e.message:e)}}}
 function lotById(l){l=normalizeLot(l);return allLots().find(x=>x.lot===l)||null}
 function guestModeEnabled(){return localStorage.getItem(LS.guestMode)==='1'}
 function applyGuestMode(){
@@ -592,7 +584,7 @@ function updateMobileDashboard(){
   if($('dashReorderMessage'))$('dashReorderMessage').textContent=!baseline?.items?'Stock de référence non initialisé':count?'produit(s) avec une commande à proposer':'Aucune commande à proposer';
   if($('dashSummary')){
     const alerts=[];
-    if(!lots.length&&!localStorage.getItem(LS.imported)){$('dashSummary').textContent='Inventaire Santé non chargé : connexion à configurer à l’étape suivante.';return}
+    if(!lots.length&&!localStorage.getItem(LS.imported)){$('dashSummary').textContent='Inventaire Santé non chargé : connexion à configurer dans Config.';return}
     if(temp)alerts.push(temp+' lot(s) à ranger');
     if(expired)alerts.push(expired+' date(s) dépassée(s)');
     if(soon)alerts.push(soon+' échéance(s) sous 3 mois');
@@ -800,7 +792,7 @@ function resetReorderBaseline(){
   set(LS.reorder,{createdAt:new Date().toISOString(),items});updateStats();
 }
 
-function updateStats(){ $('catalogCount').textContent=allLots().length;$('nextLot').textContent=nextLot();const t=localStorage.getItem(LS.imported);$('importStatus').textContent=t?'Dernier import : '+new Date(t).toLocaleString('fr-FR')+' • '+catalog().length+' lot(s) chargé(s).':'Aucun tableau importé sur cet appareil.';renderOrders();populateOrderProducts();populateQuickProducts();populateQuickLocations();populateCategorySearch();populateInventoryLocations();populateExitLocations();populateExitControls();populateMoveControls();populateFifoProducts();populateLocationView();updateExpiryStats();updateMobileDashboard();renderProductReference();renderReorder() }
+function updateStats(){ $('catalogCount').textContent=allLots().length;$('nextLot').textContent=nextLot();const t=localStorage.getItem(LS.imported);$('importStatus').textContent=t?'Dernier import : '+new Date(t).toLocaleString('fr-FR')+' • '+catalog().length+' lot(s) chargé(s).':'Aucun tableau importé sur cet appareil.';renderOrders();populateOrderProducts();populateQuickProducts();populateQuickLocations();populateCategorySearch();populateInventoryLocations();populateExitLocations();populateExitControls();populateMoveControls();populateFifoProducts();populateLocationView();updateExpiryStats();updateMobileDashboard();renderProductReference();renderReorder();applySanteReadOnlyControls() }
 function parseNumber(v){if(typeof v==='number')return v;const s=String(v??'').replace(/\s/g,'').replace(',','.').replace(/[^0-9.-]/g,'');return s?Number(s):null}
 function excelDate(v){if(!v)return'';if(v instanceof Date)return v.toLocaleDateString('fr-FR');return String(v)}
 async function importWorkbook(){
@@ -1213,7 +1205,7 @@ function currentLocationForLot(lot){
   return a.length?a[a.length-1].location:'';
 }
 function exitMovementsForLot(lot){
-  return get(LS.moves,[]).filter(m=>normalizeLot(m.lot)===normalizeLot(lot)&&String(m.type||'')==='Sortie consommation');
+  return get(LS.moves,[]).filter(m=>normalizeLot(m.lot)===normalizeLot(lot)&&!m.serverRecorded&&String(m.type||'')==='Sortie consommation');
 }
 function currentQtyForLot(lotData){
   if(!lotData)return 0;
@@ -1932,3 +1924,4 @@ if('serviceWorker' in navigator)window.addEventListener('load',async()=>{
 });
 </script>
 </body></html>
+

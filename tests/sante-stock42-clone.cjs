@@ -33,6 +33,23 @@ function boot(seed={}){
  assert.equal(live.document.getElementById('dashLots').textContent,'1');
  assert.equal(JSON.parse(live.data.get('stock42SanteCloneOrders'))[0].id,'C0001');
  assert.equal(JSON.parse(live.data.get('stock42SanteCloneLots'))[0].lot,'L0057');
+
+ const snapshot={ok:true,service:'Stock42SanteClone',readOnly:true,lots:[],products:[],orders:[],movements:[],readAt:'2026-11-15T08:00:00Z',nextLot:'L0001'};
+ b.context.testSnapshot=snapshot;
+ vm.runInContext("santeReadRequest=async()=>testSnapshot",b.context);
+ assert.equal(await vm.runInContext("syncLotsFromSheet()",b.context),true);
+ assert.match(b.document.getElementById('syncMsg').textContent,/confirmée : 0 lot/);
+ assert.equal(b.document.getElementById('dashLots').textContent,'0');
+ assert.equal(b.document.getElementById('quickSaveBtn').disabled,true);
+ for(const [k,v] of Object.entries(food))assert.equal(b.data.get(k),v);
+ b.context.testSnapshot={...snapshot,lots:[{lot:'L0001',produit:'Gants fictifs',quantite:400,unite:'gant',emplacement:'42-R3-N2-A'}],movements:[{lot:'L0001',type:'Sortie consommation',quantite:100,serverRecorded:true}]};
+ assert.equal(await vm.runInContext("syncLotsFromSheet()",b.context),true);
+ assert.equal(vm.runInContext("currentQtyForLot(allLots()[0])",b.context),400);
+ const preserved=b.data.get('stock42SanteCloneCatalog');
+ b.context.testSnapshot={...snapshot,lots:[{lot:'wrong',quantite:100}]};
+ assert.equal(await vm.runInContext("syncLotsFromSheet()",b.context),false);
+ assert.equal(b.data.get('stock42SanteCloneCatalog'),preserved);
+
  const manifest=JSON.parse(fs.readFileSync(path.join(root,'sante-stock42/manifest.webmanifest'),'utf8'));
  assert.equal(manifest.scope,'./');assert.equal(manifest.start_url,'./index.html');
  for(const icon of manifest.icons)assert.ok(fs.existsSync(path.join(root,'sante-stock42',icon.src)));
@@ -42,3 +59,4 @@ function boot(seed={}){
  assert.deepEqual(deleted,['stock42-sante-clone-old']);
  console.log('PASS: navigation identique, stockage alimentaire intact, connexions non actives, exports Santé séparés, lots locaux préservés, cache Santé isolé.');
 })().catch(e=>{console.error(e);process.exitCode=1});
+
