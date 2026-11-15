@@ -1,4 +1,4 @@
-const CACHE='stock42-sante-clone-v2';
+const CACHE='stock42-sante-clone-v3';
 const LOCAL=['./','./index.html','./health-rules.js','./health-ui.js','./manifest.webmanifest','./icon-180.png','./icon-192.png','./icon-512.png'];
 
 self.addEventListener('install',e=>{

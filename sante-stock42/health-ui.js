@@ -35,6 +35,10 @@
  const oldToggle=toggleQuickNewProduct;toggleQuickNewProduct=function(){oldToggle();if(!$('qKind'))return;const ref=productReferences().find(p=>p.name===$('qProduct').value);fillDetails('q',ref?.health);};
  const oldOpen=openReceive;openReceive=function(id){oldOpen(id);const o=orders().find(o=>o.id===id),ref=productReferences().find(p=>p.name===o?.product);fillDetails('r',ref?.health);$('rDateType').value='Péremption';updateFields('r');};
  const oldReferences=productReferences;productReferences=function(){return oldReferences().map(r=>({...r,health:get(LS.products,[]).find(x=>x.name===r.name)?.health||allLots().find(l=>l.produit===r.name)?.health||{}}));};
+ // Start from an empty inventory: the user fixes the reference after initial entry,
+ // rather than freezing only the first product that happens to be received.
+ initializeReorderBaseline=function(){};
+ const oldReorder=renderReorder;renderReorder=function(){oldReorder();if(!get(LS.reorder,null)?.items)$('reorderBaselineStatus').textContent='À définir après la saisie initiale des produits Santé, avec le bouton ci-dessous.';};
  parseFrenchDate=function(v){const d=HealthRules.date(v);if(!d)return null;const [y,m,day]=d.split('-').map(Number);return new Date(y,m-1,day);};
  const oldExpiry=expiryState;expiryState=function(x){return x.typeDate==='Sans date'?{bucket:'none',days:null}:oldExpiry(x);};
  displayQtyForLot=function(x,override){const qty=override===undefined?currentQtyForLot(x):Number(override),h=x?.health||{},base=qty.toLocaleString('fr-FR',{maximumFractionDigits:3})+' '+(x?.unite||'');return x?.unite==='boîte'&&h.perBox?base+' de '+h.perBox+' '+(h.contentUnit||'unités')+' ('+(qty*h.perBox).toLocaleString('fr-FR')+' '+(h.contentUnit||'unités')+')':base+(x?.conditionnement?' • '+x.conditionnement:'');};
@@ -78,7 +82,8 @@
  showLocationView=function(){const loc=$('locationViewSelect').value,rows=allLots().filter(x=>(currentLocationForLot(x.lot)||x.emplacement)===loc&&($('showEmptyLocationLots').checked||currentQtyForLot(x)>0)).sort(HealthRules.compare);$('locationViewResult').innerHTML=rows.map(lotCard).join('')||'<div class="empty">Aucun lot disponible à cet emplacement.</div>';};
  $('showExpiryBtn').onclick=showExpiryAlerts;$('locationViewBtn').onclick=showLocationView;$('locationViewSelect').addEventListener('change',()=>showLocationView());$('showEmptyLocationLots').addEventListener('change',()=>showLocationView());
  const previousApply=applySanteReadOnlyControls;applySanteReadOnlyControls=function(){
-  previousApply();for(const id of ['startBtn','quickProductScanBtn','quickScanBtn','exitScanBtn','moveScanBtn','inventoryConfirmBtn','importStockBtn','clearCatalogBtn','restoreBackupBtn','previewRestoreBtn','resetReorderBaselineBtn','cloudUrl','cloudKey','saveCloudUrlBtn','testCloudBackupBtn','toggleCloudBackupBtn'])if($(id))$(id).disabled=true;
+  previousApply();for(const id of ['startBtn','quickProductScanBtn','quickScanBtn','exitScanBtn','moveScanBtn','inventoryConfirmBtn','importStockBtn','clearCatalogBtn','restoreBackupBtn','previewRestoreBtn','cloudUrl','cloudKey','saveCloudUrlBtn','testCloudBackupBtn','toggleCloudBackupBtn'])if($(id))$(id).disabled=true;
+  $('resetReorderBaselineBtn').disabled=!healthServerReady||guestModeEnabled()||!allLots().some(x=>currentQtyForLot(x)>0);
   for(const id of ['quickSaveBtn','saveOrderBtn','confirmReceiveBtn','exitConfirmBtn','assignLotBtn','moveLotBtn'])if($(id))$(id).disabled=!healthServerReady||guestModeEnabled();
   document.querySelectorAll('[data-reorder]').forEach(b=>b.disabled=true);
   const banner=$('healthStage');if(banner)banner.textContent=healthServerReady?'Santé • sorties par boîte entière • priorité aux péremptions. Scanner et sauvegarde Drive à configurer ensuite.':'Synchronisez la connexion Santé pour activer les entrées et sorties. Aucun changement de clé nécessaire.';
