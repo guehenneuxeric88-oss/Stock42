@@ -325,8 +325,17 @@ body.guest-mode .admin-only{display:none!important}body.guest-mode #guestModeBtn
 
 <section class="card admin-only" id="moveCard" data-app-view="stock">
   <div class="section-title">Déplacement simplifié</div>
-  <div class="hint">Choisissez le lot, puis scannez le QR du nouvel emplacement. La liste déroulante reste disponible en secours.</div>
-  <div style="margin-top:10px">
+  <div class="hint">Saisissez directement le numéro inscrit sur le produit, ou choisissez le lot dans la liste, puis scannez le QR du nouvel emplacement.</div>
+  <div class="field" style="margin-top:10px">
+    <label>Saisir directement le numéro de lot</label>
+    <div class="manual">
+      <input id="moveLotInput" inputmode="numeric" autocomplete="off" placeholder="Ex. 124 ou L0124">
+      <button id="moveLotFindBtn" type="button" class="btn secondary">Retrouver</button>
+    </div>
+    <div class="hint" style="margin-top:6px">Vous pouvez saisir seulement les chiffres : 124 sera automatiquement interprété comme L0124.</div>
+  </div>
+  <div class="field" style="margin-top:10px">
+    <label>Ou choisir dans la liste</label>
     <select id="moveLotSelect"><option value="">— Choisir un lot —</option></select>
   </div>
   <div id="moveCurrentLocation" class="status" style="margin-top:8px"></div>
@@ -1306,10 +1315,43 @@ function populateMoveControls(){
   if(allOfficialLocations().includes(currentDest))destSel.value=currentDest;
   showMoveCurrentLocation();
 }
+function selectMoveLotByNumber(raw){
+  const input=$('moveLotInput'),sel=$('moveLotSelect'),el=$('moveCurrentLocation'),status=$('moveStatus');
+  const lot=normalizeLot(raw);
+  if(input)input.value=lot||String(raw||'').trim();
+  if(!LOT.test(lot)){
+    if(sel)sel.value='';
+    if(el)el.textContent='';
+    if(status)status.innerHTML='<div class="empty">Numéro de lot invalide. Saisissez par exemple 124 ou L0124.</div>';
+    return false;
+  }
+  const x=lotById(lot);
+  if(!x){
+    if(sel)sel.value='';
+    if(el)el.textContent='';
+    if(status)status.innerHTML='<div class="notice" style="border-color:#fca5a5;background:#fef2f2;color:#991b1b"><b>Lot introuvable : '+esc(lot)+'</b><br>Aucun déplacement ne peut être validé.</div>';
+    return false;
+  }
+  const loc=currentLocationForLot(lot);
+  if(!loc){
+    if(sel)sel.value='';
+    if(el)el.innerHTML='<b>'+esc(x?.produit||'Produit')+' — '+esc(lot)+'</b><br>Ce lot existe mais aucun emplacement actuel n’est enregistré.';
+    if(status)status.innerHTML='<div class="notice" style="border-color:#fde68a;background:#fffbeb;color:#92400e">Lot connu mais non rangé : utilisez la fonction de rangement plutôt qu’un déplacement.</div>';
+    return false;
+  }
+  if(sel){
+    const exists=[...sel.options].some(o=>o.value===lot);
+    if(exists)sel.value=lot;
+  }
+  if(status)status.textContent='';
+  showMoveCurrentLocation();
+  return true;
+}
 function showMoveCurrentLocation(){
   const lot=$('moveLotSelect')?.value||'',el=$('moveCurrentLocation');
   if(!el)return;
   if(!lot){el.textContent='';return}
+  if($('moveLotInput'))$('moveLotInput').value=lot;
   const x=lotById(lot),loc=currentLocationForLot(lot);
   el.innerHTML='<b>'+esc(x?.produit||'Produit')+' — '+esc(lot)+'</b><br>Emplacement actuel : <b>'+esc(loc||'non affecté')+'</b><br>Stock : <b>'+esc(displayQtyForLot(x))+'</b>';
 }
@@ -1857,7 +1899,7 @@ $('importStockBtn').onclick=importWorkbook;$('clearCatalogBtn').onclick=clearCat
 $('startBtn').onclick=()=>{moveScanMode=false;exitScanMode=false;quickScanMode=false;quickProductScanMode=false;setScannerUi('location');startScanner()};$('stopBtn').onclick=async()=>{moveScanMode=false;exitScanMode=false;quickScanMode=false;quickProductScanMode=false;await stopScanner();document.body.classList.remove('scanner-active');setScannerUi('location')};$('manualBtn').onclick=()=>showResult($('manualCode').value);$('manualCode').addEventListener('keydown',e=>{if(e.key==='Enter')showResult(e.target.value)});
 $('findLotBtn').onclick=()=>previewLot($('lotInput').value);$('lotInput').addEventListener('keydown',e=>{if(e.key==='Enter')previewLot(e.target.value)});
 $('assignLotBtn').onclick=()=>{const lot=normalizeLot($('lotInput').value);if(activeLocation)assignLotTo(lot,activeLocation)};
-$('searchLotBtn').onclick=searchLot;$('searchLot').addEventListener('keydown',e=>{if(e.key==='Enter')searchLot()});$('categorySearchBtn').onclick=searchCategory;$('categorySearch').addEventListener('change',searchCategory);$('inventoryLoadBtn').onclick=loadInventoryLocation;$('inventoryLocationSelect').addEventListener('change',loadInventoryLocation);$('inventoryUseActiveBtn').onclick=useActiveInventoryLocation;$('inventoryConfirmBtn').onclick=confirmQuickInventory;$('exitScanBtn').onclick=startExitScanner;$('exitLocationSelect').addEventListener('change',e=>setExitLocation(e.target.value));$('exitLotSelect').addEventListener('change',showExitLotInfo);$('exitConfirmBtn').onclick=confirmStockExit;$('moveScanBtn').onclick=startMoveScanner;$('moveLotBtn').onclick=moveSelectedLot;$('moveLotSelect').addEventListener('change',showMoveCurrentLocation);$('fifoSearchBtn').onclick=showFifoView;$('fifoProductSelect').addEventListener('change',showFifoView);$('locationViewBtn').onclick=showLocationView;$('locationViewSelect').addEventListener('change',showLocationView);$('showEmptyLocationLots').addEventListener('change',showLocationView);$('showExpiryBtn').onclick=showExpiryAlerts;$('guestModeBtn').onclick=toggleGuestMode;
+$('searchLotBtn').onclick=searchLot;$('searchLot').addEventListener('keydown',e=>{if(e.key==='Enter')searchLot()});$('categorySearchBtn').onclick=searchCategory;$('categorySearch').addEventListener('change',searchCategory);$('inventoryLoadBtn').onclick=loadInventoryLocation;$('inventoryLocationSelect').addEventListener('change',loadInventoryLocation);$('inventoryUseActiveBtn').onclick=useActiveInventoryLocation;$('inventoryConfirmBtn').onclick=confirmQuickInventory;$('exitScanBtn').onclick=startExitScanner;$('exitLocationSelect').addEventListener('change',e=>setExitLocation(e.target.value));$('exitLotSelect').addEventListener('change',showExitLotInfo);$('exitConfirmBtn').onclick=confirmStockExit;$('moveScanBtn').onclick=startMoveScanner;$('moveLotBtn').onclick=moveSelectedLot;$('moveLotSelect').addEventListener('change',showMoveCurrentLocation);$('moveLotFindBtn').onclick=()=>selectMoveLotByNumber($('moveLotInput').value);$('moveLotInput').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();selectMoveLotByNumber(e.target.value)}});$('fifoSearchBtn').onclick=showFifoView;$('fifoProductSelect').addEventListener('change',showFifoView);$('locationViewBtn').onclick=showLocationView;$('locationViewSelect').addEventListener('change',showLocationView);$('showEmptyLocationLots').addEventListener('change',showLocationView);$('showExpiryBtn').onclick=showExpiryAlerts;$('guestModeBtn').onclick=toggleGuestMode;
 $('resetReorderBaselineBtn').onclick=resetReorderBaseline;
 $('cloudUrl').value=localStorage.getItem(LS.cloudUrl)||'';
 $('cloudKey').value=localStorage.getItem(LS.cloudKey)||'';
