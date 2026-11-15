@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111827">
-<title>Stock 42 Santé — copie V55</title>
+<title>Stock 42 Santé</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
@@ -52,13 +52,13 @@ body.guest-mode .admin-only{display:none!important}body.guest-mode #guestModeBtn
 @media(max-width:500px){body{padding-bottom:76px}.two,.three,.grid{grid-template-columns:1fr}.tabs{grid-template-columns:1fr}.main-nav{position:fixed;left:0;right:0;bottom:0;top:auto;margin:0;padding:8px max(8px,env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left));background:rgba(255,255,255,.96);box-shadow:0 -6px 22px rgba(148,163,184,.16);z-index:50}.main-nav button{background:#faf5ff;padding:8px 2px 6px;font-size:.68rem}.main-nav button .nav-icon{font-size:1.08rem}.quick-actions{grid-template-columns:1fr}#mobileDashboard .grid{grid-template-columns:1fr 1fr}#mobileDashboard .two{grid-template-columns:1fr 1fr}#mobileDashboard .kv{padding:9px}#mobileDashboard .v{font-size:1.08rem}}
 #exitCard{scroll-margin-top:92px}
 </style>
-<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-<script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
-<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script src="health-rules.js"></script>
+
+
 </head>
 <body><main class="app">
-<section class="notice" role="status" style="margin-bottom:14px"><b>Copie Santé en préparation.</b> Connexion au fichier Santé vierge. Lecture seule pendant la vérification du raccordement ; les entrées et sorties seront activées ensuite.</section>
-<header class="head"><img class="logo" src="icon-180.png" alt="" width="52" height="52"><div><div class="title">Stock 42 Santé</div><div class="sub">Commandes • réceptions • lots • emplacements • FIFO • Version 55</div></div></header>
+<section id="healthStage" class="notice" role="status" style="margin-bottom:14px">Santé — vérification de la connexion…</section>
+<header class="head"><img class="logo" src="icon-180.png" alt="" width="52" height="52"><div><div class="title">Stock 42 Santé</div><div class="sub">Commandes • réceptions • lots • emplacements • FEFO • Santé 1.0</div></div></header>
 <div class="guest-banner">Mode famille / invité — consultation uniquement</div>
 <nav id="mainNav" class="main-nav" aria-label="Navigation principale">
   <button class="active" data-view="home"><span class="nav-icon">⌂</span>Accueil</button>
@@ -76,7 +76,7 @@ body.guest-mode .admin-only{display:none!important}body.guest-mode #guestModeBtn
     <div class="kv"><div class="k">Lots rangés</div><div id="dashRanged" class="v">0</div></div>
     <div class="kv"><div class="k">À ranger / TEMP</div><div id="dashTemp" class="v">0</div></div>
     <div class="kv"><div class="k">Emplacements occupés</div><div id="dashLocations" class="v">0 / 73</div></div>
-    <div class="kv"><div class="k">DDM/DLC ≤ 3 mois</div><div id="dashSoon" class="v">0</div></div>
+    <div class="kv"><div class="k">Péremption ≤ 3 mois</div><div id="dashSoon" class="v">0</div></div>
     <div class="kv"><div class="k">Dates dépassées</div><div id="dashExpired" class="v">0</div></div>
   </div>
   <div class="two" style="margin-top:10px">
@@ -160,7 +160,7 @@ body.guest-mode .admin-only{display:none!important}body.guest-mode #guestModeBtn
 
   <div id="quickPane" class="hidden">
     <div class="section-title">Entrée rapide d’un achat déjà reçu</div>
-    <div class="notice">Une seule validation crée la commande, le lot, la réception et, si vous choisissez un emplacement, le rangement.</div>
+    <div class="notice">Une seule validation enregistre le lot et son emplacement. Pour les gants, saisissez le nombre de boîtes et leur contenu.</div>
     <div class="two">
       <div class="field"><label>Produit</label><div class="row" style="margin-bottom:8px"><button id="quickProductScanBtn" type="button" class="btn secondary">Scanner le code-barres</button></div><select id="qProduct"><option value="">— Choisir un produit —</option></select><div id="qNewProductWrap" class="hidden" style="margin-top:8px"><input id="qNewProduct" placeholder="Nom du nouveau produit"></div><div id="qBarcodeInfo" class="hint" style="margin-top:7px"></div></div>
       <div class="field"><label>Catégorie</label><select id="qCategory"><option value="">— Choisir une catégorie —</option><option>Boissons</option><option>Céréales / féculents</option><option>Condiments</option><option>Conserves</option><option>Épicerie</option><option>Huiles</option><option>Hygiène</option><option>Légumineuses</option><option>Produits laitiers</option></select></div>
@@ -168,14 +168,14 @@ body.guest-mode .admin-only{display:none!important}body.guest-mode #guestModeBtn
     <div class="three">
       <div class="field"><label>Quantité</label><input id="qQty" type="number" step="any" min="0"></div>
       <div class="field"><label>Unité</label><select id="qUnit"><option value="">—</option><option>unité</option><option>boîte</option><option>bocal</option><option>paquet</option><option>kg</option><option>g</option><option>L</option><option>ml</option></select></div>
-      <div class="field"><label>DDM / DLC</label><input id="qExpiry" placeholder="JJ/MM/AAAA"></div>
+      <div class="field"><label>Péremption</label><input id="qExpiry" placeholder="JJ/MM/AAAA"></div>
     </div>
     <div class="two">
-      <div class="field"><label>Type date</label><select id="qDateType"><option>DDM</option><option>DLC</option><option>Sans date</option></select></div>
-      <div class="field"><label>Fournisseur</label><input id="qSupplier" placeholder="Ex. Super U"></div>
+      <div class="field"><label>Type date</label><select id="qDateType"><option>Péremption</option><option>Péremption</option><option>Sans date</option></select></div>
+      <div class="field"><label>Fournisseur</label><input id="qSupplier" placeholder="Ex. pharmacie / fournisseur"></div>
     </div>
     <div class="two">
-      <div class="field"><label>Conditionnement / poids par unité</label><input id="qPack" placeholder="Ex. 400 g pour une boîte"><div class="hint">Obligatoire pour les boîtes, bocaux et paquets. Vérifiez le poids proposé : il peut varier selon le lot.</div></div>
+      <div class="field"><label>Conditionnement</label><input id="qPack" placeholder="Ex. paquet de 10 compresses"><div class="hint">Pour les boîtes, indiquez le nombre et le contenu dans les champs dédiés.</div></div>
       <div class="field">
         <label>Emplacement</label>
         <div class="row" style="margin-bottom:8px"><button id="quickScanBtn" type="button" class="btn secondary">Scanner l’emplacement</button></div>
@@ -210,8 +210,8 @@ body.guest-mode .admin-only{display:none!important}body.guest-mode #guestModeBtn
         <div class="field"><label>Date réception</label><input id="rDate" type="date"></div>
       </div>
       <div class="two">
-        <div class="field"><label>DDM / DLC</label><input id="rExpiry" placeholder="JJ/MM/AAAA ou MM/AAAA"></div>
-        <div class="field"><label>Type date</label><select id="rDateType"><option>DDM</option><option>DLC</option><option>Sans date</option></select></div>
+        <div class="field"><label>Péremption</label><input id="rExpiry" placeholder="JJ/MM/AAAA ou MM/AAAA"></div>
+        <div class="field"><label>Type date</label><select id="rDateType"><option>Péremption</option><option>Péremption</option><option>Sans date</option></select></div>
       </div>
       <div class="two">
         <div class="field"><label>Conditionnement</label><input id="rPack" placeholder="Ex. 6 × 1 kg"></div>
@@ -321,8 +321,8 @@ body.guest-mode .admin-only{display:none!important}body.guest-mode #guestModeBtn
     <div class="field"><label>Quantité sortie</label><input id="exitQty" inputmode="decimal" placeholder="Ex. 1"></div>
     <div class="field"><label>Unité</label><input id="exitUnit" readonly></div>
   </div>
-  <div class="field"><label>Motif</label><select id="exitReason"><option value="Consommation">Consommation</option><option value="Don / transfert">Don / transfert</option><option value="Perte / casse">Perte / casse</option><option value="Autre">Autre</option></select></div>
-  <div class="field"><label>Commentaire (facultatif)</label><input id="exitComment" placeholder="Ex. utilisé pour le repas"></div>
+  <div class="field"><label>Motif</label><select id="exitReason"><option value="Utilisation / soins">Utilisation / soins</option><option value="Don / transfert">Don / transfert</option><option value="Perte / casse">Perte / casse</option><option value="Autre">Autre</option></select></div>
+  <div class="field"><label>Commentaire (facultatif)</label><input id="exitComment" placeholder="Ex. utilisation / soins"></div>
   <button id="exitConfirmBtn" class="btn primary" style="margin-top:12px">Enregistrer la sortie</button>
   <div id="exitStatus" class="status"></div>
 </section>
@@ -346,7 +346,7 @@ body.guest-mode .admin-only{display:none!important}body.guest-mode #guestModeBtn
 </section>
 
 <section class="card" data-app-view="stock">
-  <div class="section-title">Vue FIFO</div>
+  <div class="section-title">Vue FEFO</div>
   <div class="manual"><select id="fifoProductSelect"><option value="">— Choisir un produit —</option></select><button id="fifoSearchBtn" class="btn secondary">Afficher</button></div>
   <div class="hint" style="margin-top:8px">Choisissez un produit pour afficher ses lots dans l'ordre où ils doivent être consommés.</div>
   <div id="fifoResult" style="margin-top:10px"></div>
@@ -361,14 +361,14 @@ body.guest-mode .admin-only{display:none!important}body.guest-mode #guestModeBtn
 </section>
 
 <section class="card" data-app-view="home">
-  <div class="section-title">Alertes DDM / DLC</div>
+  <div class="section-title">Alertes Péremption</div>
   <div class="two">
     <div class="kv"><div class="k">Dépassées</div><div id="expiryExpiredCount" class="v">0</div></div>
     <div class="kv"><div class="k">≤ 3 mois</div><div id="expiry3mCount" class="v">0</div></div>
   </div>
   <div class="two" style="margin-top:10px">
     <div class="kv"><div class="k">≤ 6 mois</div><div id="expiry6mCount" class="v">0</div></div>
-    <div class="kv"><div class="k">Sans date</div><div id="expiryMissingCount" class="v">0</div></div>
+    <div class="kv"><div class="k">Dates à compléter</div><div id="expiryMissingCount" class="v">0</div></div>
   </div>
   <div class="row" style="margin-top:12px">
     <button id="showExpiryBtn" class="btn secondary">Voir les alertes</button>
@@ -433,7 +433,8 @@ const VALID=/^(?:42-R[1-3]-N[1-5]-[ABC]|38-ETAGE-(?:0[1-9]|1[0-8])|42-CONGELATEU
 let scanner=null,running=false,productScanner=null,productScannerControls=null,activeLocation=null,receiveOrderId=null,moveScanMode=false,exitScanMode=false,exitLocation='',quickScanMode=false,quickProductScanMode=false,quickScannedBarcode='',quickScannedBrand='';
 const $=id=>document.getElementById(id);
 const SANTE_CONNECTION_READY=true;
-const SANTE_READ_ONLY=true; // Étape 3 : contrôle du raccordement avant activation des écritures.
+let healthServerReady=false;
+const SANTE_READ_ONLY=false; // Étape 3 : contrôle du raccordement avant activation des écritures.
 const SANTE_CONNECTION_MESSAGE='Connexion au fichier Santé vierge. Lecture seule pendant la vérification du raccordement.';
 const LS={catalog:'stock42SanteCloneCatalog',lots:'stock42SanteCloneLots',orders:'stock42SanteCloneOrders',moves:'stock42SanteCloneMovements',assign:'stock42SanteCloneAssignments',history:'stock42SanteCloneHistory',imported:'stock42SanteCloneImportedAt',syncUrl:'stock42SanteCloneSyncUrl',syncKey:'stock42SanteCloneSyncKey',guestMode:'stock42SanteCloneGuestMode',autoBackups:'stock42SanteCloneAutoBackups',products:'stock42SanteCloneProducts',reorder:'stock42SanteCloneReorderBaselineV1',lastExternalBackup:'stock42SanteCloneLastExternalBackup',cloudEnabled:'stock42SanteCloneCloudBackupEnabled',cloudUrl:'stock42SanteCloneCloudBackupUrl',cloudKey:'stock42SanteCloneCloudBackupKey',cloudVerified:'stock42SanteCloneCloudBackupVerified',cloudLast:'stock42SanteCloneCloudBackupLast',cloudPending:'stock42SanteCloneCloudBackupPending'};
 const get=(k,d=[])=>{try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}};
@@ -465,10 +466,10 @@ function allLots(){const map=new Map();[...localLots(),...catalog()].forEach(x=>
 function nextLot(){let max=0;allLots().forEach(x=>{const n=parseInt(x.lot.slice(1),10);if(n>max)max=n});return 'L'+String(max+1).padStart(4,'0')}
 function nextOrder(){let max=0;orders().forEach(x=>{const m=String(x.id||'').match(/^C(\d+)$/);if(m)max=Math.max(max,+m[1])});return 'C'+String(max+1).padStart(4,'0')}
 
-function santeReadRequest(action){
+function santeReadRequest(action,data={},requestId){
   const url=localStorage.getItem(LS.syncUrl)||'',token=localStorage.getItem(LS.syncKey)||'';
   if(!/^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec$/.test(url)||!token)return Promise.reject(Error('Renseignez l’URL Apps Script et la clé Santé dans Config.'));
-  const id=newCloudReceiptId(),callback='stock42SanteCloneRead_'+id;
+  const id=requestId||newCloudReceiptId(),callback='stock42SanteCloneRead_'+id;
   return new Promise((resolve,reject)=>{
     let done=false,attempt=0,timer=null,pollTimer=null,tag=null;
     const finish=(error,data)=>{if(done)return;done=true;clearTimeout(timer);clearTimeout(pollTimer);tag?.remove();delete window[callback];error?reject(error):resolve(data);};
@@ -483,12 +484,12 @@ function santeReadRequest(action){
     };
     window[callback]=data=>{
       if(data?.pending===true){pollTimer=setTimeout(poll,1500);return;}
-      if(data?.ok!==true){finish(Error(data?.error==='unauthorized'?'Clé Santé incorrecte.':data?.error||'Réponse Santé invalide.'));return;}
+      if(data?.ok!==true){const error=Error(data?.error==='unauthorized'?'Clé Santé incorrecte.':data?.error||'Réponse Santé invalide.');error.rejected=data?.rejected===true||data?.error==='unauthorized';finish(error);return;}
       if(data.service!=='Stock42SanteClone'){finish(Error('Cette URL ne correspond pas à la passerelle Santé.'));return;}
       finish(null,data);
     };
     timer=setTimeout(()=>finish(Error('Délai de connexion Santé dépassé.')),45000);
-    fetch(url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({token,action,requestId:id})})
+    fetch(url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({token,action,data,requestId:id})})
       .then(()=>{pollTimer=setTimeout(poll,900);})
       .catch(()=>{pollTimer=setTimeout(poll,900);});
   });
@@ -500,6 +501,7 @@ async function syncLotsFromSheet(){
     const data=await santeReadRequest('snapshot');
     if(!Array.isArray(data.lots)||!Array.isArray(data.products)||!Array.isArray(data.orders)||!Array.isArray(data.movements))throw Error('Réponse Santé incomplète.');
     if(data.lots.some(x=>!LOT.test(String(x.lot||''))||!Number.isFinite(x.quantite)||x.quantite<0))throw Error('Lot Santé invalide.');
+    healthServerReady=data.version>=2;
     restoringBackup=true;
     try{
       set(LS.catalog,data.lots);set(LS.lots,[]);set(LS.orders,data.orders);
@@ -509,7 +511,7 @@ async function syncLotsFromSheet(){
     }finally{restoringBackup=false;}
     initializeReorderBaseline();updateStats();
     if(activeLocation)renderLocationStock();
-    el.textContent='Connexion Santé confirmée : '+data.lots.length+' lot(s), '+data.products.length+' produit(s). Lecture seule ; prochain lot : '+data.nextLot+'.';
+    el.textContent='Connexion Santé confirmée : '+data.lots.length+' lot(s), '+data.products.length+' produit(s). '+(healthServerReady?'Entrées et sorties actives ; ':'Lecture seule ; ')+'prochain lot : '+data.nextLot+'.';
     return true;
   }catch(e){el.textContent='Connexion Santé non confirmée : '+String(e?.message||e);return false;}
 }
@@ -537,7 +539,14 @@ function checkCloudReceipt(url,id){
   });
 }
 async function sendCloudBackupWithReceipt(data){return {ok:false,error:'Sauvegarde Drive à configurer après le raccordement.'};}
-async function sendToSheet(action,data){return {ok:false,error:'Lecture seule pendant la vérification du raccordement Santé.'};}
+async function sendToSheet(action,data){
+  if(!healthServerReady)return {ok:false,error:'Synchronisez la passerelle Santé mise à jour avant toute modification.'};
+  const key='stock42SanteClonePending_'+action,payload=JSON.stringify(data),saved=get(key,null);
+  if(saved&&saved.payload!==payload)return {ok:false,error:'Une tentative précédente reste à confirmer. Rétablissez les mêmes champs et validez à nouveau avant une autre opération.'};
+  const id=saved?.id||newCloudReceiptId();localStorage.setItem(key,JSON.stringify({id,payload}));
+  try{const result=await santeReadRequest(action,data,id);localStorage.removeItem(key);return result;}
+  catch(e){if(e.rejected)localStorage.removeItem(key);return {ok:false,error:e.message+(e.rejected?'':' Si la réponse a été interrompue, validez les mêmes champs à nouveau : une tentative ne sera enregistrée qu’une seule fois.')};}
+}
 
 function lotById(l){l=normalizeLot(l);return allLots().find(x=>x.lot===l)||null}
 function guestModeEnabled(){return localStorage.getItem(LS.guestMode)==='1'}
@@ -547,7 +556,7 @@ function applyGuestMode(){
   const btn=$('guestModeBtn'),status=$('guestModeStatus');
   if(btn)btn.textContent=on?'Quitter le mode invité':'Mode famille / invité';
   if(status)status.innerHTML=on
-    ? '<b>Consultation uniquement.</b> Recherche, FIFO, emplacements et alertes restent disponibles.'
+    ? '<b>Consultation uniquement.</b> Recherche, FEFO, emplacements et alertes restent disponibles.'
     : 'Mode normal : toutes les fonctions de gestion sont disponibles.';
   if(on&&running)stopScanner();
 }
@@ -565,7 +574,7 @@ function updateMobileDashboard(){
     return VALID.test(loc)?loc:'';
   }).filter(Boolean)).size;
   let soon=0,expired=0;
-  lots.forEach(x=>{
+  lots.filter(x=>currentQtyForLot(x)>0).forEach(x=>{
     const st=expiryState(x);
     if(st.bucket==='expired')expired++;
     else if(st.bucket==='3m')soon++;
@@ -803,7 +812,7 @@ async function importWorkbook(){
     const ws=wb.Sheets['Réception & lots'];if(!ws)throw new Error('Onglet « Réception & lots » introuvable');
     const rows=XLSX.utils.sheet_to_json(ws,{range:3,defval:'',raw:true});
     const used=rows.filter(r=>normalizeLot(r['N° lot interne']) && (r['Produit']||r['Quantité reçue']||r['Date réception']));
-    const lots=used.map(r=>({lot:normalizeLot(r['N° lot interne']),dateReception:excelDate(r['Date réception']),produit:String(r['Produit']||''),categorie:String(r['Catégorie']||''),quantite:parseNumber(r['Quantité reçue']),unite:String(r['Unité']||''),ddm:excelDate(r['DDM / DLC']),typeDate:String(r['Type date']||''),fournisseur:String(r['Fournisseur']||''),reference:String(r['Référence / commande']||''),zone:String(r['Zone actuelle']||''),emplacement:String(r['Emplacement']||''),statut:String(r['Statut']||''),conditionnement:String(r['Conditionnement']||''),lotFabricant:String(r['Lot fabricant']||''),notes:String(r['Notes']||'')}));
+    const lots=used.map(r=>({lot:normalizeLot(r['N° lot interne']),dateReception:excelDate(r['Date réception']),produit:String(r['Produit']||''),categorie:String(r['Catégorie']||''),quantite:parseNumber(r['Quantité reçue']),unite:String(r['Unité']||''),ddm:excelDate(r['Péremption']),typeDate:String(r['Type date']||''),fournisseur:String(r['Fournisseur']||''),reference:String(r['Référence / commande']||''),zone:String(r['Zone actuelle']||''),emplacement:String(r['Emplacement']||''),statut:String(r['Statut']||''),conditionnement:String(r['Conditionnement']||''),lotFabricant:String(r['Lot fabricant']||''),notes:String(r['Notes']||'')}));
     set(LS.catalog,lots);localStorage.setItem(LS.imported,new Date().toISOString());initializeReorderBaseline();
     let a=assignments();const byId=new Map(a.map(x=>[x.id,x]));lots.filter(x=>VALID.test(x.emplacement||'')).forEach(x=>{byId.set(x.lot+'@'+x.emplacement,{id:x.lot+'@'+x.emplacement,lot:x.lot,location:x.emplacement,assignedAt:new Date().toISOString()})});set(LS.assign,[...byId.values()]);
     $('importStatus').textContent='Import réussi : '+lots.length+' lot(s) utilisés détectés. Prochain lot : '+nextLot()+'.';updateStats();if(activeLocation)renderLocationStock();
@@ -888,7 +897,7 @@ async function saveQuickEntry(){
       : '<div class="notice" style="border-color:#86efac;background:#ecfdf5;color:#166534"><b>✓ '+esc(lot)+' créé</b><br>Lot à affecter ultérieurement.</div>';
   ['qProduct','qCategory','qQty','qExpiry','qSupplier','qPack','qNewProduct','qLocation'].forEach(id=>$(id).value='');
   quickScannedBarcode='';quickScannedBrand='';$('qBarcodeInfo').textContent='';
-  $('qUnit').value='';$('qDateType').value='DDM';populateQuickProducts();populateQuickLocations();
+  $('qUnit').value='';$('qDateType').value='Péremption';populateQuickProducts();populateQuickLocations();
   btn.disabled=false;btn.textContent='Créer et ranger le lot';
 }
 function renderOrders(){
@@ -897,7 +906,7 @@ function renderOrders(){
   el.querySelectorAll('[data-receive]').forEach(b=>b.onclick=()=>openReceive(b.dataset.receive))
 }
 function openReceive(id){
-  const o=orders().find(x=>x.id===id);if(!o)return;receiveOrderId=id;$('receiveEmpty').classList.add('hidden');$('receiveForm').classList.remove('hidden');$('rOrderId').value=id;$('rLot').value=nextLot();$('rProduct').value=o.product;$('rQty').value=o.qty;$('rUnit').value=o.unit;$('rDate').value=today();$('rExpiry').value='';$('rDateType').value='DDM';$('rPack').value='';$('rMakerLot').value='';$('rNotes').value=o.notes||'';$('rAssignActive').checked=!!activeLocation;showPane('receivePane')
+  const o=orders().find(x=>x.id===id);if(!o)return;receiveOrderId=id;$('receiveEmpty').classList.add('hidden');$('receiveForm').classList.remove('hidden');$('rOrderId').value=id;$('rLot').value=nextLot();$('rProduct').value=o.product;$('rQty').value=o.qty;$('rUnit').value=o.unit;$('rDate').value=today();$('rExpiry').value='';$('rDateType').value='Péremption';$('rPack').value='';$('rMakerLot').value='';$('rNotes').value=o.notes||'';$('rAssignActive').checked=!!activeLocation;showPane('receivePane')
 }
 function cancelReceive(){receiveOrderId=null;$('receiveForm').classList.add('hidden');$('receiveEmpty').classList.remove('hidden');$('receiveStatus').textContent=''}
 async function confirmReceive(){
@@ -958,7 +967,7 @@ function showResult(raw){
   box.scrollIntoView({behavior:'smooth',block:'center'})
 }
 function addHistory(code){let h=get(LS.history,[]);h=h.filter(x=>x.code!==code);h.unshift({code,time:new Date().toISOString()});set(LS.history,h.slice(0,12))}
-function previewLot(raw,target='lotPreview'){const lot=normalizeLot(raw),x=lotById(lot),el=$(target);if(!LOT.test(lot)){el.innerHTML='<div class="empty">Numéro de lot invalide.</div>';if(target==='lotPreview')$('assignLotBtn').disabled=true;return null}if(!x){el.innerHTML='<div class="empty">'+esc(lot)+' n’est pas encore connu.</div>';if(target==='lotPreview')$('assignLotBtn').disabled=true;return null}el.innerHTML='<div class="notice"><b>'+esc(lot)+'</b> — '+esc(x.produit||'Produit non renseigné')+'<br>'+esc(displayQtyForLot(x))+(x.ddm?' • DDM/DLC '+esc(x.ddm):'')+'</div>';if(target==='lotPreview'){$('lotInput').value=lot;$('assignLotBtn').disabled=false}return x}
+function previewLot(raw,target='lotPreview'){const lot=normalizeLot(raw),x=lotById(lot),el=$(target);if(!LOT.test(lot)){el.innerHTML='<div class="empty">Numéro de lot invalide.</div>';if(target==='lotPreview')$('assignLotBtn').disabled=true;return null}if(!x){el.innerHTML='<div class="empty">'+esc(lot)+' n’est pas encore connu.</div>';if(target==='lotPreview')$('assignLotBtn').disabled=true;return null}el.innerHTML='<div class="notice"><b>'+esc(lot)+'</b> — '+esc(x.produit||'Produit non renseigné')+'<br>'+esc(displayQtyForLot(x))+(x.ddm?' • Péremption '+esc(x.ddm):'')+'</div>';if(target==='lotPreview'){$('lotInput').value=lot;$('assignLotBtn').disabled=false}return x}
 async function assignLotTo(lot,location,notify=true){lot=normalizeLot(lot);if(!lotById(lot)||!VALID.test(location))return;const oldLocation=currentLocationForLot(lot);let a=assignments().filter(x=>x.lot!==lot);a.push({id:lot+'@'+location,lot,location,assignedAt:new Date().toISOString()});set(LS.assign,a);const ll=localLots();const i=ll.findIndex(x=>x.lot===lot);if(i>=0){ll[i]={...ll[i],emplacement:location,zone:location.split('-').slice(1,3).join('-')};set(LS.lots,ll)}const mv=get(LS.moves,[]);const prod=lotById(lot);mv.push({date:today(),lot,produit:prod?.produit||'',type:'Transfert',quantite:0,unite:prod?.unite||'',source:oldLocation,destination:location,commentaire:oldLocation?'Déplacement emplacement':'Affectation emplacement',createdAt:new Date().toISOString()});set(LS.moves,mv);
 const btn=$('assignLotBtn');
 if(btn){btn.disabled=true;btn.dataset.oldText=btn.textContent;btn.textContent='✓ Affectation en cours…'}
@@ -980,7 +989,7 @@ function renderLocationStock(){
   const el=$('locationStock');
   if(!rows.length){el.innerHTML='<div class="empty">'+(allRows.length?'Aucun lot disponible (lots épuisés masqués).':'Aucun lot affecté.')+'</div>';return}
   rows.sort((a,b)=>String(a.lotData?.ddm||'9999').localeCompare(String(b.lotData?.ddm||'9999')));
-  el.innerHTML=rows.map((x,i)=>'<div class="list-item"><div class="item-title">'+esc(x.lot)+(i===0?' <span class="badge blue">FIFO</span>':'')+'</div><div>'+esc(x.lotData?.produit||'Produit non renseigné')+'</div><div class="item-meta">'+esc(displayQtyForLot(x.lotData))+(x.lotData?.ddm?' • '+esc(x.lotData.ddm):'')+'</div></div>').join('');
+  el.innerHTML=rows.map((x,i)=>'<div class="list-item"><div class="item-title">'+esc(x.lot)+(i===0?' <span class="badge blue">FEFO</span>':'')+'</div><div>'+esc(x.lotData?.produit||'Produit non renseigné')+'</div><div class="item-meta">'+esc(displayQtyForLot(x.lotData))+(x.lotData?.ddm?' • '+esc(x.lotData.ddm):'')+'</div></div>').join('');
 }
 function normalizeSearchText(v){
   return String(v||'')
@@ -1099,7 +1108,7 @@ function searchLot(){
     if(!x){el.innerHTML='<div class="empty">Lot introuvable.</div>';return}
     const places=assignments().filter(a=>a.lot===lot).map(a=>a.location);
     const container=containerLabel(x);
-    el.innerHTML='<div class="notice"><b>'+esc(lot)+'</b> — '+esc(x.produit||'')+'<br>'+esc(displayQtyForLot(x))+(x.ddm?' • DDM/DLC '+esc(x.ddm):'')+(container?'<br>Contenant : <b>'+esc(container)+'</b>':'')+'<br>Emplacement : <b>'+esc(places.join(', ')||x.emplacement||'non affecté')+'</b></div>';
+    el.innerHTML='<div class="notice"><b>'+esc(lot)+'</b> — '+esc(x.produit||'')+'<br>'+esc(displayQtyForLot(x))+(x.ddm?' • Péremption '+esc(x.ddm):'')+(container?'<br>Contenant : <b>'+esc(container)+'</b>':'')+'<br>Emplacement : <b>'+esc(places.join(', ')||x.emplacement||'non affecté')+'</b></div>';
     return;
   }
   const scored=allLots().map(x=>({x,score:tolerantProductScore(raw,x.produit||'')})).filter(r=>r.score<999);
@@ -1110,7 +1119,7 @@ function searchLot(){
     const places=assignments().filter(a=>a.lot===x.lot).map(a=>a.location);
     const loc=places.join(', ')||x.emplacement||'non affecté';
     const container=containerLabel(x);
-    return '<div class="list-item"><div class="item-title">'+esc(x.produit||'Produit')+' <span class="badge blue">'+esc(x.lot)+'</span></div><div class="item-meta">'+esc(displayQtyForLot(x))+(x.ddm?' • DDM/DLC '+esc(x.ddm):'')+'</div>'+(container?'<div style="margin-top:6px">Contenant : <b>'+esc(container)+'</b></div>':'')+'<div style="margin-top:6px">Emplacement : <b>'+esc(loc)+'</b></div></div>';
+    return '<div class="list-item"><div class="item-title">'+esc(x.produit||'Produit')+' <span class="badge blue">'+esc(x.lot)+'</span></div><div class="item-meta">'+esc(displayQtyForLot(x))+(x.ddm?' • Péremption '+esc(x.ddm):'')+'</div>'+(container?'<div style="margin-top:6px">Contenant : <b>'+esc(container)+'</b></div>':'')+'<div style="margin-top:6px">Emplacement : <b>'+esc(loc)+'</b></div></div>';
   }).join('');
 }
 function populateCategorySearch(){
@@ -1129,7 +1138,7 @@ function searchCategory(){
   el.innerHTML=results.map(x=>{
     const places=assignments().filter(a=>a.lot===x.lot).map(a=>a.location);
     const loc=places.join(', ')||x.emplacement||'non affecté';
-    return '<div class="list-item"><div class="item-title">'+esc(x.produit||'Produit')+' <span class="badge blue">'+esc(x.lot)+'</span></div><div class="item-meta">'+esc(displayQtyForLot(x))+(x.ddm?' • DDM/DLC '+esc(x.ddm):'')+'</div><div style="margin-top:6px">Emplacement : <b>'+esc(loc)+'</b></div></div>';
+    return '<div class="list-item"><div class="item-title">'+esc(x.produit||'Produit')+' <span class="badge blue">'+esc(x.lot)+'</span></div><div class="item-meta">'+esc(displayQtyForLot(x))+(x.ddm?' • Péremption '+esc(x.ddm):'')+'</div><div style="margin-top:6px">Emplacement : <b>'+esc(loc)+'</b></div></div>';
   }).join('');
 }
 function populateInventoryLocations(){
@@ -1246,7 +1255,7 @@ function populateExitControls(){
       if(!da&&db)return 1;
       return String(a.produit||'').localeCompare(String(b.produit||''),'fr')||String(a.lot||'').localeCompare(String(b.lot||''));
     });
-  sel.innerHTML='<option value="">— Choisir un lot (DDM/DLC croissante) —</option>'+rows.map(x=>'<option value="'+esc(x.lot)+'">'+esc(x.produit||'Produit')+' — '+esc(x.lot)+' — '+esc(x.ddm?(x.typeDate||'DDM')+' '+x.ddm:'date absente')+' — '+esc(displayQtyForLot(x))+'</option>').join('');
+  sel.innerHTML='<option value="">— Choisir un lot (Péremption croissante) —</option>'+rows.map(x=>'<option value="'+esc(x.lot)+'">'+esc(x.produit||'Produit')+' — '+esc(x.lot)+' — '+esc(x.ddm?(x.typeDate||'DDM')+' '+x.ddm:'date absente')+' — '+esc(displayQtyForLot(x))+'</option>').join('');
   if(rows.some(x=>x.lot===current))sel.value=current;
   $('exitLocationInfo').innerHTML='<b>Emplacement sélectionné : '+esc(exitLocation)+'</b><br>'+(rows.length?rows.length+' lot(s) disponible(s).':'Aucun lot disponible à cet emplacement.');
   showExitLotInfo();
@@ -1487,7 +1496,7 @@ function showFifoView(){
     results.map((x,i)=>{
       const places=assignments().filter(a=>a.lot===x.lot).map(a=>a.location);
       const loc=places.join(', ')||x.emplacement||'non affecté';
-      return '<div class="list-item"><div class="item-title">'+(i===0?'<span class="badge blue">À CONSOMMER EN PREMIER</span> ':'')+esc(x.produit||'Produit')+' <span class="badge blue">'+esc(x.lot)+'</span></div><div class="item-meta">'+esc(displayQtyForLot(x))+(x.ddm?' • '+esc(x.typeDate||'DDM')+' '+esc(x.ddm):' • date absente')+'</div><div style="margin-top:6px">Emplacement : <b>'+esc(loc)+'</b></div></div>';
+      return '<div class="list-item"><div class="item-title">'+(i===0?'<span class="badge blue">À UTILISER EN PREMIER</span> ':'')+esc(x.produit||'Produit')+' <span class="badge blue">'+esc(x.lot)+'</span></div><div class="item-meta">'+esc(displayQtyForLot(x))+(x.ddm?' • '+esc(x.typeDate||'DDM')+' '+esc(x.ddm):' • date absente')+'</div><div style="margin-top:6px">Emplacement : <b>'+esc(loc)+'</b></div></div>';
     }).join('');
 }
 function allOfficialLocations(){
@@ -1514,7 +1523,7 @@ function showLocationView(){
   if(!rows.length){el.innerHTML='<div class="notice"><b>'+esc(loc)+'</b><br>'+(allRows.length?'Aucun lot disponible (lots épuisés masqués).':'Emplacement vide.')+'</div>';return}
   rows.sort((a,b)=>String(a.lotData?.ddm||'9999').localeCompare(String(b.lotData?.ddm||'9999')));
   el.innerHTML='<div class="notice"><b>'+esc(loc)+'</b> • '+rows.length+' lot(s) affiché(s)'+(!showEmpty&&allRows.length>rows.length?' • '+(allRows.length-rows.length)+' épuisé(s) masqué(s)':'')+'</div>'+
-    rows.map((x,i)=>'<div class="list-item"><div class="item-title">'+esc(x.a.lot)+(currentQtyForLot(x.lotData)<=0?' <span class="badge">ÉPUISÉ</span>':i===0?' <span class="badge blue">FIFO</span>':'')+' — '+esc(x.lotData?.produit||'Produit non renseigné')+'</div><div class="item-meta">'+esc(displayQtyForLot(x.lotData))+(x.lotData?.ddm?' • '+esc(x.lotData?.typeDate||'DDM')+' '+esc(x.lotData.ddm):'')+'</div></div>').join('');
+    rows.map((x,i)=>'<div class="list-item"><div class="item-title">'+esc(x.a.lot)+(currentQtyForLot(x.lotData)<=0?' <span class="badge">ÉPUISÉ</span>':i===0?' <span class="badge blue">FEFO</span>':'')+' — '+esc(x.lotData?.produit||'Produit non renseigné')+'</div><div class="item-meta">'+esc(displayQtyForLot(x.lotData))+(x.lotData?.ddm?' • '+esc(x.lotData?.typeDate||'DDM')+' '+esc(x.lotData.ddm):'')+'</div></div>').join('');
 }
 function parseFrenchDate(v){
   const s=String(v||'').trim();
@@ -1544,7 +1553,7 @@ function expiryLabel(st){
 }
 function updateExpiryStats(){
   const counts={expired:0,'3m':0,'6m':0,missing:0};
-  allLots().forEach(x=>{const s=expiryState(x);if(counts[s.bucket]!=null)counts[s.bucket]++});
+  allLots().filter(x=>currentQtyForLot(x)>0).forEach(x=>{const s=expiryState(x);if(counts[s.bucket]!=null)counts[s.bucket]++});
   if($('expiryExpiredCount'))$('expiryExpiredCount').textContent=counts.expired;
   if($('expiry3mCount'))$('expiry3mCount').textContent=counts['3m'];
   if($('expiry6mCount'))$('expiry6mCount').textContent=counts['6m'];
@@ -1555,7 +1564,7 @@ function showExpiryAlerts(){
   const rows=allLots().map(x=>({x,st:expiryState(x)})).filter(r=>r.st.bucket!=='ok');
   const order={expired:0,'3m':1,'6m':2,missing:3};
   rows.sort((a,b)=>order[a.st.bucket]-order[b.st.bucket]||String(a.x.ddm||'9999').localeCompare(String(b.x.ddm||'9999')));
-  if(!rows.length){el.innerHTML='<div class="notice"><b>✓ Aucune alerte DDM/DLC.</b></div>';return}
+  if(!rows.length){el.innerHTML='<div class="notice"><b>✓ Aucune alerte Péremption.</b></div>';return}
   el.innerHTML=rows.map(({x,st})=>{
     const places=assignments().filter(a=>a.lot===x.lot).map(a=>a.location);
     const loc=places.join(', ')||x.emplacement||'non affecté';
@@ -1564,7 +1573,7 @@ function showExpiryAlerts(){
   }).join('');
 }
 function csvDownload(name,headers,rows){const data=[headers,...rows];const csv='\uFEFF'+data.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';')).join('\n');const blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();URL.revokeObjectURL(url)}
-function exportLots(){csvDownload('stock42SanteClone_lots.csv',['N° lot interne','Date réception','Produit','Catégorie','Quantité reçue','Unité','DDM / DLC','Type date','Fournisseur','Référence / commande','Emplacement','Statut','Conditionnement','Lot fabricant','Notes'],allLots().map(x=>[x.lot,x.dateReception,x.produit,x.categorie,x.quantite,x.unite,x.ddm,x.typeDate,x.fournisseur,x.reference,assignments().find(a=>a.lot===x.lot)?.location||x.emplacement||'',x.statut,x.conditionnement,x.lotFabricant,x.notes]))}
+function exportLots(){csvDownload('stock42SanteClone_lots.csv',['N° lot interne','Date réception','Produit','Catégorie','Quantité reçue','Unité','Péremption','Type date','Fournisseur','Référence / commande','Emplacement','Statut','Conditionnement','Lot fabricant','Notes'],allLots().map(x=>[x.lot,x.dateReception,x.produit,x.categorie,x.quantite,x.unite,x.ddm,x.typeDate,x.fournisseur,x.reference,assignments().find(a=>a.lot===x.lot)?.location||x.emplacement||'',x.statut,x.conditionnement,x.lotFabricant,x.notes]))}
 function exportOrders(){csvDownload('stock42SanteClone_commandes.csv',['Commande','Statut','Produit','Catégorie','Quantité','Unité','Prix €','Fournisseur','Référence','Date commande','Livraison prévue','Lot reçu','Notes'],orders().map(x=>[x.id,x.status,x.product,x.category,x.qty,x.unit,x.price,x.supplier,x.reference,x.orderDate,x.expected,x.lot||'',x.notes]))}
 function backupPayload(){
   return {
@@ -1915,7 +1924,7 @@ if('serviceWorker' in navigator)window.addEventListener('load',async()=>{
     const parentScope=new URL('../',location.href).href;
     const parentReg=await navigator.serviceWorker.getRegistration(parentScope);
     if(parentReg&&parentReg.scope===parentScope)await parentReg.update().catch(()=>{});
-    const reg=await navigator.serviceWorker.register('./service-worker.js?v=sante-clone-1',{updateViaCache:'none'});
+    const reg=await navigator.serviceWorker.register('./service-worker.js?v=sante-1-0',{updateViaCache:'none'});
     reg.update().catch(()=>{});
     navigator.serviceWorker.addEventListener('controllerchange',()=>{
       if(!sessionStorage.getItem('stock42SanteCloneSwReload')){
@@ -1926,5 +1935,6 @@ if('serviceWorker' in navigator)window.addEventListener('load',async()=>{
   }catch(e){}
 });
 </script>
+<script src="health-ui.js"></script>
 </body></html>
 

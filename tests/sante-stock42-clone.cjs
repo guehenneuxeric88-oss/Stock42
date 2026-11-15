@@ -1,7 +1,7 @@
 const fs=require('fs'),path=require('path'),vm=require('vm'),assert=require('node:assert/strict');
 const {parseHTML}=require('linkedom');
 const root=path.resolve(__dirname,'..'), html=fs.readFileSync(path.join(root,'sante-stock42/index.html'),'utf8');
-const code=[...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m=>m[1]).join('\n');
+const code=fs.readFileSync(path.join(root,'sante-stock42/health-rules.js'),'utf8')+'\n'+[...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m=>m[1]).join('\n')+'\n'+fs.readFileSync(path.join(root,'sante-stock42/health-ui.js'),'utf8');
 new vm.Script(code);
 function boot(seed={}){
  const {document}=parseHTML(html);
@@ -56,7 +56,8 @@ function boot(seed={}){
  const events={},deleted=[];
  vm.runInNewContext(fs.readFileSync(path.join(root,'sante-stock42/service-worker.js'),'utf8'),{self:{addEventListener(n,cb){events[n]=cb},clients:{claim(){return Promise.resolve()}}},caches:{keys:async()=>['stock42-v56','other-cache','stock42-sante-clone-old','stock42-sante-clone-v1'],delete:async k=>{deleted.push(k)}}});
  let activation;events.activate({waitUntil(p){activation=p}});await activation;
- assert.deepEqual(deleted,['stock42-sante-clone-old']);
+ assert.deepEqual(deleted,['stock42-sante-clone-old','stock42-sante-clone-v1']);
  console.log('PASS: navigation identique, stockage alimentaire intact, connexions non actives, exports Santé séparés, lots locaux préservés, cache Santé isolé.');
 })().catch(e=>{console.error(e);process.exitCode=1});
 
+module.exports={boot};
