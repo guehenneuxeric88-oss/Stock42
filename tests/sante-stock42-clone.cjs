@@ -1,7 +1,7 @@
 const fs=require('fs'),path=require('path'),vm=require('vm'),assert=require('node:assert/strict');
 const {parseHTML}=require('linkedom');
 const root=path.resolve(__dirname,'..'), html=fs.readFileSync(path.join(root,'sante-stock42/index.html'),'utf8');
-const code=fs.readFileSync(path.join(root,'sante-stock42/health-rules.js'),'utf8')+'\n'+[...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m=>m[1]).join('\n')+'\n'+fs.readFileSync(path.join(root,'sante-stock42/health-ui.js'),'utf8');
+const code=fs.readFileSync(path.join(root,'sante-stock42/health-rules.js'),'utf8')+'\n'+fs.readFileSync(path.join(root,'sante-stock42/health-scan-codes.js'),'utf8')+'\n'+[...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m=>m[1]).join('\n')+'\n'+fs.readFileSync(path.join(root,'sante-stock42/health-ui.js'),'utf8')+'\n'+fs.readFileSync(path.join(root,'sante-stock42/health-scanner.js'),'utf8');
 new vm.Script(code);
 function boot(seed={}){
  const {document}=parseHTML(html);
