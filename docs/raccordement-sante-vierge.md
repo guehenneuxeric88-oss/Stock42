@@ -38,3 +38,5 @@ node tests/sante-stock42-clone.cjs
 
 Le second test nécessite les dépendances de tests/package.json. Les données des tests sont fictives et ne sont jamais envoyées aux fichiers réels.
 
+
+Correction du 15 novembre : SpreadsheetApp.openById exige le scope spreadsheets, autorisant la lecture et la modification des classeurs. Le scope readonly ne suffit pas. La passerelle conserve uniquement des opérations de lecture et cible exclusivement le nouveau fichier Santé. Une nouvelle autorisation Google est nécessaire.
