@@ -1,17 +1,18 @@
 /* One camera session, stopped on result, cancellation, navigation or page hide. */
 (function(){
- let sequence=0,mode='',busy=false,reader=null,controls=null;
+ let sequence=0,mode='',busy=false,reader=null,controls=null,cleanup=Promise.resolve();
  const labels={product:'Scanner le code-barres du produit',quick:'Scanner l’emplacement du nouveau lot',exit:'Scanner l’emplacement de sortie',move:'Scanner le nouvel emplacement',stock:'Scanner un emplacement'};
  $('status').insertAdjacentHTML('afterend','<div class="field"><label for="healthScanManual">Ou saisir le code manuellement</label><input id="healthScanManual" autocomplete="off" autocapitalize="off" spellcheck="false"><button id="healthScanRead" class="btn secondary" type="button" style="margin-top:8px">Lire le code</button></div>');
  $('qBarcode').insertAdjacentHTML('afterend','<button id="healthBarcodeRead" class="btn secondary" type="button" style="margin-top:8px">Rappeler le produit par ce code</button>');
  function hint(text){$('status').textContent=text;}
  function stopTracks(){const video=$('productReader');if(video.srcObject?.getTracks)video.srcObject.getTracks().forEach(t=>t.stop());try{video.pause();}catch(e){}video.srcObject=null;}
- async function stop(){
-  sequence++;busy=false;const old=controls;controls=null;productScannerControls=null;productScanner=null;
-  try{await old?.stop();}catch(e){}stopTracks();reader=null;running=false;
+ async function stop(invalidate=true){
+  if(invalidate)sequence++;busy=false;const old=controls;controls=null;productScannerControls=null;productScanner=null;
+  stopTracks();reader=null;running=false;
   quickProductScanMode=false;quickScanMode=false;exitScanMode=false;moveScanMode=false;
   $('productReader').classList.add('hidden');$('reader').classList.add('hidden');
   $('startBtn').disabled=guestModeEnabled();$('stopBtn').disabled=true;document.body.classList.remove('scanner-active');
+  cleanup=cleanup.catch(()=>{}).then(()=>old?.stop()).catch(()=>{});await cleanup;
  }
  function configure(next){
   mode=next;document.body.classList.add('scanner-active');$('scannerTitle').textContent=labels[next];
@@ -36,7 +37,7 @@
   if(busy)return false;
   const parsed=next==='product'?HealthScanCodes.product(raw):HealthScanCodes.location(raw);
   if(!parsed){hint(next==='product'?'Code produit non reconnu. Visez les barres ou le DataMatrix de la boîte, ou saisissez les chiffres imprimés.':'QR non reconnu : utilisez un emplacement officiel du 42 ou du 38.');return false;}
-  busy=true;await stop();mode=next;
+  busy=true;const expected=sequence+1;await stop();if(sequence!==expected)return false;mode=next;
   if(navigator.vibrate)navigator.vibrate(60);
   if(next==='product')await applyProduct(parsed);
   else if(next==='quick'){$('qLocation').value=parsed;$('quickStatus').textContent='✓ Emplacement lu : '+parsed+'. Vérifiez puis créez le lot.';setAppView('entries',false);showPane('quickPane');$('quickPane').scrollIntoView({behavior:'smooth',block:'start'});}
@@ -47,7 +48,7 @@
  }
  async function open(next){
   if(guestModeEnabled())return;
-  await stop();configure(next);const session=sequence;
+  const session=++sequence;await stop(false);if(session!==sequence)return;configure(next);
   $('scannerCard').scrollIntoView({behavior:'smooth',block:'start'});hint('Autorisez la caméra si Safari le demande, puis visez le code.');
   try{
    if(!navigator.mediaDevices?.getUserMedia)throw Error('camera-unavailable');
