@@ -1,4 +1,4 @@
-const CACHE='stock42-v56';
+const CACHE='stock42-v57';
 const LOCAL=['./','./index.html','./manifest.webmanifest','./icon.svg'];
 
 self.addEventListener('install',e=>{
@@ -9,13 +9,16 @@ self.addEventListener('install',e=>{
 self.addEventListener('activate',e=>{
   e.waitUntil(Promise.all([
     self.clients.claim(),
-    caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k))))
+    caches.keys().then(keys=>Promise.all(keys.filter(k=>/^stock42-v\d+$/.test(k)&&k!==CACHE).map(k=>caches.delete(k))))
   ]));
 });
 
 self.addEventListener('fetch',e=>{
   if(e.request.method!=='GET')return;
   const url=new URL(e.request.url);
+  // Santé owns its own worker and cache; never store its page as the food home.
+  const healthPath=new URL('./sante-stock42/',self.registration.scope).pathname;
+  if(url.origin===location.origin&&url.pathname.startsWith(healthPath))return;
 
   if(e.request.mode==='navigate'){
     e.respondWith(

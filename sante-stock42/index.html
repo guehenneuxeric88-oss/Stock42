@@ -1912,6 +1912,9 @@ if(localStorage.getItem(LS.syncUrl))syncLotsFromSheet();else {initializeReorderB
 if(cloudEnabled()&&localStorage.getItem(LS.cloudPending)==='1')scheduleCloudBackup();
 if('serviceWorker' in navigator)window.addEventListener('load',async()=>{
   try{
+    const parentScope=new URL('../',location.href).href;
+    const parentReg=await navigator.serviceWorker.getRegistration(parentScope);
+    if(parentReg&&parentReg.scope===parentScope)await parentReg.update().catch(()=>{});
     const reg=await navigator.serviceWorker.register('./service-worker.js?v=sante-clone-1',{updateViaCache:'none'});
     reg.update().catch(()=>{});
     navigator.serviceWorker.addEventListener('controllerchange',()=>{

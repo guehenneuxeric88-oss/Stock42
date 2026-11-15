@@ -40,3 +40,8 @@ Le second test nécessite les dépendances de tests/package.json. Les données d
 
 
 Correction du 15 novembre : SpreadsheetApp.openById exige le scope spreadsheets, autorisant la lecture et la modification des classeurs. Le scope readonly ne suffit pas. La passerelle conserve uniquement des opérations de lecture et cible exclusivement le nouveau fichier Santé. Une nouvelle autorisation Google est nécessaire.
+
+Passerelle déployée le 15 novembre : https://script.google.com/macros/s/AKfycbxb1l3IBMcGP8xyUvEGAHq6bh3yMfCGwCQKELrG40FdWCUVVeV1Lg-cZqZG3BnC49zS/exec
+Contrôle réel réussi via POST authentifié puis reçu JSONP : zéro lot, zéro produit, prochain L0001. Aucun secret dans les URL ou le code public.
+
+Correction de coexistence nécessaire : le worker alimentaire conserve seulement ses anciens caches stock42-vN et ignore le chemin sante-stock42. Cela évite de mettre la page Santé à la place de l’accueil alimentaire hors connexion. Les données et l’interface alimentaires restent intactes.
