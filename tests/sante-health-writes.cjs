@@ -2,7 +2,7 @@ const fs=require('fs'),vm=require('vm'),assert=require('node:assert/strict');
 const code=fs.readFileSync(__dirname+'/../apps-script/Stock42SanteClone.gs','utf8');
 const token='test-only-key-'.padEnd(64,'x'),cache=new Map(),tables={},opened=[];let writes=0,locked=false,ackLoss=false;
 const starts={'Réception & lots':5,Mouvements:5,'Référentiel produits':2,'Commandes Stock42':2};
-const ss={getSheetByName(name){tables[name]||=[];return {getLastRow(){return (starts[name]||2)-1+tables[name].length},getMaxRows(){return 500},insertRowsAfter(){},getRange(r,c,n,w){return {getDisplayValue(){return r==='B2'?token:r==='B3'?'1pac-pS7IW66NgaewGJpGz--1CypMeE2pS1C23qtSMhs':'';},getDisplayValues(){return tables[name].slice(r-starts[name],r-starts[name]+n).map(row=>Array.from({length:w},(_,i)=>String(name==='Commandes Stock42'&&c-1+i===1&&String(row[1]).startsWith('=')?((tables['Réception & lots']||[]).some(r=>r[9]===row[0])?'Reçue':'Commandée'):row[c-1+i]??'').replace(/^'/,'')));},setValues(rows){assert.equal(locked,true);writes++;for(let i=0;i<rows.length;i++)tables[name][r-starts[name]+i]=rows[i];}};}};}};
+const ss={getSheetByName(name){tables[name]||=[];return {getLastRow(){return (starts[name]||2)-1+tables[name].length},getMaxRows(){return 500},insertRowsAfter(){},getRange(r,c,n,w){return {getDisplayValue(){return r==='B2'?token:r==='B3'?'1pac-pS7IW66NgaewGJpGz--1CypMeE2pS1C23qtSMhs':'';},getDisplayValues(){return tables[name].slice(r-starts[name],r-starts[name]+n).map(row=>Array.from({length:w},(_,i)=>String(name==='Commandes Stock42'&&c-1+i===1&&String(row[1]).startsWith('=')?((tables['Réception & lots']||[]).some(r=>r[9]===row[0])?'Reçue':'Commandée'):row[c-1+i]??'').replace(/^'/,'')));},setNumberFormat(pattern){assert.equal(pattern,"0");},setValues(rows){assert.equal(locked,true);writes++;for(let i=0;i<rows.length;i++)tables[name][r-starts[name]+i]=rows[i];}};}};}};
 const ctx=vm.createContext({SpreadsheetApp:{openById(id){opened.push(id);return ss;},flush(){if(ackLoss){ackLoss=false;throw Error('Simulated acknowledgement loss');}}},Utilities:{formatDate(){return '2026-11-15';}},LockService:{getScriptLock(){return {waitLock(){assert.equal(locked,false);locked=true;},releaseLock(){locked=false;}};}},CacheService:{getScriptCache(){return {get:k=>cache.get(k)||null,put:(k,v)=>cache.set(k,v)};}},ContentService:{MimeType:{JSON:'json',JAVASCRIPT:'js'},createTextOutput(s){return {text:s,setMimeType(){return this;}};}},console,Date,Set,JSON});
 vm.runInContext(code,ctx);const run=s=>vm.runInContext(s,ctx);let seq=0;
 function post(action,data={},id=(++seq).toString(16).padStart(32,'0'),key=token){run('doPost('+JSON.stringify({postData:{contents:JSON.stringify({action,data,requestId:id,token:key})}})+')');return JSON.parse(cache.get('sc_receipt_'+id));}
@@ -11,6 +11,16 @@ assert.equal(JSON.parse(run('doGet({parameter:{}})').text).version,2);
 assert.equal(post('snapshot',{},undefined,'wrong').error,'unauthorized');assert.equal(writes,0);assert.equal(snap().lots.length,0);
 const gloves={produit:'Gants nitrile',categorie:'Protection / EPI',quantite:5,unite:'boîte',ddm:'03/2031',typeDate:'Péremption',location:'42-R3-N2-A',health:{name:'Gants nitrile',kind:'gloves',material:'Nitrile',size:'L',perBox:100,contentUnit:'gants'}};
 const id='a'.repeat(32);assert.equal(post('quickEntry',gloves,id).lot,'L0001');assert.equal(snap().lots[0].quantite,5);assert.equal(snap().lots[0].health.perBox,100);assert.equal(snap().lots[0].ddm,'2031-03-31');
+// Regression: future rows use French separators, accept Sheets numeric dates and
+// ISO strings, and format the delay as a day count rather than a calendar date.
+const generated=tables['Réception & lots'][0];
+assert.match(generated[18], /ISNUMBER\(G5\)/);
+assert.match(generated[18], /INT\(G5\)/);
+assert.match(generated[18], /LEFT\(G5;4\)/);
+assert.ok(!generated[18].includes(','));
+assert.ok(!generated[19].includes(','));
+assert.match(generated[19], /S5="";""/);
+assert.ok(code.endsWith(fs.readFileSync(__dirname+'/../apps-script/health-writes.gs','utf8')));
 const before=writes;assert.equal(post('quickEntry',gloves,id).duplicate,true);assert.equal(writes,before);assert.equal(snap().lots.length,1);
 assert.match(post('quickEntry',{...gloves,quantite:6},id).error,/autre opération/);
 assert.match(post('quickEntry',{...gloves,quantite:0}).error,/positif/);
@@ -37,3 +47,4 @@ assert.match(post('receive',{...gloves,orderId:order.orderId}).error,/déjà ré
 assert.ok(opened.every(id=>id==='1pac-pS7IW66NgaewGJpGz--1CypMeE2pS1C23qtSMhs'));assert.equal(locked,false);
 assert.equal(JSON.parse(run("doGet({parameter:{action:'receipt',requestId:'bad',callback:'alert'}})").text).error,'invalid_request');
 console.log('PASS: boîtes entières, FEFO, péremptions, variantes, verrou, anti-doublon après réponse perdue, commandes/réceptions et fichier Santé exclusivement.');
+

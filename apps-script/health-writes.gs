@@ -9,11 +9,11 @@ function scWriteRow_(name,start,row){
  if(n>sh.getMaxRows())sh.insertRowsAfter(sh.getMaxRows(),50);
  const values=row.map(scSafe_);
  if(name===SC_LOTS){
-  values[18]='=IF(OR(G'+n+'="",H'+n+'="Sans date"),"",DATE(VALUE(LEFT(G'+n+',4)),VALUE(MID(G'+n+',6,2)),VALUE(RIGHT(G'+n+',2)))-TODAY())';
-  values[19]='=IF(E'+n+'+SUMIF(Mouvements!B:B,A'+n+',Mouvements!M:M)<=0,"Épuisé",IF(H'+n+'="Sans date","Sans date",IF(S'+n+'<0,"Dépassée",IF(S'+n+'<=90,"≤ 3 mois","OK"))))';
+  values[18]='=IF(OR(G'+n+'="";H'+n+'="Sans date");"";IF(ISNUMBER(G'+n+');INT(G'+n+');DATE(VALUE(LEFT(G'+n+';4));VALUE(MID(G'+n+';6;2));VALUE(RIGHT(G'+n+';2))))-TODAY())';
+  values[19]='=IF(A'+n+'="";"";IF(E'+n+'+SUMIF(Mouvements!B:B;A'+n+';Mouvements!M:M)<=0;"Épuisé";IF(H'+n+'="Sans date";"Sans date";IF(S'+n+'="";"";IF(S'+n+'<0;"Dépassée";IF(S'+n+'<=90;"≤ 3 mois";"OK"))))))';
  }
- if(name===SC_ORDERS)values[1]='=IF(COUNTIF(\'Réception & lots\'!J:J,A'+n+')>0,"Reçue","Commandée")';
- try{sh.getRange(n,1,1,row.length).setValues([values]);SpreadsheetApp.flush();}
+ if(name===SC_ORDERS)values[1]='=IF(COUNTIF(\'Réception & lots\'!J:J;A'+n+')>0;"Reçue";"Commandée")';
+ try{sh.getRange(n,1,1,row.length).setValues([values]);if(name===SC_LOTS)sh.getRange(n,19).setNumberFormat('0');SpreadsheetApp.flush();}
  catch(e){e.uncertain=true;throw e;}return n;
 }
 function scToday_(){return Utilities.formatDate(new Date(),'Europe/Paris','yyyy-MM-dd');}
@@ -68,3 +68,4 @@ function scMutate_(action,data,id){
  }
  throw Error('Action Santé inconnue.');
 }
+
