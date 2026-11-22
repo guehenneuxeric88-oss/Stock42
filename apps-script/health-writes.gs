@@ -10,7 +10,7 @@ function scWriteRow_(name,start,row){
  const values=row.map(scSafe_);
  if(name===SC_LOTS){
   values[18]='=IF(OR(G'+n+'="";H'+n+'="Sans date");"";IF(ISNUMBER(G'+n+');INT(G'+n+');DATE(VALUE(LEFT(G'+n+';4));VALUE(MID(G'+n+';6;2));VALUE(RIGHT(G'+n+';2))))-TODAY())';
-  values[19]='=IF(A'+n+'="";"";IF(E'+n+'+SUMIF(Mouvements!B:B;A'+n+';Mouvements!M:M)<=0;"Épuisé";IF(H'+n+'="Sans date";"Sans date";IF(S'+n+'="";"";IF(S'+n+'<0;"Dépassée";IF(S'+n+'<=90;"≤ 3 mois";"OK"))))))';
+  values[19]='=IF(A'+n+'="";"";IF(E'+n+'+SUMIF(Mouvements!B:B;A'+n+';Mouvements!M:M)-SUMIF(J:J;"REPARTITION:"&A'+n+';E:E)<=0;"Épuisé";IF(H'+n+'="Sans date";"Sans date";IF(S'+n+'="";"";IF(S'+n+'<0;"Dépassée";IF(S'+n+'<=90;"≤ 3 mois";"OK"))))))';
  }
  if(name===SC_ORDERS)values[1]='=IF(COUNTIF(\'Réception & lots\'!J:J;A'+n+')>0;"Reçue";"Commandée")';
  try{sh.getRange(n,1,1,row.length).setValues([values]);if(name===SC_LOTS)sh.getRange(n,19).setNumberFormat('0');SpreadsheetApp.flush();}
@@ -40,18 +40,31 @@ function scMutate_(action,data,id){
    if(x.quantite!==order.qty)throw Error('Réception partielle : corrigez ou complétez la commande avant validation.');
   }
   const lot=snapshot.nextLot;if(!/^L\d{4}$/.test(lot))throw Error('Limite de numérotation atteinte.');
-  const details={...meta,containerId:scContainer_(data.containerId,snapshot),health:x.health,notes:HealthRules.text(data.notes,1000),orderId,barcode:x.health.barcode};
+  const details={...meta,containerId:scContainer_(data.containerId,snapshot,loc),health:x.health,notes:HealthRules.text(data.notes,1000),orderId,barcode:x.health.barcode};
   scWriteRow_(SC_LOTS,5,[lot,scToday_(),x.produit,x.categorie,x.quantite,x.unite,x.ddm,x.typeDate,HealthRules.text(x.fournisseur),orderId||HealthRules.text(x.reference),loc?(loc.startsWith('38-')?'Site 38':'Site 42'):'',loc,loc?'Rangé':'À ranger',x.conditionnement,HealthRules.text(x.lotFabricant),'Non','',SC_META+JSON.stringify(details),'','']);
   return {ok:true,service:SC_SERVICE,lot,orderId};
  }
  if(action==='container'){
   const x=snapshot.lots.find(l=>l.lot===String(data.lot));if(!x)throw Error('Lot introuvable.');
   if(x.quantite<=0)throw Error('Ce lot est épuisé.');
-  const containerId=scContainer_(data.containerId,snapshot);
-  if(data.expectedContainerId!==x.containerId)throw Error('Le rangement a changé : actualisez avant de confirmer.');
+  const containerId=scContainer_(data.containerId,snapshot,x.emplacement);
+  if(scCanonicalContainer_(data.expectedContainerId,x.emplacement,snapshot.containers)!==x.containerId)throw Error('Le rangement a changé : actualisez avant de confirmer.');
   // Zero stock impact; retries remain idempotent through the persisted operation ID.
   scWriteRow_(SC_MOVES,5,[scToday_(),x.lot,x.produit,'Rangement contenant',0,x.unite,x.emplacement,x.emplacement,'Rangement de l’ensemble du lot',SC_META+JSON.stringify({...meta,containerId}),'',now,0]);
   return {ok:true,service:SC_SERVICE,lot:x.lot,containerId};
+ }
+ if(action==='split'){
+  const x=snapshot.lots.find(l=>l.lot===String(data.lot));if(!x)throw Error('Lot introuvable.');
+  const qty=HealthRules.number(data.quantite),loc=scLocation_(data.location),site=String(data.site||'');
+  if(!['42','38'].includes(site))throw Error('Choisissez le site destinataire.');
+  if(loc&&scSite_(loc)!==site)throw Error('L’emplacement doit correspondre au site destinataire.');
+  const containerId=scContainer_(data.containerId,snapshot,loc||site+'-');
+  if(!(qty>0)||!Number.isFinite(qty)||qty>x.quantite||(HealthRules.counts.includes(x.unite)&&!Number.isSafeInteger(qty)))throw Error('Quantité à répartir invalide ou stock insuffisant.');
+  if(data.expectedQuantity!==x.quantite||data.expectedLocation!==x.emplacement||data.expectedContainerId!==x.containerId)throw Error('Le stock ou le rangement a changé : actualisez avant de répartir.');
+  const lot=snapshot.nextLot;if(!/^L\d{4}$/.test(lot))throw Error('Limite de numérotation atteinte.');
+  const details={...meta,splitFrom:x.lot,rootLot:x.rootLot||x.lot,containerId,site,health:x.health,barcode:x.barcode,notes:x.notes};
+  scWriteRow_(SC_LOTS,5,[lot,x.dateReception,x.produit,x.categorie,qty,x.unite,x.ddm,x.typeDate,x.fournisseur,'REPARTITION:'+x.lot,'Site '+site,loc,loc?'Rangé':'À ranger',x.conditionnement,x.lotFabricant,x.ouvert||'Non',x.dateOuverture||'',SC_META+JSON.stringify(details),'','']);
+  return {ok:true,service:SC_SERVICE,lot,splitFrom:x.lot,remaining:x.quantite-qty};
  }
  if(action==='order'){
   const product=HealthRules.text(data.product),category=HealthRules.text(data.category),qty=HealthRules.number(data.qty),unit=HealthRules.text(data.unit);
@@ -65,11 +78,12 @@ function scMutate_(action,data,id){
   const x=snapshot.lots.find(l=>l.lot===String(data.lot));if(!x)throw Error('Lot introuvable.');
   const loc=action==='assign'?scLocation_(data.location):'',qty=action==='assign'?0:HealthRules.number(data.quantite);
   if(action==='assign'&&!loc)throw Error('Choisissez un emplacement.');
+  if(action==='assign')scContainer_(x.containerId,snapshot,loc);
   if(action==='movement'){
    if(!(qty>0)||!Number.isFinite(qty)||qty>x.quantite||(HealthRules.counts.includes(x.unite)&&!Number.isSafeInteger(qty)))throw Error('Quantité de sortie invalide ou stock insuffisant.');
    if(data.unite!==x.unite)throw Error('L’unité de sortie doit correspondre à celle du lot.');
    if(!HealthRules.allowed(x,scToday_()))throw Error('Lot périmé ou péremption manquante : sortie ordinaire bloquée.');
-   const first=snapshot.lots.filter(l=>l.produit===x.produit&&l.unite===x.unite&&l.quantite>0&&HealthRules.allowed(l,scToday_())).sort(HealthRules.compare)[0];
+   const first=snapshot.lots.filter(l=>l.produit===x.produit&&l.unite===x.unite&&scLotSite_(l,snapshot)===scLotSite_(x,snapshot)&&l.quantite>0&&HealthRules.allowed(l,scToday_())).sort(HealthRules.compare)[0];
    if(first&&first.lot!==x.lot&&!data.fefoOverride)throw Error('Utilisez en priorité '+first.lot+' ('+first.ddm+'), ou confirmez explicitement le choix de cet autre lot.');
   }
   scWriteRow_(SC_MOVES,5,[scToday_(),x.lot,x.produit,action==='assign'?'Transfert':'Sortie Santé',qty,x.unite,x.emplacement,loc,HealthRules.text(data.commentaire,1000)+(data.fefoOverride?' • Autre lot confirmé':''),SC_META+JSON.stringify(meta),'',now,-qty]);

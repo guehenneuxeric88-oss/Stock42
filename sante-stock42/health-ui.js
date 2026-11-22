@@ -42,6 +42,7 @@
  parseFrenchDate=function(v){const d=HealthRules.date(v);if(!d)return null;const [y,m,day]=d.split('-').map(Number);return new Date(y,m-1,day);};
  const oldExpiry=expiryState;expiryState=function(x){return x.typeDate==='Sans date'?{bucket:'none',days:null}:oldExpiry(x);};
  displayQtyForLot=function(x,override){const qty=override===undefined?currentQtyForLot(x):Number(override),h=x?.health||{},base=qty.toLocaleString('fr-FR',{maximumFractionDigits:3})+' '+(x?.unite||'');return x?.unite==='boîte'&&h.perBox?base+' de '+h.perBox+' '+(h.contentUnit||'unités')+' ('+(qty*h.perBox).toLocaleString('fr-FR')+' '+(h.contentUnit||'unités')+')':base+(x?.conditionnement?' • '+x.conditionnement:'');};
+ function healthLotSite(x){return /^(38|42)-/.exec(currentLocationForLot(x.lot)||x.emplacement||x.containerId||'')?.[1]||String(x.zone||'').replace('Site ','');}
  function localDay(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
  function entry(p){const category=p==='q'?$('qCategory').value:orders().find(o=>o.id===receiveOrderId)?.category;const h=readDetails(p);return HealthRules.validateEntry({produit:h.name,categorie:category,quantite:$(p+'Qty').value,unite:$(p+'Unit').value,ddm:$(p+'Expiry').value,typeDate:$(p+'DateType').value,conditionnement:$(p+'Pack').value,health:h,lotFabricant:$(p+'MakerLot').value,fournisseur:p==='q'?$('qSupplier').value:'',location:p==='q'?$('qLocation').value:(activeLocation&&$('rAssignActive').checked?activeLocation:''),notes:p==='r'?$('rNotes').value:''});}
  function writeGuard(){if(guestModeEnabled())throw Error('Mode invité : consultation uniquement.');if(!healthServerReady||!navigator.onLine)throw Error('Synchronisez le fichier Santé en ligne avant de modifier le stock.');}
@@ -68,7 +69,7 @@
   const status=$('exitStatus'),x=lotById($('exitLotSelect').value);try{
    if(!x)throw Error('Choisissez un lot.');const qty=HealthRules.number($('exitQty').value);
    if(!(qty>0)||qty>currentQtyForLot(x)||(HealthRules.counts.includes(x.unite)&&!Number.isSafeInteger(qty)))throw Error('Saisissez un nombre entier de boîtes ou de contenants, inférieur ou égal au stock disponible.');
-   const first=allLots().filter(l=>l.produit===x.produit&&l.unite===x.unite&&currentQtyForLot(l)>0&&HealthRules.allowed(l,localDay())).sort(HealthRules.compare)[0];
+   const first=allLots().filter(l=>l.produit===x.produit&&l.unite===x.unite&&healthLotSite(l)===healthLotSite(x)&&currentQtyForLot(l)>0&&HealthRules.allowed(l,localDay())).sort(HealthRules.compare)[0];
    let override=false;if(first&&first.lot!==x.lot){override=confirm('Le lot '+first.lot+' périme avant celui-ci ('+first.ddm+'). Confirmez-vous la sortie de '+x.lot+' à la place ?');if(!override)return;}
    if(!confirm('Sortir '+qty+' '+x.unite+' de '+x.produit+' — '+x.lot+' ?'))return;
    await perform($('exitConfirmBtn'),status,'movement',{lot:x.lot,quantite:qty,unite:x.unite,commentaire:$('exitReason').value+($('exitComment').value?' — '+$('exitComment').value:''),fefoOverride:override});$('exitQty').value='';populateExitControls();
@@ -98,3 +99,4 @@
  populateOrderProducts();populateQuickProducts();populateExitLocations();populateExitControls();applySanteReadOnlyControls();
  showPane('quickPane');
 })();
+
