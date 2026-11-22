@@ -10,7 +10,7 @@ function scWriteRow_(name,start,row){
  const values=row.map(scSafe_);
  if(name===SC_LOTS){
   values[18]='=IF(OR(G'+n+'="";H'+n+'="Sans date");"";IF(ISNUMBER(G'+n+');INT(G'+n+');DATE(VALUE(LEFT(G'+n+';4));VALUE(MID(G'+n+';6;2));VALUE(RIGHT(G'+n+';2))))-TODAY())';
-  values[19]='=IF(A'+n+'="";"";IF(E'+n+'+SUMIF(Mouvements!B:B;A'+n+';Mouvements!M:M)-SUMIF(J:J;"REPARTITION:"&A'+n+';E:E)<=0;"Épuisé";IF(H'+n+'="Sans date";"Sans date";IF(S'+n+'="";"";IF(S'+n+'<0;"Dépassée";IF(S'+n+'<=90;"≤ 3 mois";"OK"))))))';
+  values[19]='=IF(A'+n+'="";"";IF(E'+n+'+SUMIF(Mouvements!B:B;A'+n+';Mouvements!M:M)<=0;"Épuisé";IF(H'+n+'="Sans date";"Sans date";IF(S'+n+'="";"";IF(S'+n+'<0;"Dépassée";IF(S'+n+'<=90;"≤ 3 mois";"OK"))))))';
  }
  if(name===SC_ORDERS)values[1]='=IF(COUNTIF(\'Réception & lots\'!J:J;A'+n+')>0;"Reçue";"Commandée")';
  try{sh.getRange(n,1,1,row.length).setValues([values]);if(name===SC_LOTS)sh.getRange(n,19).setNumberFormat('0');SpreadsheetApp.flush();}
@@ -30,7 +30,7 @@ function scExisting_(id,action,data){
 function scLocation_(loc){loc=HealthRules.text(loc).toUpperCase();if(loc&&!/^(?:42-R[1-3]-N[1-5]-[ABC]|38-ETAGE-(?:0[1-9]|1[0-8])|42-CONGELATEUR-0[1-6]|42-FRIGO-0[1-5]|42-GARAGE-0[1-4])$/.test(loc))throw Error('Emplacement inconnu.');return loc;}
 function scMutate_(action,data,id){
  const existing=scExisting_(id,action,data);if(existing)return existing;
- const ss=SpreadsheetApp.openById(SC_FILE),snapshot=scRead_(),meta=scOperation_(id,action,data),now=new Date().toISOString();
+ const ss=SpreadsheetApp.openById(SC_FILE),snapshot=scReadPositions_(),meta=scOperation_(id,action,data),now=new Date().toISOString();
  if(action==='quickEntry'||action==='receive'){
   const x=HealthRules.validateEntry(data),loc=scLocation_(data.location),orderId=HealthRules.text(data.orderId);
   if(action==='receive'){
@@ -45,16 +45,17 @@ function scMutate_(action,data,id){
   return {ok:true,service:SC_SERVICE,lot,orderId};
  }
  if(action==='container'){
-  const x=snapshot.lots.find(l=>l.lot===String(data.lot));if(!x)throw Error('Lot introuvable.');
+  const x=scPosition_(snapshot,data);
   if(x.quantite<=0)throw Error('Ce lot est épuisé.');
-  const containerId=scContainer_(data.containerId,snapshot,x.emplacement);
+  if(data.allocationId)scCheckPosition_(x,data);
+  const containerId=scContainer_(data.containerId,snapshot,x.emplacement||scLotSite_(x,snapshot)+'-');
   if(scCanonicalContainer_(data.expectedContainerId,x.emplacement,snapshot.containers)!==x.containerId)throw Error('Le rangement a changé : actualisez avant de confirmer.');
   // Zero stock impact; retries remain idempotent through the persisted operation ID.
-  scWriteRow_(SC_MOVES,5,[scToday_(),x.lot,x.produit,'Rangement contenant',0,x.unite,x.emplacement,x.emplacement,'Rangement de l’ensemble du lot',SC_META+JSON.stringify({...meta,containerId}),'',now,0]);
+  scWriteRow_(SC_MOVES,5,[scToday_(),x.rootLot||x.lot,x.produit,'Rangement contenant',0,x.unite,x.emplacement,x.emplacement,'Rangement de l’ensemble du lot',SC_META+JSON.stringify({...meta,allocationId:x.lot,containerId}),'',now,0]);
   return {ok:true,service:SC_SERVICE,lot:x.lot,containerId};
  }
  if(action==='split'){
-  const x=snapshot.lots.find(l=>l.lot===String(data.lot));if(!x)throw Error('Lot introuvable.');
+  const x=scPosition_(snapshot,data);
   const qty=HealthRules.number(data.quantite),loc=scLocation_(data.location),site=String(data.site||'');
   if(!['42','38'].includes(site))throw Error('Choisissez le site destinataire.');
   if(loc&&scSite_(loc)!==site)throw Error('L’emplacement doit correspondre au site destinataire.');
@@ -66,6 +67,26 @@ function scMutate_(action,data,id){
   scWriteRow_(SC_LOTS,5,[lot,x.dateReception,x.produit,x.categorie,qty,x.unite,x.ddm,x.typeDate,x.fournisseur,'REPARTITION:'+x.lot,'Site '+site,loc,loc?'Rangé':'À ranger',x.conditionnement,x.lotFabricant,x.ouvert||'Non',x.dateOuverture||'',SC_META+JSON.stringify(details),'','']);
   return {ok:true,service:SC_SERVICE,lot,splitFrom:x.lot,remaining:x.quantite-qty};
  }
+ if(action==='redistribute'){
+  const x=scPosition_(snapshot,data);scCheckPosition_(x,data);
+  const qty=HealthRules.number(data.quantite),site=String(data.site||''),loc=scLocation_(data.location);
+  if(!['38','42'].includes(site)||loc&&scSite_(loc)!==site)throw Error('Choisissez un site et un emplacement cohérents.');
+  const containerId=scContainer_(data.containerId,snapshot,loc||site+'-');
+  if(!(qty>0)||qty>x.quantite||!Number.isFinite(qty)||(HealthRules.counts.includes(x.unite)&&!Number.isSafeInteger(qty)))throw Error('Quantité à répartir invalide ou stock insuffisant.');
+  if(scLotSite_(x,snapshot)===site&&(x.emplacement||'')===loc&&(x.containerId||'')===containerId)throw Error('Le rangement source et le rangement destinataire sont identiques.');
+  const target=snapshot.lots.find(p=>p!==x&&p.rootLot===x.rootLot&&scLotSite_(p,snapshot)===site&&(p.emplacement||'')===loc&&(p.containerId||'')===containerId);
+  const transfer={id:target?target.lot:'P'+id,existing:!!target,site,location:loc,containerId};
+  scWriteRow_(SC_MOVES,5,[scToday_(),x.rootLot||x.lot,x.produit,'Répartition Santé',qty,x.unite,x.emplacement,loc,'Répartition sans changement de lot',SC_META+JSON.stringify({...meta,allocationId:x.lot,transfer}),'',now,0]);
+  return {ok:true,service:SC_SERVICE,lot:x.rootLot||x.lot,allocationId:transfer.id,remaining:x.quantite-qty};
+ }
+ if(action==='inventory'){
+  const loc=scLocation_(data.location);if(!loc)throw Error('Choisissez un emplacement.');
+  const x=data.allocationId?scPosition_(snapshot,data):null;
+  if(x&&x.emplacement!==loc)throw Error('Le rangement a changé : actualisez l’inventaire.');
+  if(x)scCheckPosition_(x,data);
+  scWriteRow_(SC_MOVES,5,[scToday_(),x?.rootLot||x?.lot||'',x?.produit||'','Contrôle inventaire',0,x?.unite||'',loc,loc,data.present===false?'Rangement non retrouvé, à vérifier':'Inventaire conforme',SC_META+JSON.stringify({...meta,allocationId:x?.lot||''}),'',now,0]);
+  return {ok:true,service:SC_SERVICE};
+ }
  if(action==='order'){
   const product=HealthRules.text(data.product),category=HealthRules.text(data.category),qty=HealthRules.number(data.qty),unit=HealthRules.text(data.unit);
   if(!product||!HealthRules.categories.includes(category)||!HealthRules.units.includes(unit)||!(qty>0)||!Number.isFinite(qty)||(HealthRules.counts.includes(unit)&&!Number.isSafeInteger(qty)))throw Error('Commande Santé invalide.');
@@ -75,8 +96,9 @@ function scMutate_(action,data,id){
   return {ok:true,service:SC_SERVICE,orderId};
  }
  if(action==='movement'||action==='assign'){
-  const x=snapshot.lots.find(l=>l.lot===String(data.lot));if(!x)throw Error('Lot introuvable.');
+  const x=scPosition_(snapshot,data);
   const loc=action==='assign'?scLocation_(data.location):'',qty=action==='assign'?0:HealthRules.number(data.quantite);
+  if(data.allocationId)scCheckPosition_(x,data);
   if(action==='assign'&&!loc)throw Error('Choisissez un emplacement.');
   if(action==='assign')scContainer_(x.containerId,snapshot,loc);
   if(action==='movement'){
@@ -84,9 +106,9 @@ function scMutate_(action,data,id){
    if(data.unite!==x.unite)throw Error('L’unité de sortie doit correspondre à celle du lot.');
    if(!HealthRules.allowed(x,scToday_()))throw Error('Lot périmé ou péremption manquante : sortie ordinaire bloquée.');
    const first=snapshot.lots.filter(l=>l.produit===x.produit&&l.unite===x.unite&&scLotSite_(l,snapshot)===scLotSite_(x,snapshot)&&l.quantite>0&&HealthRules.allowed(l,scToday_())).sort(HealthRules.compare)[0];
-   if(first&&first.lot!==x.lot&&!data.fefoOverride)throw Error('Utilisez en priorité '+first.lot+' ('+first.ddm+'), ou confirmez explicitement le choix de cet autre lot.');
+   if(first&&(first.rootLot||first.lot)!==(x.rootLot||x.lot)&&!data.fefoOverride)throw Error('Utilisez en priorité '+first.lot+' ('+first.ddm+'), ou confirmez explicitement le choix de cet autre lot.');
   }
-  scWriteRow_(SC_MOVES,5,[scToday_(),x.lot,x.produit,action==='assign'?'Transfert':'Sortie Santé',qty,x.unite,x.emplacement,loc,HealthRules.text(data.commentaire,1000)+(data.fefoOverride?' • Autre lot confirmé':''),SC_META+JSON.stringify(meta),'',now,-qty]);
+  scWriteRow_(SC_MOVES,5,[scToday_(),x.rootLot||x.lot,x.produit,action==='assign'?'Transfert':'Sortie Santé',qty,x.unite,x.emplacement,loc,HealthRules.text(data.commentaire,1000)+(data.fefoOverride?' • Autre lot confirmé':''),SC_META+JSON.stringify({...meta,allocationId:x.lot}),'',now,-qty]);
   return {ok:true,service:SC_SERVICE,lot:x.lot,remaining:x.quantite-qty};
  }
  throw Error('Action Santé inconnue.');

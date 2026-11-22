@@ -84,8 +84,8 @@ function doPost(e){
   if(action==='ping')return scReceipt_(requestId,{ok:true,service:SC_SERVICE,readOnly:false});
   const lock=LockService.getScriptLock();lock.waitLock(20000);
   try{
-   if(action==='snapshot')return scReceipt_(requestId,scRead_());
-   if(!['quickEntry','order','receive','movement','assign','container','split'].includes(action))throw Error('Action Santé inconnue.');
+   if(action==='snapshot')return scReceipt_(requestId,b.data&&b.data.allocationModel===3?scRead_():scLegacyRead_());
+   if(!['quickEntry','order','receive','movement','assign','container','split','redistribute','inventory'].includes(action))throw Error('Action Santé inconnue.');
    return scReceipt_(requestId,scMutate_(action,b.data||{},requestId));
   }finally{lock.releaseLock();}
  }catch(err){return /^[a-f0-9]{32}$/.test(requestId)?scReceipt_(requestId,{ok:false,error:String(err&&err.message||err),rejected:!err.uncertain}):scJson_({ok:false,error:'invalid_request'});}
@@ -114,14 +114,12 @@ function scNumber_(v){
  const s=String(v==null?'':v).replace(/\s/g,'').replace(',','.');
  if(!s)return 0;const n=Number(s);if(!Number.isFinite(n))throw Error('Quantité Santé invalide');return n;
 }
-function scRead_(){
+function scReadPositions_(){
  const ss=SpreadsheetApp.openById(SC_FILE);
  const received=scTable_(ss,SC_LOTS,20,5),moves=scTable_(ss,SC_MOVES,13,5),products=scTable_(ss,SC_PRODUCTS,6,2),orders=scTable_(ss,SC_ORDERS,13,2);
- const impacts={};
- moves.filter(r=>r[1]).forEach(r=>{impacts[r[1]]=(impacts[r[1]]||0)+scNumber_(r[12]);});
  const lots=received.filter(r=>r[0]).map(r=>{
   if(!/^L\d{4}$/.test(r[0]))throw Error('Identifiant Santé invalide : '+r[0]);
-  const qty=scNumber_(r[4])+(impacts[r[0]]||0);
+  const qty=scNumber_(r[4]);
   if(qty<0)throw Error('Stock Santé négatif : '+r[0]);
   const metadata=scMeta_(r[17]);
   return {splitFrom:metadata.splitFrom||'',rootLot:metadata.rootLot||r[0],containerId:metadata.containerId||'',health:metadata.health||{},sourceOrder:metadata.orderId||'',barcode:metadata.barcode||'',lot:r[0],dateReception:r[1],produit:r[2],categorie:r[3],quantite:qty,quantiteRecue:scNumber_(r[4]),unite:r[5],ddm:r[6],typeDate:r[7],fournisseur:r[8],reference:r[9],zone:r[10],emplacement:r[11],statut:r[12],conditionnement:r[13],lotFabricant:r[14],ouvert:r[15],dateOuverture:r[16],notes:metadata.notes||(!String(r[17]).startsWith(SC_META)?r[17]:'')};
@@ -135,22 +133,92 @@ function scRead_(){
   if(!parent||!child||parent.lot>=child.lot||qty<=0||parent.produit!==child.produit||parent.unite!==child.unite)throw Error('Répartition Santé incohérente.');
   parent.quantite-=qty;if(parent.quantite<0)throw Error('Stock Santé négatif après répartition : '+parent.lot);
  }
- moves.filter(r=>r[1]&&r[3]==='Transfert').forEach(r=>{const x=lots.find(l=>l.lot===r[1]);if(x)x.emplacement=r[7];});
- moves.filter(r=>r[1]&&r[3]==='Rangement contenant').forEach(r=>{const x=lots.find(l=>l.lot===r[1]);if(x)x.containerId=scMeta_(r[9]).containerId||'';});
+ // Replay historical and current operations against their exact physical position.
+ for(const r of moves.filter(r=>r[1])){
+  const m=scMeta_(r[9]),x=lots.find(p=>p.lot===(m.allocationId||r[1]));
+  if(!x)throw Error('Rangement Santé introuvable dans le journal.');
+  if(r[3]==='Répartition Santé'){
+   const t=m.transfer,qty=scNumber_(r[4]);
+   if(!t||!/^P[a-f0-9]{32}$/.test(t.id)&&!t.existing||qty<=0||qty>x.quantite)throw Error('Répartition Santé invalide dans le journal.');
+   const target=lots.find(p=>p.lot===t.id);
+   if(t.existing&&(!target||target.rootLot!==x.rootLot||target===x))throw Error('Rangement destinataire invalide.');
+   if(!t.existing&&target)throw Error('Rangement destinataire déjà utilisé.');
+   x.quantite-=qty;
+   if(target)target.quantite+=qty;else lots.push({...x,lot:t.id,rootLot:x.rootLot||x.lot,splitFrom:x.lot,quantite:qty,quantiteRecue:0,emplacement:t.location||'',containerId:t.containerId||'',zone:'Site '+t.site,statut:t.location?'Rangé':'À ranger'});
+  }else{
+   x.quantite+=scNumber_(r[12]);if(x.quantite<0)throw Error('Stock Santé négatif : '+x.rootLot);
+   if(r[3]==='Transfert'){x.emplacement=r[7];x.statut=r[7]?'Rangé':'À ranger';}
+   if(r[3]==='Rangement contenant')x.containerId=m.containerId||'';
+  }
+ }
  const containers=scContainers_(ss);
  lots.forEach(x=>{x.containerId=scCanonicalContainer_(x.containerId,x.emplacement,containers);x.zone=scSite_(x.emplacement)?'Site '+scSite_(x.emplacement):x.zone;});
  const identifiers=new Set(lots.map(x=>x.lot));
  if(identifiers.size!==lots.length)throw Error('Lot Santé en double');
- const journal=moves.filter(r=>r[1]).map(r=>({date:r[0],lot:r[1],produit:r[2],type:r[3],quantite:scNumber_(r[4]),unite:r[5],source:r[6],destination:r[7],commentaire:r[8],reference:r[10],createdAt:r[11],impact:scNumber_(r[12]),serverRecorded:true}));
+ const journal=moves.filter(r=>r[1]||r[3]==='Contrôle inventaire').map(r=>({allocationId:scMeta_(r[9]).allocationId||r[1],transfer:scMeta_(r[9]).transfer,date:r[0],lot:r[1],produit:r[2],type:r[3],quantite:scNumber_(r[4]),unite:r[5],source:r[6],destination:r[7],commentaire:r[8],reference:r[10],createdAt:r[11],impact:scNumber_(r[12]),serverRecorded:true}));
  const refs=products.filter(r=>r[1]).map(r=>({barcode:r[0],name:r[1],brand:r[2],category:r[3],pack:r[4],unit:r[5]}));
  const commands=orders.filter(r=>r[0]).map(r=>({id:r[0],status:r[1],product:r[2],category:r[3],qty:scNumber_(r[4]),unit:r[5],price:r[6],supplier:r[7],reference:r[8],orderDate:r[9],expected:r[10],lot:r[11],notes:scMeta_(r[12]).notes||(!String(r[12]).startsWith(SC_META)?r[12]:'')}));
  commands.forEach(o=>{const lot=lots.find(l=>l.sourceOrder===o.id);if(lot){o.status='Reçue';o.lot=lot.lot;}});
  for(const l of lots)if(!refs.some(p=>p.name===l.produit))refs.push({name:l.produit,category:l.categorie,unit:l.unite,pack:l.conditionnement,barcode:l.barcode,health:l.health});
- const max=lots.reduce((n,x)=>Math.max(n,Number(x.lot.slice(1))),0);
+ const max=received.filter(r=>r[0]).reduce((n,r)=>Math.max(n,Number(r[0].slice(1))),0);
  return {ok:true,service:SC_SERVICE,readOnly:false,version:2,capabilities:{containers:true,siteContainers:true,split:true},containers,lots,products:refs,orders:commands,movements:journal,nextLot:'L'+String(max+1).padStart(4,'0'),readAt:new Date().toISOString()};
 }
 
 
+
+function scLegacyRead_(){
+ const s=scReadPositions_();
+ if(s.lots.some(x=>x.lot.startsWith('P')))return {ok:false,error:'Actualisez l’application Santé : les lots ont plusieurs rangements.'};
+ return s;
+}
+function scRead_(){
+ const s=scReadPositions_(),roots=new Map();
+ for(const p of s.lots){
+  const id=p.rootLot||p.lot;
+  if(!roots.has(id)){
+   const root=s.lots.find(x=>x.lot===id);if(!root)throw Error('Lot d’origine introuvable.');
+   roots.set(id,{...root,lot:id,rootLot:id,splitFrom:'',quantite:0,allocations:[],legacyAliases:[]});
+  }
+  const root=roots.get(id);
+  if(p.produit!==root.produit||p.unite!==root.unite||p.ddm!==root.ddm||p.lotFabricant!==root.lotFabricant)throw Error('Les caractéristiques du lot réparti diffèrent.');
+  root.quantite+=p.quantite;
+  root.allocations.push({id:p.lot,quantite:p.quantite,emplacement:p.emplacement||'',containerId:p.containerId||'',site:scLotSite_(p,s),statut:p.statut});
+  if(p.lot!==id&&/^L\d{4}$/.test(p.lot))root.legacyAliases.push(p.lot);
+ }
+ for(const root of roots.values()){
+  const active=root.allocations.filter(a=>a.quantite>0),one=active.length===1?active[0]:null;
+  root.emplacement=one?.emplacement||'';root.containerId=one?.containerId||'';root.zone=one?.site?'Site '+one.site:'';
+  root.statut=active.every(a=>a.emplacement)?'Rangé':active.length?'À ranger':'Épuisé';
+ }
+ const byId=new Map(s.lots.map(p=>[p.lot,p.rootLot||p.lot]));
+ return {...s,version:3,capabilities:{containers:true,siteContainers:true,split:false,allocations:true},lots:[...roots.values()],orders:s.orders.map(o=>({...o,lot:byId.get(o.lot)||o.lot})),movements:s.movements.map(m=>({...m,legacyLot:m.lot!==byId.get(m.lot)?m.lot:undefined,lot:byId.get(m.lot)||m.lot}))};
+}
+function scPosition_(snapshot,data){
+ const key=String(data.allocationId||data.lot),x=snapshot.lots.find(l=>l.lot===key);
+ if(!x)throw Error('Lot ou rangement introuvable.');
+ if(data.allocationId&&(x.rootLot||x.lot)!==data.lot)throw Error('Le rangement ne correspond pas au lot.');
+ if(!data.allocationId&&snapshot.lots.filter(p=>p.rootLot===data.lot&&p.quantite>0).length>1)throw Error('Ce lot a plusieurs rangements : actualisez et choisissez le rangement concerné.');
+ return x;
+}
+function scCheckPosition_(x,data){
+ if(data.expectedQuantity!==x.quantite||data.expectedLocation!==(x.emplacement||'')||data.expectedContainerId!==(x.containerId||''))throw Error('Le stock ou le rangement a changé : actualisez avant de confirmer.');
+}
+
+// Optional idempotent status migration; historical quantities and metadata are untouched.
+function migrateSanteUniqueLots(){
+ const lock=LockService.getScriptLock();lock.waitLock(20000);
+ try{
+  const ss=SpreadsheetApp.openById(SC_FILE),rows=scTable_(ss,SC_LOTS,20,5),data=scRead_(),sh=ss.getSheetByName(SC_LOTS);
+  for(let i=0;i<rows.length;i++){
+   const row=rows[i];if(!row[0])continue;const n=i+5,m=scMeta_(row[17]);
+   if(m.splitFrom){sh.getRange(n,20).setValue('Rattaché à '+(m.rootLot||m.splitFrom));continue;}
+   const lot=data.lots.find(l=>l.lot===row[0]);if(!lot)throw Error('Lot d’origine absent de la migration.');
+   const ids=[lot.lot,...lot.legacyAliases],terms=ids.map(id=>'SUMIF(Mouvements!B:B;"'+id+'";Mouvements!M:M)').join('+');
+   sh.getRange(n,20).setFormula('=IF(A'+n+'="";"";IF(E'+n+'+'+terms+'<=0;"Épuisé";IF(H'+n+'="Sans date";"Sans date";IF(S'+n+'="";"";IF(S'+n+'<0;"Dépassée";IF(S'+n+'<=90;"≤ 3 mois";"OK"))))))');
+  }
+  SpreadsheetApp.flush();console.log(JSON.stringify({ok:true,lots:data.lots.length,rangements:data.lots.reduce((n,l)=>n+l.allocations.length,0),quantitesConservees:true}));
+ }finally{lock.releaseLock();}
+}
 
 function scContainers_(ss){
  const sh=ss.getSheetByName('Contenants Santé');
@@ -185,7 +253,7 @@ function scWriteRow_(name,start,row){
  const values=row.map(scSafe_);
  if(name===SC_LOTS){
   values[18]='=IF(OR(G'+n+'="";H'+n+'="Sans date");"";IF(ISNUMBER(G'+n+');INT(G'+n+');DATE(VALUE(LEFT(G'+n+';4));VALUE(MID(G'+n+';6;2));VALUE(RIGHT(G'+n+';2))))-TODAY())';
-  values[19]='=IF(A'+n+'="";"";IF(E'+n+'+SUMIF(Mouvements!B:B;A'+n+';Mouvements!M:M)-SUMIF(J:J;"REPARTITION:"&A'+n+';E:E)<=0;"Épuisé";IF(H'+n+'="Sans date";"Sans date";IF(S'+n+'="";"";IF(S'+n+'<0;"Dépassée";IF(S'+n+'<=90;"≤ 3 mois";"OK"))))))';
+  values[19]='=IF(A'+n+'="";"";IF(E'+n+'+SUMIF(Mouvements!B:B;A'+n+';Mouvements!M:M)<=0;"Épuisé";IF(H'+n+'="Sans date";"Sans date";IF(S'+n+'="";"";IF(S'+n+'<0;"Dépassée";IF(S'+n+'<=90;"≤ 3 mois";"OK"))))))';
  }
  if(name===SC_ORDERS)values[1]='=IF(COUNTIF(\'Réception & lots\'!J:J;A'+n+')>0;"Reçue";"Commandée")';
  try{sh.getRange(n,1,1,row.length).setValues([values]);if(name===SC_LOTS)sh.getRange(n,19).setNumberFormat('0');SpreadsheetApp.flush();}
@@ -205,7 +273,7 @@ function scExisting_(id,action,data){
 function scLocation_(loc){loc=HealthRules.text(loc).toUpperCase();if(loc&&!/^(?:42-R[1-3]-N[1-5]-[ABC]|38-ETAGE-(?:0[1-9]|1[0-8])|42-CONGELATEUR-0[1-6]|42-FRIGO-0[1-5]|42-GARAGE-0[1-4])$/.test(loc))throw Error('Emplacement inconnu.');return loc;}
 function scMutate_(action,data,id){
  const existing=scExisting_(id,action,data);if(existing)return existing;
- const ss=SpreadsheetApp.openById(SC_FILE),snapshot=scRead_(),meta=scOperation_(id,action,data),now=new Date().toISOString();
+ const ss=SpreadsheetApp.openById(SC_FILE),snapshot=scReadPositions_(),meta=scOperation_(id,action,data),now=new Date().toISOString();
  if(action==='quickEntry'||action==='receive'){
   const x=HealthRules.validateEntry(data),loc=scLocation_(data.location),orderId=HealthRules.text(data.orderId);
   if(action==='receive'){
@@ -220,16 +288,17 @@ function scMutate_(action,data,id){
   return {ok:true,service:SC_SERVICE,lot,orderId};
  }
  if(action==='container'){
-  const x=snapshot.lots.find(l=>l.lot===String(data.lot));if(!x)throw Error('Lot introuvable.');
+  const x=scPosition_(snapshot,data);
   if(x.quantite<=0)throw Error('Ce lot est épuisé.');
-  const containerId=scContainer_(data.containerId,snapshot,x.emplacement);
+  if(data.allocationId)scCheckPosition_(x,data);
+  const containerId=scContainer_(data.containerId,snapshot,x.emplacement||scLotSite_(x,snapshot)+'-');
   if(scCanonicalContainer_(data.expectedContainerId,x.emplacement,snapshot.containers)!==x.containerId)throw Error('Le rangement a changé : actualisez avant de confirmer.');
   // Zero stock impact; retries remain idempotent through the persisted operation ID.
-  scWriteRow_(SC_MOVES,5,[scToday_(),x.lot,x.produit,'Rangement contenant',0,x.unite,x.emplacement,x.emplacement,'Rangement de l’ensemble du lot',SC_META+JSON.stringify({...meta,containerId}),'',now,0]);
+  scWriteRow_(SC_MOVES,5,[scToday_(),x.rootLot||x.lot,x.produit,'Rangement contenant',0,x.unite,x.emplacement,x.emplacement,'Rangement de l’ensemble du lot',SC_META+JSON.stringify({...meta,allocationId:x.lot,containerId}),'',now,0]);
   return {ok:true,service:SC_SERVICE,lot:x.lot,containerId};
  }
  if(action==='split'){
-  const x=snapshot.lots.find(l=>l.lot===String(data.lot));if(!x)throw Error('Lot introuvable.');
+  const x=scPosition_(snapshot,data);
   const qty=HealthRules.number(data.quantite),loc=scLocation_(data.location),site=String(data.site||'');
   if(!['42','38'].includes(site))throw Error('Choisissez le site destinataire.');
   if(loc&&scSite_(loc)!==site)throw Error('L’emplacement doit correspondre au site destinataire.');
@@ -241,6 +310,26 @@ function scMutate_(action,data,id){
   scWriteRow_(SC_LOTS,5,[lot,x.dateReception,x.produit,x.categorie,qty,x.unite,x.ddm,x.typeDate,x.fournisseur,'REPARTITION:'+x.lot,'Site '+site,loc,loc?'Rangé':'À ranger',x.conditionnement,x.lotFabricant,x.ouvert||'Non',x.dateOuverture||'',SC_META+JSON.stringify(details),'','']);
   return {ok:true,service:SC_SERVICE,lot,splitFrom:x.lot,remaining:x.quantite-qty};
  }
+ if(action==='redistribute'){
+  const x=scPosition_(snapshot,data);scCheckPosition_(x,data);
+  const qty=HealthRules.number(data.quantite),site=String(data.site||''),loc=scLocation_(data.location);
+  if(!['38','42'].includes(site)||loc&&scSite_(loc)!==site)throw Error('Choisissez un site et un emplacement cohérents.');
+  const containerId=scContainer_(data.containerId,snapshot,loc||site+'-');
+  if(!(qty>0)||qty>x.quantite||!Number.isFinite(qty)||(HealthRules.counts.includes(x.unite)&&!Number.isSafeInteger(qty)))throw Error('Quantité à répartir invalide ou stock insuffisant.');
+  if(scLotSite_(x,snapshot)===site&&(x.emplacement||'')===loc&&(x.containerId||'')===containerId)throw Error('Le rangement source et le rangement destinataire sont identiques.');
+  const target=snapshot.lots.find(p=>p!==x&&p.rootLot===x.rootLot&&scLotSite_(p,snapshot)===site&&(p.emplacement||'')===loc&&(p.containerId||'')===containerId);
+  const transfer={id:target?target.lot:'P'+id,existing:!!target,site,location:loc,containerId};
+  scWriteRow_(SC_MOVES,5,[scToday_(),x.rootLot||x.lot,x.produit,'Répartition Santé',qty,x.unite,x.emplacement,loc,'Répartition sans changement de lot',SC_META+JSON.stringify({...meta,allocationId:x.lot,transfer}),'',now,0]);
+  return {ok:true,service:SC_SERVICE,lot:x.rootLot||x.lot,allocationId:transfer.id,remaining:x.quantite-qty};
+ }
+ if(action==='inventory'){
+  const loc=scLocation_(data.location);if(!loc)throw Error('Choisissez un emplacement.');
+  const x=data.allocationId?scPosition_(snapshot,data):null;
+  if(x&&x.emplacement!==loc)throw Error('Le rangement a changé : actualisez l’inventaire.');
+  if(x)scCheckPosition_(x,data);
+  scWriteRow_(SC_MOVES,5,[scToday_(),x?.rootLot||x?.lot||'',x?.produit||'','Contrôle inventaire',0,x?.unite||'',loc,loc,data.present===false?'Rangement non retrouvé, à vérifier':'Inventaire conforme',SC_META+JSON.stringify({...meta,allocationId:x?.lot||''}),'',now,0]);
+  return {ok:true,service:SC_SERVICE};
+ }
  if(action==='order'){
   const product=HealthRules.text(data.product),category=HealthRules.text(data.category),qty=HealthRules.number(data.qty),unit=HealthRules.text(data.unit);
   if(!product||!HealthRules.categories.includes(category)||!HealthRules.units.includes(unit)||!(qty>0)||!Number.isFinite(qty)||(HealthRules.counts.includes(unit)&&!Number.isSafeInteger(qty)))throw Error('Commande Santé invalide.');
@@ -250,8 +339,9 @@ function scMutate_(action,data,id){
   return {ok:true,service:SC_SERVICE,orderId};
  }
  if(action==='movement'||action==='assign'){
-  const x=snapshot.lots.find(l=>l.lot===String(data.lot));if(!x)throw Error('Lot introuvable.');
+  const x=scPosition_(snapshot,data);
   const loc=action==='assign'?scLocation_(data.location):'',qty=action==='assign'?0:HealthRules.number(data.quantite);
+  if(data.allocationId)scCheckPosition_(x,data);
   if(action==='assign'&&!loc)throw Error('Choisissez un emplacement.');
   if(action==='assign')scContainer_(x.containerId,snapshot,loc);
   if(action==='movement'){
@@ -259,9 +349,9 @@ function scMutate_(action,data,id){
    if(data.unite!==x.unite)throw Error('L’unité de sortie doit correspondre à celle du lot.');
    if(!HealthRules.allowed(x,scToday_()))throw Error('Lot périmé ou péremption manquante : sortie ordinaire bloquée.');
    const first=snapshot.lots.filter(l=>l.produit===x.produit&&l.unite===x.unite&&scLotSite_(l,snapshot)===scLotSite_(x,snapshot)&&l.quantite>0&&HealthRules.allowed(l,scToday_())).sort(HealthRules.compare)[0];
-   if(first&&first.lot!==x.lot&&!data.fefoOverride)throw Error('Utilisez en priorité '+first.lot+' ('+first.ddm+'), ou confirmez explicitement le choix de cet autre lot.');
+   if(first&&(first.rootLot||first.lot)!==(x.rootLot||x.lot)&&!data.fefoOverride)throw Error('Utilisez en priorité '+first.lot+' ('+first.ddm+'), ou confirmez explicitement le choix de cet autre lot.');
   }
-  scWriteRow_(SC_MOVES,5,[scToday_(),x.lot,x.produit,action==='assign'?'Transfert':'Sortie Santé',qty,x.unite,x.emplacement,loc,HealthRules.text(data.commentaire,1000)+(data.fefoOverride?' • Autre lot confirmé':''),SC_META+JSON.stringify(meta),'',now,-qty]);
+  scWriteRow_(SC_MOVES,5,[scToday_(),x.rootLot||x.lot,x.produit,action==='assign'?'Transfert':'Sortie Santé',qty,x.unite,x.emplacement,loc,HealthRules.text(data.commentaire,1000)+(data.fefoOverride?' • Autre lot confirmé':''),SC_META+JSON.stringify({...meta,allocationId:x.lot}),'',now,-qty]);
   return {ok:true,service:SC_SERVICE,lot:x.lot,remaining:x.quantite-qty};
  }
  throw Error('Action Santé inconnue.');
