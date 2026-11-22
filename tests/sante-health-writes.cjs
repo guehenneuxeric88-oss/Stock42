@@ -48,3 +48,31 @@ assert.ok(opened.every(id=>id==='1pac-pS7IW66NgaewGJpGz--1CypMeE2pS1C23qtSMhs'))
 assert.equal(JSON.parse(run("doGet({parameter:{action:'receipt',requestId:'bad',callback:'alert'}})").text).error,'invalid_request');
 console.log('PASS: boîtes entières, FEFO, péremptions, variantes, verrou, anti-doublon après réponse perdue, commandes/réceptions et fichier Santé exclusivement.');
 
+
+// Optional physical containers remain separate from stock and commercial packaging.
+starts['Contenants Santé']=2;
+tables['Contenants Santé']=[['SANTE-01','Boîte 1 — Antidouleurs','','','',''],['SANTE-02','Boîte 2 — Respiratoires','','','',''],[],['Champ prévu','Contenant de rangement']];
+assert.equal(snap().containers.length,2);
+assert.equal(snap().capabilities.containers,true);
+const oldLots=snap().lots;assert.ok(oldLots.every(x=>x.containerId===''));
+const withBox={...gloves,containerId:'SANTE-01'};
+const boxed=post('quickEntry',withBox);assert.equal(boxed.ok,true);
+let lot=snap().lots.find(x=>x.lot===boxed.lot);assert.equal(lot.containerId,'SANTE-01');assert.equal(lot.conditionnement,'100 gants par boîte');
+const qty=lot.quantite,location=lot.emplacement,expiry=lot.ddm;
+const retries='c'.repeat(32),moveBox={lot:lot.lot,containerId:'SANTE-02',expectedContainerId:'SANTE-01'};
+assert.equal(post('container',moveBox,retries).ok,true);
+const journalSize=snap().movements.length;
+assert.equal(post('container',moveBox,retries).duplicate,true);assert.equal(snap().movements.length,journalSize);
+lot=snap().lots.find(x=>x.lot===boxed.lot);assert.equal(lot.containerId,'SANTE-02');assert.equal(lot.quantite,qty);assert.equal(lot.emplacement,location);assert.equal(lot.ddm,expiry);
+assert.equal(snap().movements.at(-1).impact,0);
+assert.match(post('container',{lot:lot.lot,containerId:'SANTE-01',expectedContainerId:'SANTE-01'}).error,/rangement a changé/);
+assert.match(post('container',{lot:lot.lot,containerId:'SANTE-99',expectedContainerId:'SANTE-02'}).error,/inconnu/);
+assert.match(post('quickEntry',{...gloves,containerId:'SANTE-99'}).error,/inconnu/);
+assert.equal(post('container',{lot:lot.lot,containerId:'',expectedContainerId:'SANTE-02'}).ok,true);
+assert.equal(snap().lots.find(x=>x.lot===lot.lot).containerId,'');
+assert.equal(post('quickEntry',{...gloves,containerId:''}).ok,true);
+assert.equal(post('quickEntry',{...gloves,containerId:null}).ok,true);
+assert.equal(post('quickEntry',gloves).ok,true);
+assert.match(post('container',{lot:'L9999',containerId:'',expectedContainerId:''}).error,/introuvable/);
+assert.ok(oldLots.every(before=>{const after=snap().lots.find(x=>x.lot===before.lot);return before.quantite===after.quantite&&before.emplacement===after.emplacement&&before.ddm===after.ddm}));
+console.log('PASS: contenants facultatifs, registre, lots historiques, changement/retrait sans impact stock, anti-doublon et concurrence.');
