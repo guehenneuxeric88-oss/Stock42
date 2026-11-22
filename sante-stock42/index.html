@@ -1868,8 +1868,8 @@ updateStats();
 updateAutoBackupStatus();
 if(!readAutoBackups().length)createAutomaticBackup('Initiale');
 // Wait until optional modules are loaded before the first snapshot.
-window.addEventListener('DOMContentLoaded',()=>{
-  if(localStorage.getItem(LS.syncUrl))syncLotsFromSheet();else {initializeReorderBaseline();updateStats();}
+window.addEventListener('DOMContentLoaded',async()=>{
+  if(localStorage.getItem(LS.syncUrl))await syncLotsFromSheet();else {initializeReorderBaseline();updateStats();}
 },{once:true});
 if(cloudEnabled()&&localStorage.getItem(LS.cloudPending)==='1')scheduleCloudBackup();
 if('serviceWorker' in navigator)window.addEventListener('load',async()=>{
