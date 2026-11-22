@@ -3,7 +3,8 @@ const {JSDOM}=require('jsdom');
 const html=fs.readFileSync(__dirname+'/../sante-stock42/index.html','utf8');
 const dom=new JSDOM(html,{url:'https://stock42.example/sante-stock42/'}),document=dom.window.document;
 const data=new Map(),localStorage={getItem:k=>data.get(k)||null,setItem:(k,v)=>data.set(k,String(v)),removeItem:k=>data.delete(k)};
-const context=vm.createContext({document,window:{addEventListener(){},scrollTo(){}},navigator:{onLine:true},localStorage,sessionStorage:localStorage,console,Date,Intl,URL,Blob,File,crypto:require('crypto').webcrypto,setTimeout(){return 1},clearTimeout(){},setInterval(){},clearInterval(){},confirm:()=>true,alert:()=>{},fetch(){throw Error('No network in test')}});
+const startupEvents=new Map();
+const context=vm.createContext({document,window:{addEventListener(name,handler){startupEvents.set(name,handler)},scrollTo(){}},navigator:{onLine:true},localStorage,sessionStorage:localStorage,console,Date,Intl,URL,Blob,File,crypto:require('crypto').webcrypto,setTimeout(){return 1},clearTimeout(){},setInterval(){},clearInterval(){},confirm:()=>true,alert:()=>{},fetch(){throw Error('No network in test')}});
 const run=s=>vm.runInContext(s,context),$=id=>document.getElementById(id);
 let calls=[];
 context.request=async(action,input)=>{if(action==='snapshot')return context.snapshot;calls.push({action,input});if(action==='container'){context.snapshot.lots[0].containerId=input.containerId;}return{ok:true,lot:'L0001'};};
@@ -16,7 +17,9 @@ const lot={lot:'L0001',produit:'Compresses',quantite:3,unite:'boîte',ddm:'2031-
 context.snapshot={ok:true,version:2,lots:[lot],products:[],orders:[],movements:[],nextLot:'L0002',readAt:'2026-11-22',capabilities:{containers:true},containers:[{id:'SANTE-05',name:'Boîte 5 — Pansements simples'}]};
 (async()=>{
  assert.equal($('qContainer').disabled,true);
- await run('syncLotsFromSheet()');assert.equal($('qContainer').disabled,false);assert.equal($('qContainer').value,'');
+ assert.equal(typeof startupEvents.get('DOMContentLoaded'),'function');
+ localStorage.setItem(run('LS.syncUrl'),'https://gateway.example/exec');
+ await startupEvents.get('DOMContentLoaded')();assert.equal($('qContainer').disabled,false);assert.equal($('qContainer').value,'');
  assert.equal($('qContainer').options.length,2);
  $('qContainer').value='SANTE-05';await run("sendToSheet('quickEntry',{produit:'test'})");assert.equal(calls.at(-1).input.containerId,'SANTE-05');assert.equal($('qContainer').value,'');
  await run("sendToSheet('quickEntry',{produit:'sans boîte'})");assert.equal(calls.at(-1).input.containerId,'');
@@ -29,5 +32,5 @@ context.snapshot={ok:true,version:2,lots:[lot],products:[],orders:[],movements:[
  const before=calls.length;await $('saveContainerBtn').onclick();assert.equal(calls.length,before);
  localStorage.removeItem('stock42SanteCloneGuestMode');context.snapshot.capabilities={};await run('syncLotsFromSheet()');assert.equal($('qContainer').disabled,true);assert.equal($('saveContainerBtn').disabled,true);
  assert.equal(run('allLots()[0].quantite'),3);
- console.log('PASS: optional UI, add/remove container, whole-lot stock unchanged, guest protection, old gateway compatibility.');
+ console.log('PASS: automatic startup enables containers, optional UI, add/remove container, whole-lot stock unchanged, guest protection, old gateway compatibility.');
 })().catch(e=>{console.error(e);process.exitCode=1});
