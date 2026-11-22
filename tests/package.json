@@ -3,9 +3,11 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "test:interface": "node sante-interface-v35.cjs"
+    "test:interface": "node sante-interface-v35.cjs",
+    "test:containers": "node sante-health-writes.cjs && node sante-containers-ui.cjs"
   },
   "devDependencies": {
-    "linkedom": "0.18.15"
+    "linkedom": "0.18.15",
+    "jsdom": "26.1.0"
   }
 }

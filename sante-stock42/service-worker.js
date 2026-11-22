@@ -1,5 +1,5 @@
-const CACHE='stock42-sante-clone-v5';
-const LOCAL=['./','./index.html','./health-rules.js','./health-ui.js','./health-scan-codes.js','./health-scanner.js','./vendor/zxing-browser-0.2.1.min.js','./manifest.webmanifest','./icon-180.png','./icon-192.png','./icon-512.png'];
+const CACHE='stock42-sante-clone-v6';
+const LOCAL=['./','./index.html','./health-rules.js','./health-ui.js','./health-containers.js','./health-scan-codes.js','./health-scanner.js','./vendor/zxing-browser-0.2.1.min.js','./manifest.webmanifest','./icon-180.png','./icon-192.png','./icon-512.png'];
 
 self.addEventListener('install',e=>{
   self.skipWaiting();
@@ -53,3 +53,4 @@ self.addEventListener('fetch',e=>{
     );
   }
 });
+
