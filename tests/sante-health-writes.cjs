@@ -94,11 +94,11 @@ assert.equal(parent.quantite,2);assert.equal(child.quantite,1);assert.equal(chil
 assert.equal(child.lotFabricant,'FAB-COMMUN');assert.equal(child.ddm,parent.ddm);assert.equal(child.rootLot,source);assert.equal(child.health.perBox,100);
 assert.equal(allocated.lots.reduce((n,x)=>n+x.quantite,0),totalBefore);
 assert.equal(allocated.products.filter(x=>x.name===child.produit).length,1);
-assert.match(post('split',splitData).error,/changé/);
-assert.match(post('split',{...splitData,expectedQuantity:2,quantite:3}).error,/insuffisant/);
-assert.match(post('split',{...splitData,expectedQuantity:2,containerId:'42-SANTE-05'}).error,/site/);
-assert.match(post('split',{...splitData,expectedQuantity:2,quantite:0.5}).error,/invalide/);
-assert.match(tables['Réception & lots'].at(-1)[19],/SUMIF\(J:J;"REPARTITION:"&A/);
+assert.match(post('split',splitData).error,/changé|rangements/);
+assert.match(post('split',{...splitData,expectedQuantity:2,quantite:3}).error,/insuffisant|rangements/);
+assert.match(post('split',{...splitData,expectedQuantity:2,containerId:'42-SANTE-05'}).error,/site|rangements/);
+assert.match(post('split',{...splitData,expectedQuantity:2,quantite:0.5}).error,/invalide|rangements/);
+assert.ok(!tables['Réception & lots'].at(-1)[19].includes('REPARTITION:'));
 // Moving the entire child again conserves its root and cannot duplicate a retry.
 const grand=post('split',{lot:child.lot,quantite:1,site:'42',location:'42-R3-N2-C',containerId:'',expectedQuantity:1,expectedLocation:child.emplacement,expectedContainerId:child.containerId});
 assert.equal(grand.ok,true);allocated=snap();assert.equal(allocated.lots.find(x=>x.lot===child.lot).quantite,0);
@@ -107,6 +107,37 @@ assert.equal(allocated.lots.find(x=>x.lot===grand.lot).rootLot,source);assert.eq
 post('quickEntry',{...gloves,produit:'Gants multisite',health:{...gloves.health,name:'Gants multisite'},ddm:'01/2030',containerId:'42-SANTE-01'});
 const site38=post('quickEntry',{...gloves,produit:'Gants multisite',health:{...gloves.health,name:'Gants multisite'},ddm:'03/2031',location:'38-ETAGE-02',containerId:'38-SANTE-01'}).lot;
 assert.equal(post('movement',{lot:site38,quantite:1,unite:'boîte'}).ok,true);
-assert.equal(post('movement',{lot:source,quantite:1,unite:'boîte',fefoOverride:true}).ok,true);
+assert.equal(post('movement',{lot:source,allocationId:source,expectedQuantity:2,expectedLocation:sourceBefore.emplacement,expectedContainerId:'42-SANTE-05',quantite:1,unite:'boîte',fefoOverride:true}).ok,true);
 assert.equal(snap().lots.reduce((n,x)=>n+x.quantite,0),totalBefore+8);
 console.log('PASS: 16 site-specific boxes, site guards, split conservation, lineage, partial/full/nested split, stale stock, retries after lost acknowledgement, FEFO per site.');
+
+// Canonical lots: positions are storage records, never additional lot numbers.
+const unique=()=>post('snapshot',{allocationModel:3});
+let canonical=unique();assert.equal(canonical.version,3);assert.equal(canonical.capabilities.allocations,true);
+assert.equal(canonical.lots.filter(x=>x.lot===source).length,1);assert.ok(!canonical.lots.some(x=>x.lot===child.lot));
+const fresh=post('quickEntry',{...gloves,produit:'Essai lot unique',health:{...gloves.health,name:'Essai lot unique'},quantite:6,containerId:'42-SANTE-01',lotFabricant:'LOT-COMMUN'}).lot;
+let root=unique().lots.find(x=>x.lot===fresh),next=unique().nextLot;
+function positionData(p){return {lot:fresh,allocationId:p.id,expectedQuantity:p.quantite,expectedLocation:p.emplacement||'',expectedContainerId:p.containerId||''};}
+const request={...positionData(root.allocations[0]),quantite:2,site:'38',location:'38-ETAGE-01',containerId:'38-SANTE-01'},operation='e'.repeat(32),writesBefore=writes;
+ackLoss=true;assert.match(post('redistribute',request,operation).error,/acknowledgement/);assert.equal(post('redistribute',request,operation).duplicate,true);assert.equal(writes,writesBefore+1);
+root=unique().lots.find(x=>x.lot===fresh);assert.equal(root.quantite,6);assert.equal(root.allocations.length,2);assert.equal(unique().nextLot,next);assert.equal(root.lotFabricant,'LOT-COMMUN');
+assert.deepEqual(Array.from(root.allocations,x=>x.quantite),[4,2]);assert.equal(root.quantiteRecue,6);
+assert.match(post('redistribute',request).error,/changé/);
+assert.match(post('movement',{lot:fresh,quantite:1,unite:'boîte'}).error,/plusieurs rangements/);
+let p38=root.allocations.find(p=>p.site==='38');
+assert.match(post('movement',{...positionData(p38),quantite:3,unite:'boîte'}).error,/stock insuffisant/);
+assert.equal(post('movement',{...positionData(p38),quantite:1,unite:'boîte'}).ok,true);
+root=unique().lots.find(x=>x.lot===fresh);p38=root.allocations.find(p=>p.site==='38');assert.equal(p38.quantite,1);assert.equal(root.quantite,5);assert.equal(root.allocations.find(p=>p.site==='42').quantite,4);
+assert.equal(post('assign',{...positionData(p38),location:'38-ETAGE-12'}).ok,true);
+root=unique().lots.find(x=>x.lot===fresh);p38=root.allocations.find(p=>p.site==='38');assert.equal(p38.emplacement,'38-ETAGE-12');assert.equal(root.allocations.find(p=>p.site==='42').emplacement,gloves.location);
+assert.match(post('container',{...positionData(p38),containerId:'42-SANTE-02'}).error,/site/);
+assert.equal(post('container',{...positionData(p38),containerId:'38-SANTE-02'}).ok,true);
+root=unique().lots.find(x=>x.lot===fresh);p38=root.allocations.find(p=>p.site==='38');
+assert.equal(post('inventory',{...positionData(p38),location:'38-ETAGE-12',present:false}).ok,true);assert.equal(unique().lots.find(x=>x.lot===fresh).quantite,5);
+const merged=post('redistribute',{...positionData(p38),quantite:1,site:'42',location:gloves.location,containerId:'42-SANTE-01'});assert.equal(merged.ok,true);assert.equal(merged.lot,fresh);
+root=unique().lots.find(x=>x.lot===fresh);assert.equal(root.quantite,5);assert.equal(root.allocations.length,2);assert.equal(root.allocations.find(p=>p.site==='38').quantite,0);assert.equal(root.allocations.find(p=>p.site==='42').quantite,5);assert.equal(unique().nextLot,next);
+const only=root.allocations.find(p=>p.site==='42');assert.match(post('redistribute',{...positionData(only),quantite:1,site:'42',location:gloves.location,containerId:'42-SANTE-01'}).error,/identiques/);
+assert.equal(post('inventory',{location:'38-ETAGE-02',present:true}).ok,true);assert.equal(unique().movements.at(-1).type,'Contrôle inventaire');
+assert.equal(unique().lots.filter(l=>l.produit===root.produit).length,1);
+assert.equal(locked,false);
+console.log('PASS: canonical lot identity, legacy regrouping, per-position exit/assignment/container/inventory, conserved quantity and lot numbering, stale operations, no-op transfers, merged destinations, idempotence after lost acknowledgement.');

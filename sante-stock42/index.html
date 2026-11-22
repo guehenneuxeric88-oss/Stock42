@@ -60,7 +60,7 @@ body.guest-mode .admin-only{display:none!important}body.guest-mode #guestModeBtn
 </head>
 <body><main class="app">
 <section id="healthStage" class="notice" role="status" style="margin-bottom:14px">Santé — vérification de la connexion…</section>
-<header class="head"><img class="logo" src="icon-180.png" alt="" width="52" height="52"><div><div class="title">Stock 42 Santé</div><div class="sub">Commandes • réceptions • lots • emplacements • FEFO • Santé 1.1</div></div></header>
+<header class="head"><img class="logo" src="icon-180.png" alt="" width="52" height="52"><div><div class="title">Stock 42 Santé</div><div class="sub">Commandes • réceptions • lots • emplacements • FEFO • Santé 2.0</div></div></header>
 <div class="guest-banner">Mode famille / invité — consultation uniquement</div>
 <nav id="mainNav" class="main-nav" aria-label="Navigation principale">
   <button class="active" data-view="home"><span class="nav-icon">⌂</span>Accueil</button>
@@ -1877,7 +1877,7 @@ if('serviceWorker' in navigator)window.addEventListener('load',async()=>{
     const parentScope=new URL('../',location.href).href;
     const parentReg=await navigator.serviceWorker.getRegistration(parentScope);
     if(parentReg&&parentReg.scope===parentScope)await parentReg.update().catch(()=>{});
-    const reg=await navigator.serviceWorker.register('./service-worker.js?v=sante-1-1',{updateViaCache:'none'});
+    const reg=await navigator.serviceWorker.register('./service-worker.js?v=sante-2-0',{updateViaCache:'none'});
     reg.update().catch(()=>{});
     navigator.serviceWorker.addEventListener('controllerchange',()=>{
       if(!sessionStorage.getItem('stock42SanteCloneSwReload')){
