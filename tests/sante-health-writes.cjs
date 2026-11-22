@@ -76,3 +76,37 @@ assert.equal(post('quickEntry',gloves).ok,true);
 assert.match(post('container',{lot:'L9999',containerId:'',expectedContainerId:''}).error,/introuvable/);
 assert.ok(oldLots.every(before=>{const after=snap().lots.find(x=>x.lot===before.lot);return before.quantite===after.quantite&&before.emplacement===after.emplacement&&before.ddm===after.ddm}));
 console.log('PASS: contenants facultatifs, registre, lots historiques, changement/retrait sans impact stock, anti-doublon et concurrence.');
+
+// Two physical sets of boxes; a single receipt-row write records each split.
+tables['Contenants Santé']=['42','38'].flatMap(site=>Array.from({length:8},(_,i)=>[site+'-SANTE-'+String(i+1).padStart(2,'0'),site+' — Boîte '+(i+1),site,'','','']));
+assert.equal(snap().containers.length,16);assert.equal(snap().capabilities.split,true);
+const source=post('quickEntry',{...gloves,quantite:3,containerId:'42-SANTE-05',lotFabricant:'FAB-COMMUN'}).lot;
+assert.ok(source);
+assert.match(post('quickEntry',{...gloves,containerId:'38-SANTE-05'}).error,/site/);
+assert.match(post('assign',{lot:source,location:'38-ETAGE-01'}).error,/site/);
+const sourceBefore=snap().lots.find(x=>x.lot===source),totalBefore=snap().lots.reduce((n,x)=>n+x.quantite,0);
+const splitData={lot:source,quantite:1,site:'38',location:'38-ETAGE-01',containerId:'38-SANTE-05',expectedQuantity:3,expectedLocation:sourceBefore.emplacement,expectedContainerId:'42-SANTE-05'};
+const splitId='d'.repeat(32),writeBefore=writes;
+ackLoss=true;assert.match(post('split',splitData,splitId).error,/acknowledgement/);
+assert.equal(writes,writeBefore+1);assert.equal(post('split',splitData,splitId).duplicate,true);
+let allocated=snap(),child=allocated.lots.find(x=>x.splitFrom===source),parent=allocated.lots.find(x=>x.lot===source);
+assert.equal(parent.quantite,2);assert.equal(child.quantite,1);assert.equal(child.containerId,'38-SANTE-05');assert.equal(child.emplacement,'38-ETAGE-01');
+assert.equal(child.lotFabricant,'FAB-COMMUN');assert.equal(child.ddm,parent.ddm);assert.equal(child.rootLot,source);assert.equal(child.health.perBox,100);
+assert.equal(allocated.lots.reduce((n,x)=>n+x.quantite,0),totalBefore);
+assert.equal(allocated.products.filter(x=>x.name===child.produit).length,1);
+assert.match(post('split',splitData).error,/changé/);
+assert.match(post('split',{...splitData,expectedQuantity:2,quantite:3}).error,/insuffisant/);
+assert.match(post('split',{...splitData,expectedQuantity:2,containerId:'42-SANTE-05'}).error,/site/);
+assert.match(post('split',{...splitData,expectedQuantity:2,quantite:0.5}).error,/invalide/);
+assert.match(tables['Réception & lots'].at(-1)[19],/SUMIF\(J:J;"REPARTITION:"&A/);
+// Moving the entire child again conserves its root and cannot duplicate a retry.
+const grand=post('split',{lot:child.lot,quantite:1,site:'42',location:'42-R3-N2-C',containerId:'',expectedQuantity:1,expectedLocation:child.emplacement,expectedContainerId:child.containerId});
+assert.equal(grand.ok,true);allocated=snap();assert.equal(allocated.lots.find(x=>x.lot===child.lot).quantite,0);
+assert.equal(allocated.lots.find(x=>x.lot===grand.lot).rootLot,source);assert.equal(allocated.lots.reduce((n,x)=>n+x.quantite,0),totalBefore);
+// FEFO is enforced inside each site's available stock, not across buildings.
+post('quickEntry',{...gloves,produit:'Gants multisite',health:{...gloves.health,name:'Gants multisite'},ddm:'01/2030',containerId:'42-SANTE-01'});
+const site38=post('quickEntry',{...gloves,produit:'Gants multisite',health:{...gloves.health,name:'Gants multisite'},ddm:'03/2031',location:'38-ETAGE-02',containerId:'38-SANTE-01'}).lot;
+assert.equal(post('movement',{lot:site38,quantite:1,unite:'boîte'}).ok,true);
+assert.equal(post('movement',{lot:source,quantite:1,unite:'boîte',fefoOverride:true}).ok,true);
+assert.equal(snap().lots.reduce((n,x)=>n+x.quantite,0),totalBefore+8);
+console.log('PASS: 16 site-specific boxes, site guards, split conservation, lineage, partial/full/nested split, stale stock, retries after lost acknowledgement, FEFO per site.');
