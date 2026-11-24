@@ -65,8 +65,7 @@ function doGet(e){
  const q=e&&e.parameter||{};
  if(q.action==='receipt'){
   if(!/^[a-f0-9]{32}$/.test(q.requestId||'')||!/^stock42SanteCloneRead_[a-f0-9]{32}$/.test(q.callback||''))return scJson_({ok:false,error:'invalid_request'});
-  const content=CacheService.getScriptCache().get('sc_receipt_'+q.requestId);
-  const data=content?JSON.parse(content):{ok:false,pending:true};
+  const data=scReadReceipt_(q.requestId);
   return ContentService.createTextOutput(q.callback+'('+JSON.stringify(data).replace(/</g,'\\u003c')+');').setMimeType(ContentService.MimeType.JAVASCRIPT);
  }
  return scJson_({ok:true,service:SC_SERVICE,readOnly:false,version:2,authentication:'api-key'});
@@ -98,11 +97,33 @@ function scEquals_(a,b){
 function scJson_(d){return ContentService.createTextOutput(JSON.stringify(d)).setMimeType(ContentService.MimeType.JSON);}
 function scReceipt_(id,d){
  const json=JSON.stringify(d);
- if(json.length>80000)d={ok:false,error:'snapshot_too_large'};
  // La requête est authentifiée avant de produire un reçu. Le reçu est un identifiant
  // aléatoire de 128 bits, valable 120 secondes, sans clé API dans l'URL.
- CacheService.getScriptCache().put('sc_receipt_'+id,JSON.stringify(d),120);
+ // CacheService limite chaque valeur en octets. L'encodage ASCII évite aussi de
+ // couper un caractère Unicode entre deux blocs. Le client reçoit le JSON complet.
+ const cache=CacheService.getScriptCache(),key='sc_receipt_'+id;
+ if(Utilities.newBlob(json).getBytes().length<=60000){
+  cache.put(key,json,120);
+ }else{
+  const encoded=Utilities.base64Encode(Utilities.newBlob(json).getBytes()),parts={};
+  const count=Math.ceil(encoded.length/60000);
+  for(let i=0;i<count;i++)parts[key+'_'+i]=encoded.slice(i*60000,(i+1)*60000);
+  cache.putAll(parts,120);
+  // Publier le manifeste après les blocs : aucune réponse partielle n'est lisible.
+  cache.put(key,JSON.stringify({receiptChunks:count,encodedLength:encoded.length}),120);
+ }
  return scJson_({ok:d.ok,accepted:true});
+}
+function scReadReceipt_(id){
+ const cache=CacheService.getScriptCache(),key='sc_receipt_'+id,raw=cache.get(key);
+ if(!raw)return {ok:false,pending:true};
+ const saved=JSON.parse(raw);
+ if(!saved.receiptChunks)return saved;
+ const keys=Array.from({length:saved.receiptChunks},(_,i)=>key+'_'+i),parts=cache.getAll(keys);
+ if(keys.some(k=>typeof parts[k]!=='string'))return {ok:false,pending:true};
+ const encoded=keys.map(k=>parts[k]).join('');
+ if(encoded.length!==saved.encodedLength)return {ok:false,pending:true};
+ return JSON.parse(Utilities.newBlob(Utilities.base64Decode(encoded)).getDataAsString('UTF-8'));
 }
 function scTable_(ss,name,width,start){
  start=start||2;
@@ -356,5 +377,6 @@ function scMutate_(action,data,id){
  }
  throw Error('Action Santé inconnue.');
 }
+
 
 
