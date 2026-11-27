@@ -71,7 +71,7 @@ body.guest-mode .admin-only{display:none!important}body.guest-mode #guestModeBtn
     <div class="kv"><div class="k">Lots connus</div><div id="dashLots" class="v">0</div></div>
     <div class="kv"><div class="k">Lots rangés</div><div id="dashRanged" class="v">0</div></div>
     <div class="kv"><div class="k">À ranger / TEMP</div><div id="dashTemp" class="v">0</div></div>
-    <div class="kv"><div class="k">Emplacements occupés</div><div id="dashLocations" class="v">0 / 73</div></div>
+    <div class="kv"><div class="k">Emplacements occupés</div><div id="dashLocations" class="v">0 / 83</div></div>
     <div class="kv"><div class="k">DDM/DLC ≤ 3 mois</div><div id="dashSoon" class="v">0</div></div>
     <div class="kv"><div class="k">Dates dépassées</div><div id="dashExpired" class="v">0</div></div>
   </div>
@@ -434,7 +434,7 @@ body.guest-mode .admin-only{display:none!important}body.guest-mode #guestModeBtn
 <div class="footer">Stock 42 • données alimentaires conservées localement sur votre appareil</div>
 </main>
 <script>
-const VALID=/^(?:42-R[1-3]-N[1-5]-[ABC]|38-ETAGE-(?:0[1-9]|1[0-8])|42-CONGELATEUR-0[1-6]|42-FRIGO-0[1-5]|42-GARAGE-0[1-4])$/i, LOT=/^L\d{4}$/;
+const VALID=/^(?:42-R[1-3]-N[1-5]-[ABC]|38-ETAGE-(?:0[1-9]|1[0-8])|42-CONGELATEUR-(?:0[1-9]|1[01])|42-FRIGO-0[1-5]|42-GARAGE-0[1-4])$/i, LOT=/^L\d{4}$/;
 let scanner=null,running=false,productScanner=null,productScannerControls=null,activeLocation=null,receiveOrderId=null,moveScanMode=false,exitScanMode=false,exitLocation='',quickScanMode=false,quickProductScanMode=false,quickScannedBarcode='',quickScannedBrand='';
 const $=id=>document.getElementById(id);
 const LS={catalog:'stock42Catalog',lots:'stock42Lots',orders:'stock42Orders',moves:'stock42Movements',assign:'stock42Assignments',history:'stock42History',imported:'stock42ImportedAt',syncUrl:'stock42SyncUrl',syncKey:'stock42SyncKey',guestMode:'stock42GuestMode',autoBackups:'stock42AutoBackups',products:'stock42Products',reorder:'stock42ReorderBaselineV1',lastExternalBackup:'stock42LastExternalBackup',cloudEnabled:'stock42CloudBackupEnabled',cloudUrl:'stock42CloudBackupUrl',cloudKey:'stock42CloudBackupKey',cloudVerified:'stock42CloudBackupVerified',cloudLast:'stock42CloudBackupLast',cloudPending:'stock42CloudBackupPending'};
@@ -1533,7 +1533,7 @@ function showFifoView(){
 function allOfficialLocations(){
   const out=[];
   for(let r=1;r<=3;r++)for(let n=1;n<=5;n++)for(const z of ['A','B','C'])out.push('42-R'+r+'-N'+n+'-'+z);
-  for(let i=1;i<=6;i++)out.push('42-CONGELATEUR-'+String(i).padStart(2,'0'));
+  for(let i=1;i<=11;i++)out.push('42-CONGELATEUR-'+String(i).padStart(2,'0'));
   for(let i=1;i<=5;i++)out.push('42-FRIGO-'+String(i).padStart(2,'0'));
   for(let i=1;i<=4;i++)out.push('42-GARAGE-'+String(i).padStart(2,'0'));
   for(let i=1;i<=18;i++)out.push('38-ETAGE-'+String(i).padStart(2,'0'));
